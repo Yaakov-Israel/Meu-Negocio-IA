@@ -6,38 +6,32 @@ from langchain.chains import LLMChain
 import google.generativeai as genai # SDK direta do Google também é necessária para configurar a chave
 
 # --- Configuração da Página Streamlit ---
-st.set_page_config(page_title="Gaon da IA - Super Agente PME", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Assistente PME Inteligente", layout="wide", initial_sidebar_state="expanded") # Título da Aba Alterado
 
 # --- Carregar API Key e Configurar Modelo ---
-# Esta é a forma correta de carregar a API Key no Streamlit Cloud
-# Você precisará configurar um "Secret" no Streamlit Cloud chamado GOOGLE_API_KEY
 GOOGLE_API_KEY = None
-llm = None # Inicializa llm como None
+llm = None
 
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-except KeyError: # Chave não encontrada nos secrets do Streamlit
+except KeyError:
     st.error("🚨 ERRO: Chave API 'GOOGLE_API_KEY' não encontrada nos Segredos (Secrets) do Streamlit.")
     st.info("Por favor, adicione sua GOOGLE_API_KEY aos Segredos do seu aplicativo no painel do Streamlit Community Cloud.")
-    st.stop() # Interrompe a execução se a chave não for encontrada
-except FileNotFoundError: # Para desenvolvimento local se o .streamlit/secrets.toml não existir
+    st.stop()
+except FileNotFoundError:
     st.error("🚨 ERRO: Arquivo de Segredos (secrets.toml) não encontrado para desenvolvimento local.")
     st.info("Crie um arquivo .streamlit/secrets.toml com sua GOOGLE_API_KEY ou configure-a nos Segredos do Streamlit Cloud.")
     st.stop()
-
 
 if not GOOGLE_API_KEY or not GOOGLE_API_KEY.strip():
     st.error("🚨 ERRO: GOOGLE_API_KEY não foi carregada ou está vazia.")
     st.stop()
 else:
     try:
-        # Configura a chave para a SDK do google-generativeai (usada por LangChain indiretamente)
         genai.configure(api_key=GOOGLE_API_KEY)
-
-        # Inicializa o modelo LLM usando LangChain
         llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash",
                                      temperature=0.7,
-                                     google_api_key=GOOGLE_API_KEY, # Passa a chave explicitamente
+                                     google_api_key=GOOGLE_API_KEY,
                                      convert_system_message_to_human=True)
         st.sidebar.success("✅ Modelo LLM (Gemini) inicializado!")
     except Exception as e:
@@ -45,16 +39,16 @@ else:
         st.info("Verifique se sua chave API é válida, se a 'Generative Language API' está ativa no seu projeto Google Cloud e se há cotas disponíveis.")
         st.stop()
 
-
-# --- Definição do Super Agente (a mesma classe do Colab) ---
+# --- Definição do Super Agente ---
 class SuperAgentePequenasEmpresas:
     def __init__(self, llm_model):
         if llm_model is None:
             st.error("❌ Erro crítico: Tentativa de inicializar o agente sem um modelo LLM.")
             st.stop()
         self.llm = llm_model
+        # Nome do Assistente Alterado aqui:
         self.system_message_template = """
-        Você é o "Gaon da IA", um super especialista em trazer soluções inovadoras de IA
+        Você é o "Assistente PME Pro", um super especialista em trazer soluções inovadoras de IA
         para serem aplicadas em pequenas empresas. Sua comunicação deve ser objetiva, sucinta,
         prática e focada em resolver as dores do usuário.
         """
@@ -126,8 +120,7 @@ class SuperAgentePequenasEmpresas:
         chain = self._criar_chain(prompt_especifico)
         return chain.run({"solicitacao_usuario": solicitacao_usuario})
 
-    # Função marketing_digital adaptada para Streamlit com st.form
-    def marketing_digital(self, solicitacao_inicial_contexto=""): 
+    def marketing_digital(self, solicitacao_inicial_contexto=""):
         st.subheader("Assistente de Criação de Campanha de Marketing Digital")
         st.write("Para te ajudar a criar uma campanha, preciso de algumas informações.")
         if solicitacao_inicial_contexto and isinstance(solicitacao_inicial_contexto, str) and solicitacao_inicial_contexto.strip():
@@ -140,15 +133,15 @@ class SuperAgentePequenasEmpresas:
                                              ["", "Aumentar vendas", "Gerar leads", "Reconhecimento da marca", "Engajamento"], key="md_objetivo")
             mensagem_principal = st.text_area("4. Qual é a mensagem central ou o principal apelo que você quer comunicar?:", key="md_mensagem")
             diferencial = st.text_input("5. Qual o principal diferencial do seu produto/serviço que deve ser destacado?:", key="md_diferencial")
-            
+
             st.markdown("---")
             st.markdown("##### Elementos de Mídia (Descreva suas ideias)")
             descricao_imagem = st.text_input("6. Imagem: Descreva a imagem principal (ou cole uma URL de referência):", key="md_img")
             descricao_video = st.text_input("7. Vídeo: Descreva o conceito do vídeo (ou cole uma URL):", key="md_video")
-            
+
             st.markdown("---")
             orcamento_ideia = st.text_input("8. Você tem uma ideia de orçamento para esta campanha (Ex: baixo, R$100-R$500, alto)?:", key="md_orcamento")
-            
+
             st.markdown("---")
             st.markdown("##### Canais")
             redes_sociais_opcoes_dict = {
@@ -190,29 +183,28 @@ class SuperAgentePequenasEmpresas:
                 7. Dicas Adicionais Práticas para '{rede_social_alvo}'.
                 Seja criativo, prático e forneça um plano acionável. Tom encorajador e especializado.
                 """
-                with st.spinner("O Gaon da IA está elaborando sua campanha de marketing..."):
+                with st.spinner("O Assistente PME Pro está elaborando sua campanha de marketing..."): # Texto do Spinner Alterado
                     resposta_llm = self._criar_chain("Assistente de Criação de Campanhas de Marketing Digital.").run({"solicitacao_usuario": prompt_para_llm})
-                
+
                 if "Marketing Digital (Criar Campanha)" not in st.session_state.chat_history:
                     st.session_state.chat_history["Marketing Digital (Criar Campanha)"] = []
                 st.session_state.chat_history["Marketing Digital (Criar Campanha)"].append({"role": "assistant", "type": "campaign_suggestion", "content": resposta_llm})
-                
+
                 st.markdown("### 💡 Sugestão de Campanha de Marketing Digital:")
                 st.markdown(resposta_llm)
-        # A função não precisa retornar nada aqui, pois manipula a UI diretamente
-
 
 # --- Interface Principal Streamlit ---
-if llm: # Só continua se o LLM foi carregado com sucesso
+if llm: 
     agente = SuperAgentePequenasEmpresas(llm_model=llm)
 
-    st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100) # Você pode trocar por seu logo
-    st.sidebar.title("Gaon da IA para PMEs")
-    st.sidebar.markdown("Seu assistente inteligente para negócios!")
+    st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100) 
+    # Nome do App Alterado na Sidebar:
+    st.sidebar.title("Assistente PME Pro") 
+    st.sidebar.markdown("Soluções de IA para sua pequena empresa.") # Descrição Alterada
     st.sidebar.markdown("---")
 
     mapa_funcoes_streamlit = {
-        "Página Inicial": None, # Opção inicial
+        "Página Inicial": None, 
         "Gestão Financeira": agente.gestao_financeira,
         "Planejamento Financeiro": agente.planejamento_financeiro,
         "Controle de Custos": agente.controle_de_custos,
@@ -231,10 +223,8 @@ if llm: # Só continua se o LLM foi carregado com sucesso
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     if 'chat_history' not in st.session_state:
-        # Inicializa como um dicionário vazio para armazenar históricos por área
         st.session_state.chat_history = {} 
 
-    # Inicializa o histórico de chat para a área selecionada, se ainda não existir
     if st.session_state.area_selecionada not in st.session_state.chat_history:
         st.session_state.chat_history[st.session_state.area_selecionada] = []
         
@@ -247,31 +237,23 @@ if llm: # Só continua se o LLM foi carregado com sucesso
 
     if area_selecionada_sidebar != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_sidebar
-        # Se a área mudou, garante que o histórico para a nova área exista
         if st.session_state.area_selecionada not in st.session_state.chat_history:
             st.session_state.chat_history[st.session_state.area_selecionada] = []
-        st.rerun() # Força o rerender da página para atualizar a UI e o contexto do chat
+        st.rerun() 
     
-    # --- Área de Conteúdo Principal ---
     if st.session_state.area_selecionada == "Página Inicial":
-        st.title("🌟 Bem-vindo ao Gaon da IA para PMEs! 🌟")
+        # Nome do App Alterado na Página Inicial:
+        st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟") 
         st.markdown("Sou seu assistente inteligente, pronto para ajudar a otimizar a gestão do seu negócio.")
         st.markdown("Utilize o menu à esquerda para selecionar uma área e começar.")
         st.balloons()
     elif st.session_state.area_selecionada == "Marketing Digital (Criar Campanha)":
-        # A função marketing_digital agora usa st.form e gerencia sua própria UI.
-        # Um contexto inicial pode vir de uma interação anterior no chat, se desejado.
         contexto_marketing = "" 
-        # Se houver mensagens no histórico de "Marketing Digital" e a última for do usuário, podemos usá-la.
-        # Mas para um formulário, geralmente não passamos o último input do chat diretamente.
-        # A função em si coleta os dados.
         agente.marketing_digital(solicitacao_inicial_contexto=contexto_marketing)
         
-        # Exibir histórico de sugestões de campanha, se houver (apenas as respostas do assistente)
         if st.session_state.chat_history[st.session_state.area_selecionada]:
             st.markdown("---")
             st.markdown("#### Histórico de Sugestões de Campanha:")
-            # Mostra apenas as respostas do assistente que são sugestões de campanha
             for item in reversed(st.session_state.chat_history[st.session_state.area_selecionada]):
                 if item["role"] == "assistant" and item.get("type") == "campaign_suggestion":
                     with st.expander("Ver Sugestão Anterior", expanded=False):
@@ -279,7 +261,6 @@ if llm: # Só continua se o LLM foi carregado com sucesso
     else:
         st.header(f"Assistência em: {st.session_state.area_selecionada}")
 
-        # Exibe o histórico de chat da área selecionada
         for mensagem in st.session_state.chat_history[st.session_state.area_selecionada]:
             with st.chat_message(mensagem["role"]):
                 st.markdown(mensagem["content"])
@@ -291,7 +272,7 @@ if llm: # Só continua se o LLM foi carregado com sucesso
             with st.chat_message("user"):
                 st.markdown(prompt_usuario)
 
-            with st.spinner("O Gaon da IA está pensando... 🧠"):
+            with st.spinner("O Assistente PME Pro está pensando... 🧠"): # Nome do Assistente Alterado
                 try:
                     funcao_agente = mapa_funcoes_streamlit[st.session_state.area_selecionada]
                     if funcao_agente: 
@@ -299,13 +280,13 @@ if llm: # Só continua se o LLM foi carregado com sucesso
                         st.session_state.chat_history[st.session_state.area_selecionada].append({"role": "assistant", "content": resposta_agente})
                         with st.chat_message("assistant"):
                             st.markdown(resposta_agente)
-                    # Não precisa de 'else' aqui, pois a Página Inicial é tratada separadamente e Marketing Digital também.
                 except Exception as e:
                     erro_msg = f"Desculpe, ocorreu um erro ao processar sua solicitação: {e}"
                     st.error(erro_msg)
                     st.session_state.chat_history[st.session_state.area_selecionada].append({"role": "assistant", "content": erro_msg})
 else:
-    st.error("🚨 O Gaon da IA não pôde ser iniciado. Verifique a configuração da API Key do Google no painel de Segredos (Secrets) do Streamlit Cloud e se o modelo LLM está acessível.")
+    st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a configuração da API Key do Google no painel de Segredos (Secrets) do Streamlit Cloud e se o modelo LLM está acessível.") # Nome do Assistente Alterado
 
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov com o Gaon da IA")
+# Nome do Assistente Alterado na Sidebar Info:
+st.sidebar.info("Desenvolvido por Yaakov com seu Assistente PME Pro")
