@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+langchain
+langchain-google-genai
+pillow
+# beautifulsoup4
+# lxml
+# PyMuPDF
