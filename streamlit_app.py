@@ -1,12 +1,14 @@
 import streamlit as st
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
 
 # --- Configuração da Página Streamlit ---
-st.set_page_config(page_title="Assistente PME Marketing IA", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Assistente PME Pro - Plano de Negócios com IA", layout="wide", initial_sidebar_state="expanded")
 
 # --- Carregar API Key e Configurar Modelo ---
 GOOGLE_API_KEY = None
@@ -20,7 +22,7 @@ except KeyError:
     st.stop()
 except FileNotFoundError:
     st.error("🚨 ERRO: Arquivo de Segredos (secrets.toml) não encontrado para desenvolvimento local.")
-    st.info("Crie um arquivo .streamlit/secrets.toml com sua GOOGLE_API_KEY ou configure nos Segredos do Streamlit Cloud.")
+    st.info("Crie um arquivo .streamlit/secrets.toml ou configure nos Segredos do Streamlit Cloud.")
     st.stop()
 
 if not GOOGLE_API_KEY or not GOOGLE_API_KEY.strip():
@@ -39,117 +41,65 @@ else:
         st.info("Verifique sua chave API, se a 'Generative Language API' está ativa no Google Cloud e suas cotas.")
         st.stop()
 
-# --- Definição do Super Agente (mantendo a classe, mas usaremos só uma função dela agora) ---
+# --- Definição do Super Agente ---
 class SuperAgentePequenasEmpresas:
     def __init__(self, llm_model):
         if llm_model is None:
             st.error("❌ Erro crítico: Agente sem modelo LLM.")
             st.stop()
         self.llm = llm_model
-        self.system_message_template = """
-        Você é o "Assistente PME Pro", um super especialista em Marketing Digital com IA para pequenas empresas.
-        Seu objetivo é guiar o usuário a criar uma estratégia de marketing digital eficaz,
-        fazendo perguntas pertinentes e fornecendo um plano de ação claro e prático.
+        self.system_message_template_base = """
+        Você é o "Assistente PME Pro", um consultor de negócios especialista em IA.
+        Seu objetivo é ajudar empreendedores a criar e refinar planos de negócios sólidos,
+        fazendo perguntas estratégicas e utilizando princípios de marketing e administração
+        (inspirados em Kotler e Chiavenato) para guiar o usuário.
+        Mantenha uma conversa, fazendo uma pergunta por vez para coletar informações.
+        Quando tiver informações suficientes, ofereça-se para esboçar o plano.
         """
 
-    def _criar_chain(self, area_especifica_prompt=""): # Renomeado para não conflitar
-        prompt_msgs = [ # Renomeado para não conflitar
-            SystemMessagePromptTemplate.from_template(self.system_message_template + "\n" + area_especifica_prompt),
-            HumanMessagePromptTemplate.from_template("{solicitacao_usuario}")
-        ]
-        chat_prompt_obj = ChatPromptTemplate.from_messages(prompt_msgs) # Renomeado para não conflitar
-        return LLMChain(llm=self.llm, prompt=chat_prompt_obj, verbose=False)
+    def _criar_cadeia_conversacional(self, memoria_conversa, prompt_sistema_adicional=""):
+        prompt_template = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(self.system_message_template_base + "\n" + prompt_sistema_adicional),
+            MessagesPlaceholder(variable_name="historico_chat"),
+            HumanMessagePromptTemplate.from_template("{input_usuario}")
+        ])
+        return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria_conversa, verbose=False)
 
-    def marketing_digital_guiado(self): # Removido o parâmetro, pois o formulário coletará tudo
-        st.header("🚀 Marketing Digital Inteligente para sua Empresa")
-        st.markdown("Bem-vindo! Vamos criar juntos uma estratégia de marketing digital eficaz usando o poder da IA.")
-
-        with st.form(key='marketing_form_guiado_v2'): # Nova key para o form
-            st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
-            publico_alvo = st.text_input("1. Quem você quer alcançar? (Descreva seu público-alvo):", key="mdg_publico_v2")
-            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?:", key="mdg_produto_v2")
-            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing digital?",
-                                             ["", "Aumentar vendas online", "Gerar mais contatos (leads)",
-                                              "Fortalecer o reconhecimento da minha marca", "Aumentar o engajamento com clientes"],
-                                             key="mdg_objetivo_v2", help="Pense no resultado mais importante que você busca.")
-
-            st.markdown("---")
-            st.markdown("##### ✉️ Sua Mensagem e Diferencial")
-            mensagem_principal = st.text_area("4. Qual mensagem chave você quer que seus clientes recebam sobre seu negócio?:", key="mdg_mensagem_v2")
-            diferencial = st.text_input("5. O que torna seu produto/serviço especial ou diferente da concorrência?:", key="mdg_diferencial_v2")
-
-            st.markdown("---")
-            st.markdown("##### 🖼️ Ideias para Conteúdo Visual (Opcional)")
-            descricao_imagem = st.text_input("6. Se você imagina uma imagem, como ela seria? (ou cole uma URL de referência):", key="mdg_img_v2")
-            descricao_video = st.text_input("7. E se fosse um vídeo, qual seria a ideia principal?:", key="mdg_video_v2")
-
-            st.markdown("---")
-            st.markdown("##### 💰 Outras Informações")
-            orcamento_ideia = st.text_input("8. Você tem alguma ideia de orçamento para esta ação (Ex: baixo, até R$X, etc.)?:", key="mdg_orcamento_v2")
-
-            redes_sociais_opcoes_dict = {
-                "Não tenho certeza, preciso de sugestão": "Sugestão da IA",
-                "Instagram": "Instagram", "Facebook": "Facebook", "TikTok": "TikTok",
-                "LinkedIn": "LinkedIn", "WhatsApp Business": "WhatsApp",
-                "E-mail Marketing": "E-mail Marketing", "Google Meu Negócio / Anúncios Google": "Google",
-                "Outra / Abordagem Integrada": "Integrada"
-            }
-            rede_social_alvo_label = st.selectbox("9. Você já tem um canal digital principal em mente ou gostaria de uma sugestão?",
-                                                options=list(redes_sociais_opcoes_dict.keys()), key="mdg_canal_label_v2")
-            rede_social_alvo = redes_sociais_opcoes_dict[rede_social_alvo_label]
-
-            submit_button = st.form_submit_button(label='Gerar Meu Guia de Marketing Digital com IA 🚀')
-
-        if submit_button:
-            if not all([publico_alvo, produto_servico, objetivo_campanha, mensagem_principal, diferencial]):
-                st.warning("Por favor, preencha pelo menos os campos sobre Público, Produto/Serviço, Objetivo, Mensagem e Diferencial.")
-            else:
-                prompt_para_llm = f"""
-                Sou o dono de uma pequena empresa e preciso de um guia prático para 'colocar meu negócio para funcionar com IA', começando pelo Marketing Digital.
-                Com base nas informações que forneci, atue como um consultor especialista em Marketing Digital e IA para PMEs.
-
-                Informações sobre meu negócio e objetivos:
-                - Público-Alvo: {publico_alvo}
-                - Produto/Serviço Principal: {produto_servico}
-                - Principal Diferencial: {diferencial}
-                - Objetivo Principal com Marketing Digital: {objetivo_campanha}
-                - Mensagem Chave: {mensagem_principal}
-                - Ideia para Imagem (se houver): {descricao_imagem if descricao_imagem else "Não especificado"}
-                - Ideia para Vídeo (se houver): {descricao_video if descricao_video else "Não especificado"}
-                - Orçamento Estimado (se houver): {orcamento_ideia if orcamento_ideia else "Não especificado"}
-                - Canal Digital em Mente ou Pedido de Sugestão: {rede_social_alvo}
-
-                Por favor, forneça um guia detalhado e acionável, incluindo:
-                1. Uma breve análise da situação e potencial com base nos dados.
-                2. Se pedi sugestão de canal, qual(is) canal(is) digital(is) você recomendaria e um forte porquê para cada um? Se já escolhi um, como maximizar seu uso com IA?
-                3. Estratégias de Conteúdo Chave utilizando IA: Que tipos de conteúdo (posts, artigos, vídeos curtos, e-mails) posso criar para atrair meu público neste(s) canal(is)? Dê 2-3 exemplos de TÍTULOS ou IDEIAS DE POSTS específicos para meu negócio.
-                4. Ferramentas de IA Práticas: Sugira 1-2 ferramentas de IA (idealmente gratuitas ou de baixo custo no início) que podem me ajudar diretamente na criação desses conteúdos ou na otimização de campanhas.
-                5. Primeiros Passos Imediatos: Quais os 2-3 primeiros passos concretos que devo tomar para começar a implementar essa estratégia de marketing digital com IA?
-                6. Métrica Chave de Sucesso: Qual a métrica mais importante para eu acompanhar o sucesso inicial desta iniciativa?
-
-                O tom deve ser de um consultor parceiro, prático, encorajador e usar uma linguagem clara e acessível para um dono de pequena empresa que está começando a usar IA no marketing.
-                """
-                with st.spinner("O Assistente PME Pro está preparando seu guia personalizado... 🧠💡"):
-                    # Usando _criar_chain com um prompt de área específico para este contexto.
-                    chain = self._criar_chain("Consultor especialista em Marketing Digital com IA para PMEs, respondendo a um formulário.")
-                    resposta_llm = chain.run({"solicitacao_usuario": prompt_para_llm})
-
-                st.markdown("### 💡 Seu Guia Personalizado de Marketing Digital com IA:")
-                st.markdown(resposta_llm)
+    def iniciar_ou_continuar_plano_de_negocios(self, input_usuario, memoria_conversa):
+        prompt_especifico = """
+        Estou no processo de ajudar o usuário a elaborar um plano de negócios.
+        Analise o histórico da nossa conversa.
+        Se for o início ou se o usuário deu uma resposta vaga, faça uma pergunta chave para obter a próxima informação essencial para um plano de negócios (ex: Qual o nome e a ideia principal da sua empresa? Qual seu público-alvo principal? Qual seu produto/serviço chave? Qual seu maior diferencial?).
+        Se o usuário já forneceu algumas informações, faça uma pergunta subsequente para aprofundar ou cobrir outra seção do plano de negócios.
+        Faça apenas UMA pergunta por vez.
+        Se o usuário pedir explicitamente para "gerar o plano" ou "esboçar o plano" e você sentir que tem informações mínimas (nome da empresa, produto/serviço, público-alvo), ofereça-se para criar um esboço inicial do plano de negócios com as seções principais.
+        """
+        cadeia = self._criar_cadeia_conversacional(memoria_conversa, prompt_especifico)
+        resposta_ai = cadeia.predict(input_usuario=input_usuario)
+        return resposta_ai
 
 # --- Interface Principal Streamlit ---
 if llm:
-    agente = SuperAgentePequenasEmpresas(llm_model=llm)
+    # Inicializa o agente (mesmo que não usemos todas as suas funções antigas agora)
+    # A lógica de conversação do plano de negócios será mais direta
+    # agente = SuperAgentePequenasEmpresas(llm_model=llm) # Não vamos instanciar a classe inteira por enquanto
 
     st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100)
     st.sidebar.title("Assistente PME Pro")
-    st.sidebar.markdown("Soluções de IA para sua pequena empresa.")
+    st.sidebar.markdown("Seu guia de IA para planejamento e gestão!")
     st.sidebar.markdown("---")
 
-    # MENU SIMPLIFICADO
-    mapa_funcoes_streamlit = {
+    # Estado da Sessão para o Plano de Negócios
+    if "plano_negocios_conversa" not in st.session_state:
+        st.session_state.plano_negocios_conversa = [] # Lista de mensagens (HumanMessage, AIMessage)
+    if "plano_negocios_memoria" not in st.session_state:
+        # A memória precisa ser recriada se não existir, ou se quisermos resetar
+        st.session_state.plano_negocios_memoria = ConversationBufferMemory(memory_key="historico_chat", return_messages=True)
+
+
+    opcoes_menu = {
         "Página Inicial": None,
-        "Marketing Digital IA (Guiado)": agente.marketing_digital_guiado,
+        "Elaborar Plano de Negócios com IA": "funcao_plano_negocios" # Usaremos um identificador
     }
 
     if 'area_selecionada' not in st.session_state:
@@ -157,29 +107,83 @@ if llm:
 
     area_selecionada_sidebar = st.sidebar.radio(
         "Como posso te ajudar hoje?",
-        options=list(mapa_funcoes_streamlit.keys()),
-        key='sidebar_selection_v3', # Nova key para garantir atualização do estado
-        index=list(mapa_funcoes_streamlit.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in mapa_funcoes_streamlit else 0
+        options=list(opcoes_menu.keys()),
+        key='sidebar_selection_v5',
+        index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
     if area_selecionada_sidebar != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_sidebar
+        # Ao mudar de área, podemos resetar a conversa do plano de negócios se desejado
+        # st.session_state.plano_negocios_conversa = []
+        # st.session_state.plano_negocios_memoria.clear()
         st.rerun()
 
     if st.session_state.area_selecionada == "Página Inicial":
         st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟")
         st.markdown("""
-        Estou aqui para te ajudar a integrar a Inteligência Artificial no dia a dia da sua pequena ou média empresa.
-        Nosso foco inicial é transformar seu marketing digital!
+        Estou aqui para ser seu parceiro estratégico, utilizando Inteligência Artificial para
+        ajudá-lo a construir e refinar os planos da sua pequena ou média empresa.
 
-        ⬅️ Utilize o menu à esquerda para selecionar a opção **"Marketing Digital IA (Guiado)"** e vamos começar.
+        Vamos começar a transformar suas ideias em um plano de negócios sólido?
         """)
+        st.markdown("---")
+        if st.button("🚀 Sim, quero elaborar meu Plano de Negócios com IA!", key="btn_iniciar_plano"):
+            st.session_state.area_selecionada = "Elaborar Plano de Negócios com IA"
+            # Prepara a primeira mensagem da IA para iniciar a conversa
+            st.session_state.plano_negocios_conversa = [AIMessage(content="Olá! Que ótimo que você quer elaborar seu plano de negócios. Para começarmos, qual é o nome e a ideia principal da sua empresa?")]
+            st.session_state.plano_negocios_memoria.chat_memory.messages = st.session_state.plano_negocios_conversa.copy()
+            st.rerun()
         st.balloons()
-    elif st.session_state.area_selecionada == "Marketing Digital IA (Guiado)":
-        agente.marketing_digital_guiado() # A função gerencia sua própria UI com st.form
+
+    elif st.session_state.area_selecionada == "Elaborar Plano de Negócios com IA":
+        st.header("📝 Elaborando seu Plano de Negócios com IA")
+        st.markdown("Vamos construir seu plano passo a passo. Responda às minhas perguntas para que eu possa te ajudar.")
+
+        # Instancia o agente aqui, pois só é usado nesta seção
+        agente_pn = SuperAgentePequenasEmpresas(llm_model=llm)
+
+        # Exibir histórico da conversa
+        for msg in st.session_state.plano_negocios_conversa:
+            if isinstance(msg, HumanMessage):
+                with st.chat_message("user"):
+                    st.markdown(msg.content)
+            elif isinstance(msg, AIMessage):
+                with st.chat_message("assistant"):
+                    st.markdown(msg.content)
+        
+        prompt_usuario = st.chat_input("Sua resposta ou próxima informação:")
+
+        if prompt_usuario:
+            # Adiciona mensagem do usuário ao histórico e à memória
+            st.session_state.plano_negocios_conversa.append(HumanMessage(content=prompt_usuario))
+            # A memória é atualizada automaticamente pela LLMChain, mas podemos adicionar aqui para consistência da exibição
+            # st.session_state.plano_negocios_memoria.chat_memory.add_user_message(prompt_usuario)
+
+
+            with st.chat_message("user"):
+                st.markdown(prompt_usuario)
+
+            with st.spinner("O Assistente PME Pro está pensando... 🤔"):
+                # Passa o input do usuário e a memória para a função do agente
+                resposta_ai = agente_pn.iniciar_ou_continuar_plano_de_negocios(prompt_usuario, st.session_state.plano_negocios_memoria)
+            
+            # Adiciona resposta da IA ao histórico e à memória (a LLMChain já adiciona à memória)
+            st.session_state.plano_negocios_conversa.append(AIMessage(content=resposta_ai))
+            # st.session_state.plano_negocios_memoria.chat_memory.add_ai_message(resposta_ai) # Feito pela LLMChain
+
+            with st.chat_message("assistant"):
+                st.markdown(resposta_ai)
+            # Não precisa de st.rerun() aqui, o Streamlit atualiza com o novo chat_message
+
+        if st.sidebar.button("Reiniciar Conversa do Plano", key="btn_reset_plano"):
+            st.session_state.plano_negocios_conversa = [AIMessage(content="Olá! Que ótimo que você quer elaborar seu plano de negócios. Para começarmos, qual é o nome e a ideia principal da sua empresa?")]
+            st.session_state.plano_negocios_memoria.clear() # Limpa a memória da conversação
+            st.session_state.plano_negocios_memoria.chat_memory.messages = st.session_state.plano_negocios_conversa.copy()
+            st.rerun()
 
 else:
-    st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a configuração da API Key do Google no painel de Segredos (Secrets) do Streamlit Cloud e se o modelo LLM está acessível.")
+    st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
 st.sidebar.markdown("---")
 st.sidebar.info("Desenvolvido por Yaakov com seu Assistente PME Pro")
