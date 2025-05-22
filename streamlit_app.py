@@ -3,8 +3,8 @@ import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
-from langchain.memory import ConversationBufferMemory # Importado para todas as memórias de chat
-from langchain.schema import HumanMessage, AIMessage # Importado para todos os chats
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
 
 # --- Configuração da Página Streamlit ---
@@ -51,7 +51,6 @@ class AssistentePMEPro:
             st.stop()
         self.llm = llm_model
         
-        # Memórias específicas para cada funcionalidade de chat
         if 'memoria_plano_negocios_agente' not in st.session_state:
             st.session_state.memoria_plano_negocios_agente = ConversationBufferMemory(memory_key="historico_chat_plano", return_messages=True)
         self.memoria_plano_negocios = st.session_state.memoria_plano_negocios_agente
@@ -59,7 +58,6 @@ class AssistentePMEPro:
         if 'memoria_controle_financeiro_agente' not in st.session_state:
             st.session_state.memoria_controle_financeiro_agente = ConversationBufferMemory(memory_key="historico_chat_financeiro", return_messages=True)
         self.memoria_controle_financeiro = st.session_state.memoria_controle_financeiro_agente
-
 
     def _criar_cadeia_simples(self, system_message_content, human_message_content_template="{solicitacao_usuario}"):
         prompt_template = ChatPromptTemplate.from_messages([
@@ -80,7 +78,7 @@ class AssistentePMEPro:
         st.header("🚀 Marketing Digital Inteligente para sua Empresa")
         st.markdown("Bem-vindo! Preencha os campos abaixo para criarmos juntos uma estratégia de marketing digital eficaz usando IA.")
         
-        with st.form(key='marketing_form_guiado_v6'): # Nova key para o form
+        with st.form(key='marketing_form_guiado_v6'):
             st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
             publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v6")
             produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v6")
@@ -138,21 +136,54 @@ class AssistentePMEPro:
                 st.markdown(resposta_llm)
 
     def conversar_plano_de_negocios(self, input_usuario):
+        # NOVO PROMPT DO SISTEMA PARA PLANO DE NEGÓCIOS
         system_message_plano = """
         Você é o "Assistente PME Pro", um consultor de negócios especialista em IA.
-        Sua tarefa é ajudar um empreendedor a ESBOÇAR e DETALHAR um PLANO DE NEGÓCIOS.
-        Você faz perguntas UMA DE CADA VEZ para coletar informações.
+        Sua tarefa é ajudar um empreendedor a ESBOÇAR e depois DETALHAR um PLANO DE NEGÓCIOS.
+        Você faz perguntas UMA DE CADA VEZ para coletar informações. Use linguagem clara e seja encorajador.
 
-        ETAPA 1: ESBOÇO INICIAL
-        - Se a conversa está começando ou o usuário diz "Crie meu plano de negócios" (ou similar), sua PRIMEIRA pergunta DEVE SER: "Perfeito! Para começarmos a esboçar seu plano de negócios, qual é o seu ramo de atuação principal?"
-        - Continue fazendo perguntas para cobrir as seções básicas: Nome da empresa, Missão, Visão, Objetivos, Produtos/Serviços, Público-alvo, Diferencial, Marketing e Vendas (ideias iniciais), Operações (ideias iniciais), Finanças (estimativas bem básicas).
-        - Após coletar informações suficientes para um ESBOÇO, PERGUNTE: "Com as informações que temos, gostaria que eu tentasse montar um primeiro ESBOÇO do seu plano de negócios com as seções principais?"
-        - Se o usuário disser "sim", gere um ESBOÇO CLARO e CONCISO do plano de negócios. Adicione uma nota de que é um esboço.
-        - APÓS apresentar o esboço, pergunte: "Este esboço inicial te ajuda? Gostaria de detalhar mais alguma seção ou criar um plano mais completo agora, onde poderemos incluir mais informações e análises (como as de Kotler e Chiavenato)?"
+        **FLUXO DA CONVERSA:**
 
-        ETAPA 2: PLANO DETALHADO (se o usuário aceitar)
-        - Se o usuário disser "sim" para detalhar, responda: "Ótimo! Para detalharmos, vamos focar em cada seção. Você poderá me fornecer mais dados. Em qual seção do plano de negócios você gostaria de começar a aprofundar ou fornecer mais detalhes? (Ex: Análise de Mercado, Estratégias de Marketing Detalhadas, Projeções Financeiras, etc.)"
-        - A partir daí, guie o usuário para fornecer informações mais específicas.
+        **INÍCIO DA CONVERSA / PEDIDO INICIAL:**
+        Se o usuário indicar que quer criar um plano de negócios (ex: "Crie meu plano de negócios", "Quero ajuda com meu plano", "sim" para um botão de iniciar plano),
+        SUA PRIMEIRA PERGUNTA DEVE SER: "Perfeito! Para começarmos a esboçar seu plano de negócios, qual é o seu ramo de atuação principal?"
+
+        **COLETA PARA O ESBOÇO:**
+        Após saber o ramo, continue fazendo UMA PERGUNTA POR VEZ para obter informações para as seguintes seções (não precisa ser exatamente nesta ordem, mas cubra-as):
+        1.  Nome da Empresa
+        2.  Missão da Empresa (o propósito central, o que ela busca fazer)
+        3.  Visão da Empresa (onde ela quer estar no futuro, ex: em 3-5 anos)
+        4.  Principais Objetivos (metas claras, ex: atingir X de faturamento, abrir Y filiais)
+        5.  Produtos/Serviços Principais (o que ela vende/oferece)
+        6.  Público-Alvo Principal (para quem ela vende)
+        7.  Principal Diferencial (o que a torna especial/melhor que a concorrência)
+        8.  Ideias Iniciais de Marketing e Vendas (como ela pretende alcançar os clientes)
+        9.  Ideias Iniciais de Operações (como o negócio vai funcionar no dia a dia)
+        10. Estimativas Financeiras Muito Básicas (ideia de investimento inicial, principais custos fixos e variáveis, como espera gerar receita - não precisa de números exatos agora, apenas conceitos).
+
+        **GERAÇÃO DO ESBOÇO:**
+        Quando você sentir que coletou informações suficientes para estas 10 áreas (geralmente após a pergunta sobre finanças básicas), VOCÊ DEVE PERGUNTAR:
+        "Com as informações que reunimos até agora, você gostaria que eu montasse um primeiro ESBOÇO do seu plano de negócios? Ele terá as seções principais que discutimos."
+
+        Se o usuário disser "sim" (ou algo similar):
+            - Gere um ESBOÇO do plano de negócios. Organize-o com os seguintes títulos de seção:
+                1. Sumário Executivo (inclua nome, missão, visão, objetivos)
+                2. Descrição da Empresa (ramo, o que faz)
+                3. Produtos e Serviços
+                4. Público-Alvo e Diferenciais
+                5. Estratégias Iniciais de Marketing e Vendas
+                6. Operações Iniciais
+                7. Panorama Financeiro Inicial
+            - No final do esboço, ADICIONE a seguinte frase: "Este é um esboço inicial para organizar suas ideias. Ele pode ser muito mais detalhado e aprofundado."
+            - ENTÃO, IMEDIATAMENTE APÓS MOSTRAR O ESBOÇO, PERGUNTE: "Este esboço inicial te ajuda a visualizar melhor? Gostaria de DETALHAR este plano de negócios agora? Podemos aprofundar cada seção, e você poderá me fornecer mais informações e, no futuro, até mesmo subir documentos."
+
+        **DETALHAMENTO DO PLANO (SE O USUÁRIO ACEITAR):**
+        Se o usuário disser "sim" para detalhar (ou algo similar):
+            - Responda com entusiasmo: "Ótimo! Para detalharmos, vamos focar em cada seção do plano. Aplicaremos princípios de administração e marketing (como os de Chiavenato e Kotler) para enriquecer a análise."
+            - ENTÃO, PERGUNTE: "Em qual seção do plano de negócios você gostaria de começar a aprofundar ou fornecer mais detalhes? Por exemplo, podemos começar com uma 'Análise de Mercado mais completa', detalhar suas 'Estratégias de Marketing e Vendas', ou elaborar 'Projeções Financeiras'?"
+            - A partir da escolha do usuário, faça perguntas específicas para aquela seção, buscando mais detalhes, dados, e explicando brevemente a importância daquela informação para o plano.
+
+        Lembre-se de manter o tom de um consultor parceiro e experiente.
         """
         cadeia = self._criar_cadeia_conversacional(system_message_plano, self.memoria_plano_negocios, memory_key="historico_chat_plano")
         resposta_ai = cadeia.predict(input_usuario=input_usuario)
@@ -164,19 +195,19 @@ class AssistentePMEPro:
         Sua tarefa é ajudar o empreendedor a entender e iniciar um CONTROLE FINANCEIRO básico.
         Você faz perguntas UMA DE CADA VEZ.
 
-        - Se a conversa está começando ou o usuário diz algo como "Quero ajuda com controle financeiro", sua PRIMEIRA pergunta DEVE SER: "Entendido! Para começarmos a organizar suas finanças, qual é o principal tipo de receita da sua empresa atualmente?"
+        - Se a conversa está começando ou o usuário diz algo como "Quero ajuda com controle financeiro" ou "sim" para uma pergunta inicial sobre o tema, sua PRIMEIRA pergunta DEVE SER: "Entendido! Para começarmos a organizar suas finanças, qual é o principal tipo de receita da sua empresa atualmente?"
         - Continue com perguntas para entender:
             - Outras fontes de receita (se houver).
             - Principais categorias de despesas fixas (aluguel, salários, pro-labore, etc.).
             - Principais categorias de despesas variáveis (matéria-prima, comissões, marketing, etc.).
             - Se já utiliza alguma ferramenta ou planilha de controle.
-        - Após coletar algumas informações básicas, PERGUNTE: "Com base no que conversamos, gostaria que eu gerasse um resumo da sua situação financeira atual e sugestões de como estruturar uma planilha de controle de fluxo de caixa simples?"
+        - Após coletar algumas informações básicas, PERGUNTE: "Com base no que conversamos, gostaria que eu gerasse um resumo da sua situação financeira atual e sugestões de como estruturar uma planilha de controle de fluxo de caixa simples e uma de despesas?"
         - Se o usuário disser "sim", forneça:
             a) Um breve resumo textual das receitas e despesas identificadas.
             b) Uma sugestão de estrutura para uma planilha de Fluxo de Caixa Simples (colunas: Data, Descrição, Entrada, Saída, Saldo).
             c) Uma sugestão de estrutura para uma Planilha de Despesas Fixas e Variáveis (Categorias, Valor Mensal Estimado).
             d) Uma dica sobre a importância de separar finanças pessoais das empresariais.
-        - APÓS apresentar as sugestões, pergunte: "Isso te dá um ponto de partida? Podemos detalhar alguma dessas planilhas ou discutir como analisar esses números?"
+        - APÓS apresentar as sugestões, pergunte: "Isso te dá um ponto de partida? Podemos detalhar alguma dessas planilhas ou discutir como analisar esses números e gerar alguns gráficos simples com base nos dados que você me fornecer?"
         """
         cadeia = self._criar_cadeia_conversacional(system_message_financeiro, self.memoria_controle_financeiro, memory_key="historico_chat_financeiro")
         resposta_ai = cadeia.predict(input_usuario=input_usuario)
@@ -197,43 +228,41 @@ if llm:
         "Página Inicial": "pagina_inicial",
         "Marketing Digital com IA (Guia)": "marketing_guiado",
         "Elaborar Plano de Negócios com IA": "plano_negocios",
-        "Controle Financeiro Inteligente": "controle_financeiro" # NOVA OPÇÃO
+        "Controle Financeiro Inteligente": "controle_financeiro"
     }
 
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     
-    # Históricos de chat específicos para cada funcionalidade conversacional
+    # Históricos de chat para exibição na tela
     if "chat_display_plano_negocios" not in st.session_state:
          st.session_state.chat_display_plano_negocios = []
     if "chat_display_controle_financeiro" not in st.session_state:
          st.session_state.chat_display_controle_financeiro = []
 
-
     area_selecionada_label = st.sidebar.radio(
         "Como posso te ajudar hoje?",
         options=list(opcoes_menu.keys()),
-        key='sidebar_selection_v10', 
+        key='sidebar_selection_v11', 
         index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
     if area_selecionada_label != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_label
-        # Prepara a saudação inicial ao entrar nas abas de chat pela primeira vez na sessão
+        # Prepara a saudação inicial ao entrar nas abas de chat
         if st.session_state.area_selecionada == "Elaborar Plano de Negócios com IA" and not st.session_state.chat_display_plano_negocios:
-            initial_ai_message_plano = "Olá! Sou seu Assistente PME Pro. Para começarmos a esboçar seu plano de negócios, qual é o seu ramo de atuação principal?"
+            initial_ai_message_plano = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
             st.session_state.chat_display_plano_negocios = [{"role": "assistant", "content": initial_ai_message_plano}]
-            agente.memoria_plano_negocios.clear()
+            agente.memoria_plano_negocios.clear() # Limpa a memória para uma nova sessão de plano
             agente.memoria_plano_negocios.chat_memory.add_ai_message(initial_ai_message_plano)
         elif st.session_state.area_selecionada == "Controle Financeiro Inteligente" and not st.session_state.chat_display_controle_financeiro:
-            initial_ai_message_fin = "Olá! Sou seu Assistente PME Pro. Quer ter o controle financeiro da sua empresa de forma mais inteligente? Se sim, para começarmos, qual é o principal tipo de receita da sua empresa atualmente?"
+            initial_ai_message_fin = "Olá! Sou seu Assistente PME Pro. Quer organizar as finanças da sua empresa com a ajuda da IA? Se sim, me diga 'sim' ou 'vamos começar'!"
             st.session_state.chat_display_controle_financeiro = [{"role": "assistant", "content": initial_ai_message_fin}]
-            agente.memoria_controle_financeiro.clear()
+            agente.memoria_controle_financeiro.clear() # Limpa a memória para uma nova sessão financeira
             agente.memoria_controle_financeiro.chat_memory.add_ai_message(initial_ai_message_fin)
         elif st.session_state.area_selecionada == "Marketing Digital com IA (Guia)":
-             st.session_state.start_marketing_form = False # Para mostrar o botão de iniciar o form de marketing
+             st.session_state.start_marketing_form = False 
         st.rerun()
-
 
     if st.session_state.area_selecionada == "Página Inicial":
         st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟")
@@ -249,16 +278,16 @@ if llm:
             if st.button("📝 Esboçar Plano de Negócios", key="btn_goto_plano_v4"):
                 st.session_state.area_selecionada = "Elaborar Plano de Negócios com IA"
                 if not st.session_state.chat_display_plano_negocios:
-                     initial_ai_message = "Olá! Sou seu Assistente PME Pro. Para começarmos a esboçar seu plano de negócios, qual é o seu ramo de atuação principal?"
+                     initial_ai_message = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
                      st.session_state.chat_display_plano_negocios = [{"role": "assistant", "content": initial_ai_message}]
                      agente.memoria_plano_negocios.clear()
                      agente.memoria_plano_negocios.chat_memory.add_ai_message(initial_ai_message)
                 st.rerun()
-        with col3: # Novo Botão para Controle Financeiro
-            if st.button("💰 Organizar Controle Financeiro", key="btn_goto_financeiro"):
+        with col3: 
+            if st.button("💰 Organizar Controle Financeiro", key="btn_goto_financeiro_v2"):
                 st.session_state.area_selecionada = "Controle Financeiro Inteligente"
                 if not st.session_state.chat_display_controle_financeiro:
-                     initial_ai_message = "Olá! Sou seu Assistente PME Pro. Quer ter o controle financeiro da sua empresa de forma mais inteligente? Se sim, para começarmos, qual é o principal tipo de receita da sua empresa atualmente?"
+                     initial_ai_message = "Olá! Sou seu Assistente PME Pro. Quer organizar as finanças da sua empresa com a ajuda da IA? Se sim, me diga 'sim' ou 'vamos começar'!"
                      st.session_state.chat_display_controle_financeiro = [{"role": "assistant", "content": initial_ai_message}]
                      agente.memoria_controle_financeiro.clear()
                      agente.memoria_controle_financeiro.chat_memory.add_ai_message(initial_ai_message)
@@ -271,27 +300,42 @@ if llm:
     elif st.session_state.area_selecionada == "Elaborar Plano de Negócios com IA":
         st.header("📝 Elaborando seu Plano de Negócios com IA")
         st.caption("Converse comigo para construirmos seu plano passo a passo.")
+        
+        if not st.session_state.chat_display_plano_negocios: # Garante mensagem inicial se chegou aqui sem clicar no botão
+            initial_ai_message = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
+            st.session_state.chat_display_plano_negocios = [{"role": "assistant", "content": initial_ai_message}]
+            if not agente.memoria_plano_negocios.chat_memory.messages: # Adiciona à memória apenas se estiver vazia
+                agente.memoria_plano_negocios.chat_memory.add_ai_message(initial_ai_message)
+
         for msg_info in st.session_state.chat_display_plano_negocios:
             with st.chat_message(msg_info["role"]):
                 st.markdown(msg_info["content"])
-        prompt_usuario = st.chat_input("Sua resposta ou diga 'Crie meu plano de negócios'")
-        if prompt_usuario:
-            st.session_state.chat_display_plano_negocios.append({"role": "user", "content": prompt_usuario})
-            with st.chat_message("user"): st.markdown(prompt_usuario)
+        prompt_usuario_plano = st.chat_input("Sua resposta ou diga 'Crie meu plano de negócios'")
+        if prompt_usuario_plano:
+            st.session_state.chat_display_plano_negocios.append({"role": "user", "content": prompt_usuario_plano})
+            with st.chat_message("user"): st.markdown(prompt_usuario_plano)
             with st.spinner("Assistente PME Pro está processando... 🤔"):
-                resposta_ai = agente.conversar_plano_de_negocios(prompt_usuario)
-            st.session_state.chat_display_plano_negocios.append({"role": "assistant", "content": resposta_ai})
-            with st.chat_message("assistant"): st.markdown(resposta_ai)
+                resposta_ai_plano = agente.conversar_plano_de_negocios(prompt_usuario_plano)
+            st.session_state.chat_display_plano_negocios.append({"role": "assistant", "content": resposta_ai_plano})
+            with st.chat_message("assistant"): st.markdown(resposta_ai_plano)
+        
         if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v4"):
-            initial_ai_message = "Ok, vamos recomeçar seu plano de negócios! Qual é o seu ramo de atuação principal?"
+            initial_ai_message = "Ok, vamos recomeçar seu plano de negócios! Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
             st.session_state.chat_display_plano_negocios = [{"role": "assistant", "content": initial_ai_message}]
             agente.memoria_plano_negocios.clear()
-            agente.memoria_plano_negocios.chat_memory.add_ai_message(initial_ai_message)
+            agente.memoria_plano_negocios.chat_memory.add_ai_message(initial_ai_message) # Adiciona à memória da IA
             st.rerun()
 
-    elif st.session_state.area_selecionada == "Controle Financeiro Inteligente": # NOVA SEÇÃO
+    elif st.session_state.area_selecionada == "Controle Financeiro Inteligente":
         st.header("📊 Controle Financeiro Inteligente com IA")
         st.caption("Vamos organizar suas finanças e obter insights valiosos!")
+
+        if not st.session_state.chat_display_controle_financeiro: # Garante mensagem inicial
+            initial_ai_message = "Olá! Sou seu Assistente PME Pro. Quer organizar as finanças da sua empresa com a ajuda da IA? Se sim, me diga 'sim' ou 'vamos começar'!"
+            st.session_state.chat_display_controle_financeiro = [{"role": "assistant", "content": initial_ai_message}]
+            if not agente.memoria_controle_financeiro.chat_memory.messages:
+                agente.memoria_controle_financeiro.chat_memory.add_ai_message(initial_ai_message)
+
         for msg_info in st.session_state.chat_display_controle_financeiro:
             with st.chat_message(msg_info["role"]):
                 st.markdown(msg_info["content"])
@@ -303,8 +347,9 @@ if llm:
                 resposta_ai_fin = agente.conversar_controle_financeiro(prompt_usuario_fin)
             st.session_state.chat_display_controle_financeiro.append({"role": "assistant", "content": resposta_ai_fin})
             with st.chat_message("assistant"): st.markdown(resposta_ai_fin)
-        if st.sidebar.button("Reiniciar Controle Financeiro", key="btn_reset_financeiro"):
-            initial_ai_message = "Certo! Vamos começar do zero com seu controle financeiro. Qual é o principal tipo de receita da sua empresa atualmente?"
+        
+        if st.sidebar.button("Reiniciar Controle Financeiro", key="btn_reset_financeiro_v2"):
+            initial_ai_message = "Certo! Vamos começar do zero com seu controle financeiro. Quer organizar as finanças da sua empresa com a ajuda da IA? Se sim, me diga 'sim' ou 'vamos começar'!"
             st.session_state.chat_display_controle_financeiro = [{"role": "assistant", "content": initial_ai_message}]
             agente.memoria_controle_financeiro.clear()
             agente.memoria_controle_financeiro.chat_memory.add_ai_message(initial_ai_message)
