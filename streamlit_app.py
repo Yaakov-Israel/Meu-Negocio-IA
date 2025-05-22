@@ -13,7 +13,7 @@ st.set_page_config(page_title="Assistente PME Pro", layout="wide", initial_sideb
 
 # --- Carregar API Key e Configurar Modelo ---
 GOOGLE_API_KEY = None
-llm_model_instance = None # Nome mais específico para a instância do modelo LLM
+llm_model_instance = None 
 
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -46,14 +46,14 @@ else:
 
 # --- Classe do Agente (AssistentePMEPro) ---
 class AssistentePMEPro:
-    def __init__(self, llm_passed_model): # Recebe a instância do modelo LLM
+    def __init__(self, llm_passed_model): 
         if llm_passed_model is None:
             st.error("❌ Erro crítico: Agente PME Pro tentou ser inicializado sem um modelo LLM.")
             st.stop()
-        self.llm = llm_passed_model # Atributo llm da classe recebe o modelo passado
+        self.llm = llm_passed_model 
         
         self.memoria_plano_negocios = ConversationBufferMemory(memory_key="historico_chat_plano", return_messages=True)
-        self.memoria_controle_financeiro = ConversationBufferMemory(memory_key="historico_chat_financeiro", return_messages=True)
+        self.memoria_controle_financeiro = ConversationBufferMemory(memory_key="historico_chat_financeiro", return_messages=True) # Mantida para o futuro
         self.memoria_calculo_precos = ConversationBufferMemory(memory_key="historico_chat_precos", return_messages=True)
 
     def _criar_cadeia_simples(self, system_message_content, human_message_content_template="{solicitacao_usuario}"):
@@ -61,7 +61,7 @@ class AssistentePMEPro:
             SystemMessagePromptTemplate.from_template(system_message_content),
             HumanMessagePromptTemplate.from_template(human_message_content_template)
         ])
-        return LLMChain(llm=self.llm, prompt=prompt_template, verbose=False) # Usa self.llm
+        return LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
 
     def _criar_cadeia_conversacional(self, system_message_content, memoria_especifica, memory_key_placeholder="historico_chat"):
         prompt_template = ChatPromptTemplate.from_messages([
@@ -69,12 +69,13 @@ class AssistentePMEPro:
             MessagesPlaceholder(variable_name=memory_key_placeholder), 
             HumanMessagePromptTemplate.from_template("{input_usuario}")
         ])
-        return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria_especifica, verbose=False) # Usa self.llm
+        return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria_especifica, verbose=False)
 
     def marketing_digital_guiado(self):
+        # ... (código da função marketing_digital_guiado como na versão anterior - INALTERADO)
         st.header("🚀 Marketing Digital Inteligente para sua Empresa")
         st.markdown("Bem-vindo! Preencha os campos abaixo para criarmos juntos uma estratégia de marketing digital eficaz usando IA.")
-        with st.form(key='marketing_form_guiado_v7'): # Nova key
+        with st.form(key='marketing_form_guiado_v7'):
             st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
             publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v7")
             produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v7")
@@ -104,57 +105,69 @@ class AssistentePMEPro:
                 st.markdown(resposta_llm)
 
     def conversar_plano_de_negocios(self, input_usuario):
+        # ... (código da função conversar_plano_de_negocios como na versão anterior - INALTERADO)
         system_message_plano = "Você é o \"Assistente PME Pro\", um consultor de negócios especialista em IA. Sua tarefa é ajudar um empreendedor a ESBOÇAR e depois DETALHAR um PLANO DE NEGÓCIOS. Você faz perguntas UMA DE CADA VEZ para coletar informações. Use linguagem clara e seja encorajador.\n\n**FLUXO DA CONVERSA:**\n\n**INÍCIO DA CONVERSA / PEDIDO INICIAL:**\nSe o usuário indicar que quer criar um plano de negócios (ex: \"Crie meu plano de negócios\", \"Quero ajuda com meu plano\", \"sim\" para um botão de iniciar plano), SUA PRIMEIRA PERGUNTA DEVE SER: \"Perfeito! Para começarmos a esboçar seu plano de negócios, qual é o seu ramo de atuação principal?\"\n\n**COLETA PARA O ESBOÇO:**\nApós saber o ramo, continue fazendo UMA PERGUNTA POR VEZ para obter informações para as seguintes seções (não precisa ser exatamente nesta ordem, mas cubra-as):\n1.  Nome da Empresa\n2.  Missão da Empresa\n3.  Visão da Empresa\n4.  Principais Objetivos\n5.  Produtos/Serviços Principais\n6.  Público-Alvo Principal\n7.  Principal Diferencial\n8.  Ideias Iniciais de Marketing e Vendas\n9.  Ideias Iniciais de Operações\n10. Estimativas Financeiras Muito Básicas\n\n**GERAÇÃO DO ESBOÇO:**\nQuando você sentir que coletou informações suficientes para estas 10 áreas, VOCÊ DEVE PERGUNTAR:\n\"Com as informações que reunimos até agora, você gostaria que eu montasse um primeiro ESBOÇO do seu plano de negócios? Ele terá as seções principais que discutimos.\"\n\nSe o usuário disser \"sim\":\n    - Gere um ESBOÇO do plano de negócios com as seções: Sumário Executivo, Descrição da Empresa, Produtos e Serviços, Público-Alvo e Diferenciais, Estratégias Iniciais de Marketing e Vendas, Operações Iniciais, Panorama Financeiro Inicial.\n    - No final do esboço, ADICIONE: \"Este é um esboço inicial para organizar suas ideias. Ele pode ser muito mais detalhado e aprofundado.\"\n    - ENTÃO, PERGUNTE: \"Este esboço inicial te ajuda a visualizar melhor? Gostaria de DETALHAR este plano de negócios agora? Podemos aprofundar cada seção, e você poderá me fornecer mais informações (e no futuro, até mesmo subir documentos).\"\n\n**DETALHAMENTO DO PLANO (SE O USUÁRIO ACEITAR):**\nSe o usuário disser \"sim\" para detalhar:\n    - Responda com entusiasmo: \"Ótimo! Para detalharmos, vamos focar em cada seção do plano. Aplicaremos princípios de administração e marketing (como os de Chiavenato e Kotler) para enriquecer a análise.\"\n    - ENTÃO, PERGUNTE: \"Em qual seção do plano de negócios você gostaria de começar a aprofundar ou fornecer mais detalhes? Por exemplo, 'Análise de Mercado', 'Estratégias de Marketing Detalhadas', ou 'Projeções Financeiras'?\"\n    - A partir da escolha, faça perguntas específicas para aquela seção."
         cadeia = self._criar_cadeia_conversacional(system_message_plano, self.memoria_plano_negocios, memory_key_placeholder="historico_chat_plano")
         resposta_ai = cadeia.predict(input_usuario=input_usuario)
         return resposta_ai
 
-    def conversar_controle_financeiro(self, input_usuario):
+    def conversar_controle_financeiro(self, input_usuario): # Mantida para futura reativação, mas não no menu
         system_message_financeiro = "Você é o \"Assistente PME Pro\", um consultor financeiro especialista em IA para pequenas empresas. Sua tarefa é ajudar o empreendedor a entender e iniciar um CONTROLE FINANCEIRO básico. Você faz perguntas UMA DE CADA VEZ.\n\n- Se a conversa está começando ou o usuário diz algo como \"Quero ajuda com controle financeiro\" ou \"sim\" para uma pergunta inicial sobre o tema, sua PRIMEIRA pergunta DEVE SER: \"Entendido! Para começarmos a organizar suas finanças, qual é o principal tipo de receita da sua empresa atualmente?\"\n- Continue com perguntas para entender: Outras fontes de receita, despesas fixas, despesas variáveis, se já utiliza alguma ferramenta de controle.\n- Após coletar informações básicas, PERGUNTE: \"Com base no que conversamos, gostaria que eu gerasse um resumo da sua situação financeira atual e sugestões de como estruturar uma planilha de controle de fluxo de caixa simples e uma de despesas?\"\n- Se o usuário disser \"sim\", forneça: a) Resumo textual. b) Estrutura para planilha de Fluxo de Caixa (colunas: Data, Descrição, Entrada, Saída, Saldo). c) Estrutura para Planilha de Despesas (Categorias, Valor Mensal Estimado). d) Dica sobre separar finanças pessoais das empresariais.\n- APÓS apresentar as sugestões, pergunte: \"Isso te dá um ponto de partida? Podemos detalhar alguma dessas planilhas ou discutir como analisar esses números e gerar alguns gráficos simples com base nos dados que você me fornecer?\""
         cadeia = self._criar_cadeia_conversacional(system_message_financeiro, self.memoria_controle_financeiro, memory_key_placeholder="historico_chat_financeiro")
         resposta_ai = cadeia.predict(input_usuario=input_usuario)
         return resposta_ai
 
     def calcular_precos_interativo(self, input_usuario, descricao_imagem_contexto=None):
+        # PROMPT DO SISTEMA ATUALIZADO
         system_message_precos = f"""
         Você é o "Assistente PME Pro", especialista em precificação com IA.
-        Sua tarefa é ajudar o usuário a definir o preço de venda de um produto ou serviço.
-        Você faz perguntas UMA DE CADA VEZ.
-        {(f"Contexto adicional: O usuário carregou uma imagem que pode ser do produto, descrita como: '{descricao_imagem_contexto}'. Use isso se relevante para suas perguntas sobre o produto.") if descricao_imagem_contexto else ""}
+        Sua tarefa é ajudar o usuário a definir o preço de venda de um produto ou serviço, atuando como um consultor que busca as informações necessárias.
+        Você faz perguntas UMA DE CADA VEZ e guia o usuário.
+        {(f"Contexto da imagem que o usuário enviou: '{descricao_imagem_contexto}'. Use isso se for relevante para identificar o produto.") if descricao_imagem_contexto else ""}
 
-        INÍCIO DA CONVERSA:
-        - Se o usuário acabou de entrar nesta seção ou diz algo como "quero calcular preços",
-          SUA PRIMEIRA PERGUNTA DEVE SER: "Olá! Para te ajudar a calcular o preço, me diga primeiro:
-          Você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?"
-        
-        CENÁRIO 1: PRODUTO DE REVENDA
-        - Se o usuário indicar REVENDA:
-            - Pergunte: "Qual o nome ou tipo do produto que você revende?"
-            - Pergunte: "Em qual cidade/estado você atua principalmente?"
-            - Pergunte: "Você tem o custo de aquisição deste produto por unidade?"
-            - Explique: "Para produtos de revenda, é importante pesquisar o preço de mercado. Eu não consigo pesquisar na web em tempo real, mas posso te dar dicas de como você pode fazer essa pesquisa. Com base no seu custo e na pesquisa de mercado, definiremos uma margem de lucro."
-            - Pergunte: "Qual margem de lucro você gostaria de aplicar sobre o custo (ex: 30%, 50%, 100%) ou qual preço de venda você tem em mente?"
-            - Com base no custo e margem, calcule e sugira o preço.
+        **FLUXO DA CONVERSA PARA PRECIFICAR:**
 
-        CENÁRIO 2: PRODUTO/SERVIÇO DE PRODUÇÃO PRÓPRIA
-        - Se o usuário indicar PRODUÇÃO PRÓPRIA:
-            - Pergunte: "Entendido! Para precificar seu produto/serviço próprio, vamos detalhar os custos. Qual o nome do produto ou tipo de serviço?"
-            - Pergunte sobre CUSTOS DIRETOS: "Quais são os custos diretos de material ou insumos por unidade produzida/serviço prestado?"
-            - Pergunte sobre MÃO DE OBRA DIRETA: "Quanto tempo de trabalho é gasto por unidade/serviço, e qual o custo dessa mão de obra?"
-            - Pergunte sobre CUSTOS INDIRETOS/FIXOS: "Você tem uma estimativa dos seus custos fixos mensais (aluguel, luz, etc.)? E quantas unidades você espera vender por mês (para ratear esses custos)?"
-            - Explique métodos de precificação (Markup, Margem de Contribuição).
-            - Pergunte: "Qual margem de lucro você gostaria de adicionar sobre o custo total?"
-            - Com base nos custos e margem, calcule e sugira o preço.
-        
-        GERAL: Peça informações de forma clara. Após cálculo, pergunte se faz sentido ou se quer simular com outros valores. Lembre de valor percebido e concorrência.
+        **1. SAUDAÇÃO E PERGUNTA INICIAL (SEMPRE FAÇA ESTA PRIMEIRO QUANDO O USUÁRIO ENTRAR NESTA FUNCIONALIDADE):**
+           "Olá! Sou o Assistente PME Pro, pronto para te ajudar com a precificação. Para começar, o produto ou serviço que você quer precificar é algo que você COMPRA E REVENDE, ou é algo que sua empresa MESMA PRODUZ/CRIA?"
+
+        **2. SE O USUÁRIO ESCOLHER "COMPRA E REVENDE":**
+           a. PERGUNTE: "Entendido, é para revenda. Qual é o nome ou tipo específico do produto?" (Ex: SSD Interno 1TB Western Digital Blue, Camiseta XYZ)
+           b. PERGUNTE: "Qual o seu CUSTO DE AQUISIÇÃO por unidade deste produto? (Quanto você paga ao seu fornecedor por cada um)."
+           c. PERGUNTE: "Em qual CIDADE e ESTADO (Ex: Juiz de Fora - MG) sua loja ou negócio principal opera? Isso nos ajudará a considerar o mercado."
+           d. APÓS OBTER ESSAS INFORMAÇÕES, DIGA (simulando a preparação para a busca):
+              "Ok, tenho as informações básicas: produto '{nome_do_produto_informado}', seu custo de R${custo_informado} em {cidade_estado_informado}.
+              Agora, o passo CRUCIAL é entendermos o preço de mercado. **Estou preparando para fazer uma análise de preços praticados para produtos similares na sua região.** (No futuro, esta será uma busca real na web).
+              Enquanto eu 'analiso' o mercado (o que farei com base no meu conhecimento geral por enquanto), para adiantarmos: Qual MARGEM DE LUCRO (em porcentagem, ex: 20%, 50%, 100%) você gostaria de ter sobre o seu custo de R${custo_informado}? Ou você já tem um PREÇO DE VENDA ALVO em mente?"
+           e. QUANDO O USUÁRIO RESPONDER A MARGEM/PREÇO ALVO:
+              - Calcule o preço de venda sugerido (Custo / (1 - %MargemDesejada)) ou (Custo + (Custo * %MarkupDesejado)). Explique o cálculo de forma simples.
+              - APRESENTE O PREÇO CALCULADO e diga: "Com base no seu custo e na margem desejada, o preço de venda seria R$ X.XX.
+                Lembre-se: após você fazer sua pesquisa de mercado real (sugiro buscar em 3-5 concorrentes online e locais), compare este preço calculado com os preços praticados. Se estiver muito diferente, precisaremos ajustar a margem ou analisar os custos."
+              - PERGUNTE: "Este preço inicial faz sentido? Quer simular com outra margem?"
+
+        **3. SE O USUÁRIO ESCOLHER "PRODUZ/CRIA":**
+           a. PERGUNTE: "Ótimo, é produção própria! Qual o nome do produto ou tipo de serviço que você cria/oferece?"
+           b. PERGUNTE sobre CUSTOS DIRETOS DE MATERIAL/INSUMOS: "Para produzir UMA unidade (ou realizar UM serviço), quais são os custos diretos de material ou insumos? Por favor, me dê uma estimativa."
+           c. PERGUNTE sobre MÃO DE OBRA DIRETA: "Quanto tempo de trabalho (seu ou de funcionários) é gasto diretamente na produção de UMA unidade ou na prestação de UMA vez o serviço? E qual o custo estimado dessa mão de obra por unidade/serviço?"
+           d. PERGUNTE sobre CUSTOS FIXOS MENSAIS TOTAIS: "Quais são seus custos fixos mensais totais (aluguel, luz, internet, salários administrativos, etc.) que precisam ser cobertos?"
+           e. PERGUNTE sobre VOLUME DE PRODUÇÃO/VENDAS MENSAL ESPERADO: "Quantas unidades desse produto você espera vender por mês, ou quantos serviços espera prestar? Isso nos ajudará a ratear os custos fixos por unidade."
+           f. APÓS OBTER ESSAS INFORMAÇÕES, explique: "Com esses dados, podemos calcular o Custo Total Unitário. Depois, adicionaremos sua margem de lucro. Existem métodos como Markup ou Margem de Contribuição."
+           g. PERGUNTE: "Qual MARGEM DE LUCRO (em porcentagem) você gostaria de adicionar sobre o custo total de produção para definirmos o preço de venda?"
+           h. QUANDO O USUÁRIO RESPONDER A MARGEM:
+              - Calcule o preço de venda sugerido.
+              - APRESENTE O PREÇO CALCULADO e diga: "Com base nos seus custos e na margem desejada, o preço de venda sugerido seria R$ X.XX."
+              - PERGUNTE: "Este preço cobre todos os seus custos e te dá a lucratividade esperada? Como ele se compara ao que você imagina que o mercado pagaria?"
+
+        **FINALIZAÇÃO DA INTERAÇÃO (PARA AMBOS OS CASOS):**
+        - Após uma sugestão de preço, sempre ofereça: "Podemos refinar este cálculo, simular outros cenários ou discutir estratégias de precificação?"
+
+        Mantenha a conversa fluida e profissional, mas acessível. O objetivo é entregar o 'bolo pronto com a velinha', ou seja, uma análise e sugestão de preço fundamentada.
         """
         cadeia = self._criar_cadeia_conversacional(system_message_precos, self.memoria_calculo_precos, memory_key_placeholder="historico_chat_precos")
-        # Passamos o input_usuario que pode já conter o contexto da imagem
         resposta_ai = cadeia.predict(input_usuario=input_usuario)
         return resposta_ai
 
 # --- Interface Principal Streamlit ---
-if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
+if llm_model_instance:
     if 'agente_pme' not in st.session_state:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
@@ -174,12 +187,18 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     
-    for key_area_op in opcoes_menu.values(): # Garante que as chaves de display existem
+    # Inicializar display de chats e outros estados de sessão necessários
+    for key_area_op in opcoes_menu.values():
         if key_area_op and f"chat_display_{key_area_op}" not in st.session_state:
             st.session_state[f"chat_display_{key_area_op}"] = []
     
-    if 'start_marketing_form' not in st.session_state: # Para o form de marketing
+    if 'start_marketing_form' not in st.session_state:
         st.session_state.start_marketing_form = False
+    if 'last_uploaded_image_info_pricing' not in st.session_state:
+        st.session_state.last_uploaded_image_info_pricing = None
+    if 'processed_image_id_pricing' not in st.session_state:
+        st.session_state.processed_image_id_pricing = None
+
 
     area_selecionada_label = st.sidebar.radio(
         "Como posso te ajudar hoje?",
@@ -188,9 +207,14 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
         index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
+    # Lógica de transição e inicialização de estado ao mudar de aba
     if area_selecionada_label != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_label
         current_section_key_temp = opcoes_menu.get(st.session_state.area_selecionada)
+        
+        if st.session_state.area_selecionada != "Cálculo de Preços Inteligente": # Limpa info da imagem se sair da aba de preços
+            st.session_state.last_uploaded_image_info_pricing = None
+            st.session_state.processed_image_id_pricing = None
 
         if current_section_key_temp == "plano_negocios" and not st.session_state.get(f"chat_display_{current_section_key_temp}", []):
             initial_ai_message = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
@@ -208,17 +232,19 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
 
     current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
 
+    # --- RENDERIZAÇÃO DA PÁGINA SELECIONADA ---
+
     if current_section_key == "pagina_inicial":
         st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟")
         st.markdown("Sou seu parceiro de IA pronto para ajudar sua pequena ou média empresa a crescer e se organizar melhor.")
         st.markdown("---")
         
-        # Botões dinâmicos na página inicial
         cols_buttons = st.columns(len(opcoes_menu)-1) 
         btn_idx = 0
         for nome_menu_btn, chave_secao_btn in opcoes_menu.items():
             if chave_secao_btn != "pagina_inicial":
-                if cols_buttons[btn_idx].button(nome_menu_btn.split(" com IA")[0], key=f"btn_goto_{chave_secao_btn}_v2", use_container_width=True):
+                button_label = nome_menu_btn.split(" com IA")[0] if " com IA" in nome_menu_btn else nome_menu_btn
+                if cols_buttons[btn_idx].button(button_label, key=f"btn_goto_{chave_secao_btn}_v4", use_container_width=True): # Nova key para botões
                     st.session_state.area_selecionada = nome_menu_btn
                     # Lógica de inicialização de chat/estado para a seção específica
                     if chave_secao_btn == "plano_negocios" and not st.session_state.get(f"chat_display_{chave_secao_btn}",[]):
@@ -263,7 +289,7 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
             st.session_state[chat_display_key_pn].append({"role": "assistant", "content": resposta_ai_pn})
             with st.chat_message("assistant"): st.markdown(resposta_ai_pn)
         
-        if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v5"):
+        if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v5"): # Key única
             initial_ai_message_pn_reset = "Ok, vamos recomeçar seu plano de negócios! Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
             st.session_state[chat_display_key_pn] = [{"role": "assistant", "content": initial_ai_message_pn_reset}]
             agente.memoria_plano_negocios.clear()
@@ -275,20 +301,23 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
         st.caption("Vamos definir os melhores preços para seus produtos ou serviços!")
         chat_display_key_cp = f"chat_display_{current_section_key}"
         
-        uploaded_image_pricing_cp = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v3")
-        descricao_imagem_para_ia_cp = None
+        uploaded_image_pricing_cp = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v4") # Nova key
+        
+        descricao_imagem_para_contexto_ia = None
         if uploaded_image_pricing_cp is not None:
-            try:
-                # Apenas para mostrar a imagem e obter o nome do arquivo
-                st.image(Image.open(uploaded_image_pricing_cp), caption="Imagem Carregada", width=150)
-                descricao_imagem_para_ia_cp = f"O usuário carregou uma imagem chamada '{uploaded_image_pricing_cp.name}'. Se for relevante para o produto que está sendo precificado, você pode pedir mais detalhes sobre ela."
-                # Limpa o uploader após o processamento da informação, para evitar reenvio
-                # Isso pode ser feito resetando o file_uploader ou gerenciando seu estado.
-                # Por simplicidade, apenas informamos a IA e o usuário.
-                st.info(f"Imagem '{uploaded_image_pricing_cp.name}' considerada para contexto.")
-            except Exception as e:
-                st.error(f"Erro ao processar a imagem: {e}")
-
+            # Processa a imagem somente se for uma nova imagem ou se a informação ainda não foi "consumida"
+            if st.session_state.get('processed_image_id_pricing') != uploaded_image_pricing_cp.id:
+                try:
+                    st.image(Image.open(uploaded_image_pricing_cp), caption=f"Imagem: {uploaded_image_pricing_cp.name}", width=150)
+                    descricao_imagem_para_contexto_ia = f"O usuário carregou uma imagem chamada '{uploaded_image_pricing_cp.name}'. Se esta imagem for do produto a ser precificado, use essa informação para guiar suas perguntas. Se já perguntou sobre o produto e o usuário ainda não respondeu, pode perguntar se esta imagem se refere ao produto em questão."
+                    st.session_state.last_uploaded_image_info_pricing = descricao_imagem_para_contexto_ia
+                    st.session_state.processed_image_id_pricing = uploaded_image_pricing_cp.id 
+                    st.info(f"Imagem '{uploaded_image_pricing_cp.name}' pronta para ser considerada no próximo diálogo.")
+                except Exception as e:
+                    st.error(f"Erro ao processar a imagem: {e}")
+                    st.session_state.last_uploaded_image_info_pricing = None
+                    st.session_state.processed_image_id_pricing = None
+        
         if not st.session_state.get(chat_display_key_cp, []):
             initial_ai_message_cp = "Olá! Bem-vindo ao assistente de Cálculo de Preços. Para começar, você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?"
             st.session_state[chat_display_key_cp] = [{"role": "assistant", "content": initial_ai_message_cp}]
@@ -304,36 +333,26 @@ if llm_model_instance: # Verifica se a instância do modelo LLM foi criada
             st.session_state[chat_display_key_cp].append({"role": "user", "content": prompt_usuario_cp})
             with st.chat_message("user"): st.markdown(prompt_usuario_cp)
             
-            input_completo_para_ia_cp = prompt_usuario_cp
-            # Adiciona o contexto da imagem se ela foi carregada NESTA interação do chat
-            # Precisamos de uma forma de associar a imagem ao prompt atual.
-            # Uma maneira é checar se 'descricao_imagem_para_ia_cp' foi setado ANTES deste input.
-            # Para simplificar, vamos passar a descrição da imagem sempre que houver um novo prompt do usuário,
-            # e a IA pode decidir usar ou não.
-            if 'last_uploaded_image_info_pricing' not in st.session_state:
-                st.session_state.last_uploaded_image_info_pricing = None
-            
-            if descricao_imagem_para_ia_cp: # Se uma nova imagem foi carregada AGORA
-                 st.session_state.last_uploaded_image_info_pricing = descricao_imagem_para_ia_cp
-
-            if st.session_state.last_uploaded_image_info_pricing:
-                input_completo_para_ia_cp = f"{prompt_usuario_cp}\n(Contexto: {st.session_state.last_uploaded_image_info_pricing})"
-                # st.session_state.last_uploaded_image_info_pricing = None # Opcional: Limpar após usar uma vez
-
+            # Usa a informação da imagem se ela foi recém-carregada e ainda não "consumida" no prompt
+            contexto_img_atual = st.session_state.get('last_uploaded_image_info_pricing')
 
             with st.spinner("Assistente PME Pro está calculando... 📈"):
-                # Passando None para imagem_produto por enquanto, pois o contexto da imagem já está no input_completo_para_ia_cp
-                resposta_ai_cp = agente.calcular_precos_interativo(input_completo_para_ia_cp) 
+                resposta_ai_cp = agente.calcular_precos_interativo(prompt_usuario_cp, descricao_imagem_contexto=contexto_img_atual)
+            
+            # Limpa a informação da imagem do estado da sessão APÓS ser usada no prompt
+            if contexto_img_atual:
+                st.session_state.last_uploaded_image_info_pricing = None
             
             st.session_state[chat_display_key_cp].append({"role": "assistant", "content": resposta_ai_cp})
             with st.chat_message("assistant"): st.markdown(resposta_ai_cp)
 
-        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v3"):
+        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v4"): # Nova key
             initial_ai_message_cp_reset = "Ok, vamos começar um novo cálculo de preços! Você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?"
             st.session_state[chat_display_key_cp] = [{"role": "assistant", "content": initial_ai_message_cp_reset}]
             agente.memoria_calculo_precos.clear()
             agente.memoria_calculo_precos.chat_memory.add_ai_message(initial_ai_message_cp_reset)
-            st.session_state.last_uploaded_image_info_pricing = None # Limpa info da imagem no reset
+            st.session_state.last_uploaded_image_info_pricing = None
+            st.session_state.processed_image_id_pricing = None
             st.rerun()
 else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
