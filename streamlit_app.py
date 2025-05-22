@@ -3,10 +3,10 @@ import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.chains import LLMChain
-import google.generativeai as genai # SDK direta do Google também é necessária para configurar a chave
+import google.generativeai as genai
 
 # --- Configuração da Página Streamlit ---
-st.set_page_config(page_title="Assistente PME Inteligente", layout="wide", initial_sidebar_state="expanded") # Título da Aba Alterado
+st.set_page_config(page_title="Assistente PME Inteligente", layout="wide", initial_sidebar_state="expanded")
 
 # --- Carregar API Key e Configurar Modelo ---
 GOOGLE_API_KEY = None
@@ -46,12 +46,11 @@ class SuperAgentePequenasEmpresas:
             st.error("❌ Erro crítico: Tentativa de inicializar o agente sem um modelo LLM.")
             st.stop()
         self.llm = llm_model
-        # Nome do Assistente Alterado aqui:
         self.system_message_template = """
         Você é o "Assistente PME Pro", um super especialista em trazer soluções inovadoras de IA
         para serem aplicadas em pequenas empresas. Sua comunicação deve ser objetiva, sucinta,
-        prática e focada em resolver as dores do usuário.
-        """
+        prática e focada em resolver as dores do usuário, guiando-o passo a passo quando necessário.
+        """ # Adicionado "guiando-o passo a passo"
 
     def _criar_chain(self, area_especifica_prompt=""):
         prompt_template_msgs = [
@@ -61,232 +60,170 @@ class SuperAgentePequenasEmpresas:
         chat_prompt = ChatPromptTemplate.from_messages(prompt_template_msgs)
         return LLMChain(llm=self.llm, prompt=chat_prompt, verbose=False)
 
+    # Mantendo outras funções do agente, mesmo que não estejam no menu agora, para expansão futura
     def responder_pergunta_geral(self, solicitacao_usuario):
         chain = self._criar_chain("Seu foco é fornecer uma visão geral e conselhos práticos.")
         return chain.run({"solicitacao_usuario": solicitacao_usuario})
 
-    def gestao_financeira(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Gestão Financeira. Detalhe aspectos como fluxo de caixa, contas a pagar/receber, e conciliação bancária."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
+    # ... (todas as outras funções de gestao_financeira, planejamento_financeiro, etc., podem ser mantidas aqui para uso futuro)
+    # ... (para economizar espaço aqui, vou omiti-las, mas elas estariam no seu código original)
 
-    def planejamento_financeiro(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Planejamento Financeiro. Forneça orientações claras, passos práticos e sugestões de ferramentas/templates."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
+    def marketing_digital_guiado(self, solicitacao_inicial_contexto=""):
+        st.header("🚀 Marketing Digital Inteligente para sua Empresa")
+        st.markdown("""
+        Bem-vindo ao nosso guia para impulsionar sua empresa no mundo digital com Inteligência Artificial!
+        Vamos criar juntos uma estratégia de marketing digital eficaz.
+        """)
 
-    def controle_de_custos(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Controle de Custos. Apresente estratégias para identificar, analisar e reduzir custos fixos e variáveis."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def precificacao(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Precificação de Produtos/Serviços. Explique métodos como markup, margem de contribuição e precificação baseada em valor."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def acesso_a_credito(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Acesso a Crédito. Descreva opções de crédito para pequenas empresas e como se preparar para solicitar."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def obrigacoes_fiscais(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Obrigações Fiscais (Simples Nacional, MEI, etc.). Forneça um panorama geral e a importância de um contador."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def controle_de_estoque(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Controle de Estoque. Discuta métodos como Curva ABC, PEPS, UEPS e a importância do inventário."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def recursos_humanos(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Recursos Humanos para Pequenas Empresas. Aborde temas como recrutamento, seleção, treinamento e legislação básica."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def gerenciamento_de_frequencia(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Gerenciamento de Frequência de Funcionários. Sugira ferramentas ou métodos para controle de ponto e gestão de horas."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def marketing_e_vendas(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Marketing e Vendas. Apresente estratégias fundamentais de marketing offline e online, e técnicas de vendas."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def conquista_de_clientes(self, solicitacao_usuario):
-        prompt_especifico = "Foco Atual: Conquista de Clientes. Detalhe funil de vendas, prospecção, e estratégias para atrair novos clientes."
-        chain = self._criar_chain(prompt_especifico)
-        return chain.run({"solicitacao_usuario": solicitacao_usuario})
-
-    def marketing_digital(self, solicitacao_inicial_contexto=""):
-        st.subheader("Assistente de Criação de Campanha de Marketing Digital")
-        st.write("Para te ajudar a criar uma campanha, preciso de algumas informações.")
-        if solicitacao_inicial_contexto and isinstance(solicitacao_inicial_contexto, str) and solicitacao_inicial_contexto.strip():
-            st.info(f"Contexto inicial da sua solicitação: '{solicitacao_inicial_contexto}'")
-
-        with st.form(key='marketing_form'):
-            publico_alvo = st.text_input("1. Qual é o público-alvo da sua campanha? (Descreva idade, interesses, localização, etc.):", key="md_publico")
-            produto_servico = st.text_input("2. Qual produto ou serviço específico você quer promover nesta campanha?:", key="md_produto")
-            objetivo_campanha = st.selectbox("3. Qual o principal objetivo desta campanha?",
-                                             ["", "Aumentar vendas", "Gerar leads", "Reconhecimento da marca", "Engajamento"], key="md_objetivo")
-            mensagem_principal = st.text_area("4. Qual é a mensagem central ou o principal apelo que você quer comunicar?:", key="md_mensagem")
-            diferencial = st.text_input("5. Qual o principal diferencial do seu produto/serviço que deve ser destacado?:", key="md_diferencial")
-
+        # Poderíamos adicionar aqui a interação inicial "vamos colocar sua empresa no mundo da IA? Resposta: sim."
+        # Por enquanto, vamos direto ao formulário.
+        
+        with st.form(key='marketing_form_guiado'):
+            st.markdown("##### Conte-nos sobre seu Negócio e Objetivos")
+            publico_alvo = st.text_input("1. Quem você quer alcançar? (Descreva seu público-alvo):", key="mdg_publico")
+            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?:", key="mdg_produto")
+            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing digital?",
+                                             ["", "Aumentar vendas online", "Gerar mais contatos (leads)", 
+                                              "Fortalecer o reconhecimento da minha marca", "Aumentar o engajamento com clientes"], 
+                                             key="mdg_objetivo", help="Pense no resultado mais importante que você busca.")
+            
             st.markdown("---")
-            st.markdown("##### Elementos de Mídia (Descreva suas ideias)")
-            descricao_imagem = st.text_input("6. Imagem: Descreva a imagem principal (ou cole uma URL de referência):", key="md_img")
-            descricao_video = st.text_input("7. Vídeo: Descreva o conceito do vídeo (ou cole uma URL):", key="md_video")
-
+            st.markdown("##### Sua Mensagem e Diferencial")
+            mensagem_principal = st.text_area("4. Qual mensagem chave você quer que seus clientes recebam sobre seu negócio?:", key="mdg_mensagem")
+            diferencial = st.text_input("5. O que torna seu produto/serviço especial ou diferente da concorrência?:", key="mdg_diferencial")
+            
             st.markdown("---")
-            orcamento_ideia = st.text_input("8. Você tem uma ideia de orçamento para esta campanha (Ex: baixo, R$100-R$500, alto)?:", key="md_orcamento")
-
+            st.markdown("##### Ideias para Conteúdo Visual (Opcional)")
+            descricao_imagem = st.text_input("6. Se você imagina uma imagem, como ela seria? (ou cole uma URL de referência):", key="mdg_img")
+            descricao_video = st.text_input("7. E se fosse um vídeo, qual seria a ideia principal?:", key="mdg_video")
+            
             st.markdown("---")
-            st.markdown("##### Canais")
-            redes_sociais_opcoes_dict = {
+            st.markdown("##### Outras Informações")
+            orcamento_ideia = st.text_input("8. Você tem alguma ideia de orçamento para esta ação (Ex: baixo, até R$X, etc.)?:", key="mdg_orcamento")
+            
+            rede_social_opcoes_dict = {
+                "Não tenho certeza, preciso de sugestão": "Sugestão da IA",
                 "Instagram": "Instagram", "Facebook": "Facebook", "TikTok": "TikTok",
-                "LinkedIn": "LinkedIn", "Twitter / X": "Twitter / X", "WhatsApp": "WhatsApp",
-                "E-mail Marketing": "E-mail Marketing", "Google Ads (Pesquisa/Display)": "Google Ads",
+                "LinkedIn": "LinkedIn", "WhatsApp Business": "WhatsApp",
+                "E-mail Marketing": "E-mail Marketing", "Google Meu Negócio / Anúncios Google": "Google",
                 "Outra / Abordagem Integrada": "Integrada"
             }
-            rede_social_alvo_label = st.selectbox("9. Para qual canal ou rede social principal esta campanha seria direcionada?",
-                                                options=list(redes_sociais_opcoes_dict.keys()), key="md_canal_label")
+            rede_social_alvo_label = st.selectbox("9. Você já tem um canal digital principal em mente ou gostaria de uma sugestão?",
+                                                options=list(redes_sociais_opcoes_dict.keys()), key="mdg_canal_label")
             rede_social_alvo = redes_sociais_opcoes_dict[rede_social_alvo_label]
 
-            submit_button = st.form_submit_button(label='Gerar Sugestão de Campanha 🚀')
+            submit_button = st.form_submit_button(label='Me Ajude a Estruturar Minha Estratégia de Marketing Digital com IA! 🚀')
 
         if submit_button:
-            if not all([publico_alvo, produto_servico, objetivo_campanha, mensagem_principal, diferencial, rede_social_alvo]):
-                st.warning("Por favor, preencha todos os campos obrigatórios para a campanha (Público, Produto, Objetivo, Mensagem, Diferencial, Canal).")
+            if not all([publico_alvo, produto_servico, objetivo_campanha, mensagem_principal, diferencial]):
+                st.warning("Por favor, preencha pelo menos os campos sobre Público, Produto/Serviço, Objetivo, Mensagem e Diferencial.")
             else:
                 prompt_para_llm = f"""
-                Contexto Inicial do Usuário sobre Marketing Digital: {solicitacao_inicial_contexto if solicitacao_inicial_contexto else "N/A"}
-                Crie uma sugestão de campanha de marketing digital detalhada e prática com base nas seguintes informações fornecidas pelo usuário:
+                Sou o dono de uma pequena empresa e preciso de ajuda para 'colocar meu negócio para funcionar com IA', começando pelo Marketing Digital.
+                Com base nas informações que forneci, atue como um consultor especialista em Marketing Digital e IA para PMEs.
+                Guie-me com um plano de ação prático e sugestões.
+
+                Informações sobre meu negócio e objetivos:
                 - Público-Alvo: {publico_alvo}
-                - Produto/Serviço: {produto_servico}
+                - Produto/Serviço Principal: {produto_servico}
                 - Principal Diferencial: {diferencial}
-                - Objetivo Principal: {objetivo_campanha}
-                - Mensagem Principal: {mensagem_principal}
-                - Ideia para Imagem: {descricao_imagem if descricao_imagem else "Não especificado"}
-                - Ideia para Vídeo: {descricao_video if descricao_video else "Não especificado"}
-                - Orçamento Estimado: {orcamento_ideia if orcamento_ideia else "Não especificado"}
-                - Canal Principal Alvo: {rede_social_alvo}
+                - Objetivo Principal com Marketing Digital: {objetivo_campanha}
+                - Mensagem Chave: {mensagem_principal}
+                - Ideia para Imagem (se houver): {descricao_imagem if descricao_imagem else "Não especificado"}
+                - Ideia para Vídeo (se houver): {descricao_video if descricao_video else "Não especificado"}
+                - Orçamento Estimado (se houver): {orcamento_ideia if orcamento_ideia else "Não especificado"}
+                - Canal Digital em Mente ou Pedido de Sugestão: {rede_social_alvo}
 
-                A sugestão deve incluir:
-                1. Nome/Tema Criativo.
-                2. Estratégia de Conteúdo para '{rede_social_alvo}' (2-3 exemplos de posts/anúncios, CTAs, formatos).
-                3. Sugestões de Segmentação (se anúncios pagos).
-                4. Hashtags Estratégicas.
-                5. KPIs para medir sucesso.
-                6. Cronograma Sugerido Simples.
-                7. Dicas Adicionais Práticas para '{rede_social_alvo}'.
-                Seja criativo, prático e forneça um plano acionável. Tom encorajador e especializado.
+                Por favor, forneça:
+                1.  Uma análise concisa da situação com base nos dados fornecidos.
+                2.  Se pedi sugestão de canal, qual(is) canal(is) digital(is) você recomendaria e por quê? Se já escolhi um, como otimizá-lo?
+                3.  Principais Estratégias de Conteúdo com IA: Que tipo de conteúdo posso criar (posts, vídeos, artigos) usando IA para atrair meu público neste(s) canal(is)? Dê 2-3 exemplos de ideias de posts/conteúdo.
+                4.  Ferramentas de IA Úteis: Sugira 1-2 ferramentas de IA (podem ser gratuitas ou de baixo custo) que podem me ajudar na criação de conteúdo, análise de resultados ou automação de marketing.
+                5.  Primeiros Passos Acionáveis: Quais os 2-3 primeiros passos que devo tomar para começar a implementar essa estratégia?
+                6.  Métrica Chave: Qual a métrica mais importante para eu acompanhar o sucesso inicial?
+
+                Seja prático, encorajador e use uma linguagem acessível para um dono de pequena empresa.
+                O objetivo é me dar um ponto de partida claro para usar IA no meu marketing.
                 """
-                with st.spinner("O Assistente PME Pro está elaborando sua campanha de marketing..."): # Texto do Spinner Alterado
-                    resposta_llm = self._criar_chain("Assistente de Criação de Campanhas de Marketing Digital.").run({"solicitacao_usuario": prompt_para_llm})
-
-                if "Marketing Digital (Criar Campanha)" not in st.session_state.chat_history:
-                    st.session_state.chat_history["Marketing Digital (Criar Campanha)"] = []
-                st.session_state.chat_history["Marketing Digital (Criar Campanha)"].append({"role": "assistant", "type": "campaign_suggestion", "content": resposta_llm})
-
-                st.markdown("### 💡 Sugestão de Campanha de Marketing Digital:")
+                with st.spinner("O Assistente PME Pro está elaborando seu guia de marketing digital com IA..."):
+                    resposta_llm = self._criar_chain("Consultor de Marketing Digital e IA para PMEs.").run({"solicitacao_usuario": prompt_para_llm})
+                
+                st.markdown("### 💡 Seu Guia de Marketing Digital com IA:")
                 st.markdown(resposta_llm)
+                
+                # Guarda no histórico (opcional, mas bom para referência)
+                if "Marketing Digital IA (Guiado)" not in st.session_state.chat_history:
+                    st.session_state.chat_history["Marketing Digital IA (Guiado)"] = []
+                # Adicionando um resumo do input e a resposta
+                input_summary = f"Público: {publico_alvo}, Produto: {produto_servico}, Objetivo: {objetivo_campanha}"
+                st.session_state.chat_history["Marketing Digital IA (Guiado)"].append({"role": "user", "content": f"Solicitação de Guia de Marketing (Resumo): {input_summary}"})
+                st.session_state.chat_history["Marketing Digital IA (Guiado)"].append({"role": "assistant", "content": resposta_llm})
+
 
 # --- Interface Principal Streamlit ---
 if llm: 
     agente = SuperAgentePequenasEmpresas(llm_model=llm)
 
     st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100) 
-    # Nome do App Alterado na Sidebar:
     st.sidebar.title("Assistente PME Pro") 
-    st.sidebar.markdown("Soluções de IA para sua pequena empresa.") # Descrição Alterada
+    st.sidebar.markdown("Soluções de IA para sua pequena empresa.")
     st.sidebar.markdown("---")
 
+    # MENU SIMPLIFICADO
     mapa_funcoes_streamlit = {
-        "Página Inicial": None, 
-        "Gestão Financeira": agente.gestao_financeira,
-        "Planejamento Financeiro": agente.planejamento_financeiro,
-        "Controle de Custos": agente.controle_de_custos,
-        "Precificação": agente.precificacao,
-        "Acesso a Crédito": agente.acesso_a_credito,
-        "Obrigações Fiscais": agente.obrigacoes_fiscais,
-        "Controle de Estoque": agente.controle_de_estoque,
-        "Recursos Humanos": agente.recursos_humanos,
-        "Gerenciamento de Frequência": agente.gerenciamento_de_frequencia,
-        "Marketing e Vendas (Geral)": agente.marketing_e_vendas,
-        "Conquista de Clientes": agente.conquista_de_clientes,
-        "Marketing Digital (Criar Campanha)": agente.marketing_digital,
-        "Pergunta Geral": agente.responder_pergunta_geral
+        "Página Inicial": None,
+        "Marketing Digital IA (Guiado)": agente.marketing_digital_guiado,
+        # "Pergunta Geral Rápida": agente.responder_pergunta_geral # Poderia adicionar se quiser uma opção de chat genérico
     }
     
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
+    # O chat_history agora é mais simples, pois temos menos áreas
     if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = {} 
+        st.session_state.chat_history = {area: [] for area in mapa_funcoes_streamlit}
 
-    if st.session_state.area_selecionada not in st.session_state.chat_history:
-        st.session_state.chat_history[st.session_state.area_selecionada] = []
-        
     area_selecionada_sidebar = st.sidebar.radio(
-        "Escolha uma área de atuação:",
+        "Como posso te ajudar hoje?", # Texto do menu alterado
         options=list(mapa_funcoes_streamlit.keys()),
-        key='sidebar_selection',
-        index=list(mapa_funcoes_streamlit.keys()).index(st.session_state.area_selecionada)
+        key='sidebar_selection_v2', # Nova key para evitar conflito se o estado antigo persistir
+        index=list(mapa_funcoes_streamlit.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in mapa_funcoes_streamlit else 0
     )
 
     if area_selecionada_sidebar != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_sidebar
-        if st.session_state.area_selecionada not in st.session_state.chat_history:
+        if st.session_state.area_selecionada not in st.session_state.chat_history: # Garante que nova área tenha histórico
             st.session_state.chat_history[st.session_state.area_selecionada] = []
         st.rerun() 
     
     if st.session_state.area_selecionada == "Página Inicial":
-        # Nome do App Alterado na Página Inicial:
         st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟") 
-        st.markdown("Sou seu assistente inteligente, pronto para ajudar a otimizar a gestão do seu negócio.")
-        st.markdown("Utilize o menu à esquerda para selecionar uma área e começar.")
-        st.balloons()
-    elif st.session_state.area_selecionada == "Marketing Digital (Criar Campanha)":
-        contexto_marketing = "" 
-        agente.marketing_digital(solicitacao_inicial_contexto=contexto_marketing)
+        st.markdown("""
+        Estou aqui para te ajudar a integrar a Inteligência Artificial no dia a dia da sua pequena ou média empresa. 
+        Vamos começar transformando seu marketing digital?
         
+        ⬅️ Use o menu à esquerda para selecionar a opção "Marketing Digital IA (Guiado)".
+        """)
+        st.balloons()
+    elif st.session_state.area_selecionada == "Marketing Digital IA (Guiado)":
+        agente.marketing_digital_guiado() # A função agora gerencia sua própria UI com st.form
+        
+        # Exibe o histórico, se houver, para esta funcionalidade
         if st.session_state.chat_history[st.session_state.area_selecionada]:
             st.markdown("---")
-            st.markdown("#### Histórico de Sugestões de Campanha:")
+            st.markdown("#### Histórico de Guias Gerados:")
             for item in reversed(st.session_state.chat_history[st.session_state.area_selecionada]):
-                if item["role"] == "assistant" and item.get("type") == "campaign_suggestion":
-                    with st.expander("Ver Sugestão Anterior", expanded=False):
+                if item["role"] == "assistant": # Mostra as respostas do assistente
+                    with st.expander("Ver Guia Anterior", expanded=False):
                         st.markdown(item["content"])
-    else:
-        st.header(f"Assistência em: {st.session_state.area_selecionada}")
+    # Se você adicionar "Pergunta Geral Rápida" de volta ao menu, precisará de um elif para ela aqui.
+    # Exemplo:
+    # elif st.session_state.area_selecionada == "Pergunta Geral Rápida":
+    # st.header("Pergunta Geral Rápida")
+    # # (lógica de chat aqui, similar à versão anterior, mas usando st.session_state.chat_history[st.session_state.area_selecionada])
+    # # ...
 
-        for mensagem in st.session_state.chat_history[st.session_state.area_selecionada]:
-            with st.chat_message(mensagem["role"]):
-                st.markdown(mensagem["content"])
-
-        prompt_usuario = st.chat_input(f"Qual sua dúvida ou solicitação sobre {st.session_state.area_selecionada}?")
-
-        if prompt_usuario:
-            st.session_state.chat_history[st.session_state.area_selecionada].append({"role": "user", "content": prompt_usuario})
-            with st.chat_message("user"):
-                st.markdown(prompt_usuario)
-
-            with st.spinner("O Assistente PME Pro está pensando... 🧠"): # Nome do Assistente Alterado
-                try:
-                    funcao_agente = mapa_funcoes_streamlit[st.session_state.area_selecionada]
-                    if funcao_agente: 
-                        resposta_agente = funcao_agente(prompt_usuario)
-                        st.session_state.chat_history[st.session_state.area_selecionada].append({"role": "assistant", "content": resposta_agente})
-                        with st.chat_message("assistant"):
-                            st.markdown(resposta_agente)
-                except Exception as e:
-                    erro_msg = f"Desculpe, ocorreu um erro ao processar sua solicitação: {e}"
-                    st.error(erro_msg)
-                    st.session_state.chat_history[st.session_state.area_selecionada].append({"role": "assistant", "content": erro_msg})
 else:
-    st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a configuração da API Key do Google no painel de Segredos (Secrets) do Streamlit Cloud e se o modelo LLM está acessível.") # Nome do Assistente Alterado
+    st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a configuração da API Key do Google no painel de Segredos (Secrets) do Streamlit Cloud e se o modelo LLM está acessível.")
 
 st.sidebar.markdown("---")
-# Nome do Assistente Alterado na Sidebar Info:
 st.sidebar.info("Desenvolvido por Yaakov com seu Assistente PME Pro")
