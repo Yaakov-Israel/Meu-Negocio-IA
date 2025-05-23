@@ -3,6 +3,6 @@ google-generativeai
 langchain
 langchain-google-genai
 pillow
+# PyMuPDF (descomente se/quando formos usar para ler PDF)
 # beautifulsoup4
 # lxml
-# PyMuPDF
