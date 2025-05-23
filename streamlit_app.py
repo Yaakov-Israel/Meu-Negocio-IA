@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Assistente PME Pro", 
     layout="wide", 
     initial_sidebar_state="expanded",
-    # page_icon="🚀"  # Exemplo de favicon com emoji, ou você pode usar uma URL
+    page_icon="🚀"  # <--- SEU FAVICON AQUI (PODE SER EMOJI OU URL DE IMAGEM)
 )
 
 # --- Carregar API Key e Configurar Modelo ---
@@ -79,7 +79,7 @@ class AssistentePMEPro:
     def marketing_digital_guiado(self):
         st.header("🚀 Marketing Digital com IA (Guia Prático)")
         st.markdown("Bem-vindo! Preencha os campos abaixo para criarmos juntos uma estratégia de marketing digital eficaz usando IA.")
-        with st.form(key='marketing_form_guiado_v9'): 
+        with st.form(key='marketing_form_guiado_v9'):
             st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
             publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v9")
             produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v9")
@@ -141,7 +141,6 @@ class AssistentePMEPro:
               - PERGUNTE: "Este preço inicial faz sentido? Quer simular com outra margem?"
 
         **3. SE O USUÁRIO ESCOLHER "PRODUZ/CRIA":**
-           # ... (lógica para PRODUZ/CRIA como antes) ...
            a. PERGUNTE: "Excelente! Para precificar seu produto/serviço próprio, vamos detalhar os custos. Qual o nome do produto ou tipo de serviço que você cria/oferece?"
            b. PERGUNTE sobre CUSTOS DIRETOS DE MATERIAL/INSUMOS: "Quais são os custos diretos de material ou insumos que você gasta para produzir UMA unidade do produto ou para realizar UMA vez o serviço? Por favor, liste os principais itens e seus custos."
            c. PERGUNTE sobre MÃO DE OBRA DIRETA: "Quanto tempo de trabalho (seu ou de funcionários) é gasto diretamente na produção de UMA unidade ou na prestação de UMA vez o serviço? E qual o custo estimado dessa mão de obra por unidade/serviço?"
@@ -214,6 +213,7 @@ def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_
         st.session_state.uploaded_file_info_ideias_for_prompt = None 
         st.session_state.processed_file_id_ideias = None
 
+
 def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
     chat_display_key = f"chat_display_{area_chave}"
     if chat_display_key not in st.session_state: 
@@ -223,7 +223,7 @@ def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_ag
         with st.chat_message(msg_info["role"]):
             st.markdown(msg_info["content"])
     
-    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v6") # Nova key
+    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v6") 
 
     if prompt_usuario:
         st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
@@ -245,8 +245,8 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # LOGO E TÍTULOS DA SIDEBAR
-    # st.sidebar.image("URL_DO_SEU_LOGO_AQUI.png", width=120) 
+    # >>>>> LOGO NA SIDEBAR <<<<<
+    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) # URL DO SEU LOGO AQUI! Ajuste a largura (width) se necessário.
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
     st.sidebar.markdown("---")
@@ -279,7 +279,7 @@ if llm_model_instance:
     area_selecionada_label = st.sidebar.radio(
         "Como posso te ajudar hoje?",
         options=list(opcoes_menu.keys()),
-        key='sidebar_selection_v17', # Nova key
+        key='sidebar_selection_v17', 
         index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
@@ -319,23 +319,29 @@ if llm_model_instance:
 
     # --- PÁGINA INICIAL ---
     if current_section_key == "pagina_inicial":
-        # >>>>> ÚNICA ALTERAÇÃO DESTA VERSÃO ESTÁ AQUI ABAIXO <<<<<
+        # TÍTULO E TEXTOS CENTRALIZADOS
         st.markdown("<div style='text-align: center;'><h1>🚀 Bem-vindo ao seu Assistente PME Pro!</h1></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Sou seu parceiro de IA pronto para ajudar sua pequena ou média empresa a crescer e se organizar melhor.</p></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para explorar as ferramentas disponíveis.</p></div>", unsafe_allow_html=True)
-        st.markdown("---")
+        st.markdown("---") 
         
+        # LOGO CENTRALIZADO NA PÁGINA INICIAL 
+        # >>>>> COLOQUE A URL DO SEU LOGO AQUI TAMBÉM, SE QUISER <<<<<
+        url_logo_principal = "https://i.imgur.com/ShsUFm0.png" # URL DO SEU LOGO
+        st.markdown(f"<div style='text-align: center;'><img src='{url_logo_principal}' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) # Ajuste a largura se necessário
+        st.markdown("---")
+
         num_botoes_funcionais = len(opcoes_menu) -1 
         if num_botoes_funcionais > 0 :
-            num_cols_render = min(num_botoes_funcionais, 3) 
+            num_cols_render = min(num_botoes_funcionais, 4) 
             cols_botoes_pg_inicial = st.columns(num_cols_render)
             
             btn_idx_pg_inicial = 0
             for nome_menu_btn_pg, chave_secao_btn_pg in opcoes_menu.items():
                 if chave_secao_btn_pg != "pagina_inicial":
                     col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_cols_render] 
-                    button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" para ")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" (Guia)","").replace(" (Criar Campanha)","")
-                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v10", use_container_width=True): # Nova key
+                    button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" para ")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" (Guia)","")
+                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v10", use_container_width=True): 
                         st.session_state.area_selecionada = nome_menu_btn_pg
                         if chave_secao_btn_pg == "marketing_guiado":
                             st.session_state.start_marketing_form = False
@@ -359,11 +365,9 @@ if llm_model_instance:
                     btn_idx_pg_inicial +=1
             st.balloons()
 
-    # --- SEÇÃO MARKETING DIGITAL ---
     elif current_section_key == "marketing_guiado":
         agente.marketing_digital_guiado()
 
-    # --- SEÇÃO PLANO DE NEGÓCIOS ---
     elif current_section_key == "plano_negocios":
         st.header("📝 Elaborando seu Plano de Negócios com IA")
         st.caption("Converse comigo para construirmos seu plano passo a passo.")
@@ -374,14 +378,13 @@ if llm_model_instance:
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos recomeçar seu plano de negócios! Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!", agente.memoria_plano_negocios)
             st.rerun()
 
-    # --- SEÇÃO CÁLCULO DE PREÇOS ---
     elif current_section_key == "calculo_precos":
         st.header("💲 Cálculo de Preços Inteligente com IA")
         st.caption("Vamos definir os melhores preços para seus produtos ou serviços!")
         if not st.session_state.get(f"chat_display_{current_section_key}", []):
             inicializar_ou_resetar_chat(current_section_key, "Olá! Bem-vindo ao assistente de Cálculo de Preços. Para começar, você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?", agente.memoria_calculo_precos)
         
-        uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v8") # Nova key
+        uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v8") 
         descricao_imagem_para_ia = None 
         if uploaded_image is not None:
             if st.session_state.get('processed_image_id_pricing') != uploaded_image.id:
@@ -412,7 +415,6 @@ if llm_model_instance:
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar um novo cálculo de preços! Você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?", agente.memoria_calculo_precos)
             st.rerun()
 
-    # --- SEÇÃO GERADOR DE IDEIAS ---
     elif current_section_key == "gerador_ideias": 
         st.header("💡 Gerador de Ideias para seu Negócio com IA")
         st.caption("Descreva seus desafios ou áreas onde busca inovação, e vamos encontrar soluções juntos!")
@@ -427,17 +429,17 @@ if llm_model_instance:
             key="ideias_file_uploader_v3" 
         )
         
-        contexto_para_ia_ideias_local = None # Variável local para o contexto desta renderização
+        contexto_para_ia_ideias_local = None 
         if uploaded_files_ideias_ui:
             current_file_ids_ui = sorted([f.id for f in uploaded_files_ideias_ui])
-            if st.session_state.get('processed_file_id_ideias') != current_file_ids_ui :
+            if st.session_state.get('processed_file_id_ideias') != current_file_ids_ui or not st.session_state.get('uploaded_file_info_ideias_for_prompt'):
                 text_contents_ui = []
                 image_info_ui = []
                 for uploaded_file_item in uploaded_files_ideias_ui:
                     try:
                         if uploaded_file_item.type == "text/plain":
                             file_content_ui = uploaded_file_item.read().decode("utf-8")
-                            text_contents_ui.append(f"Conteúdo do arquivo de texto '{uploaded_file_item.name}':\n{file_content_ui[:1500]}...") 
+                            text_contents_ui.append(f"Conteúdo do arquivo de texto '{uploaded_file_item.name}':\n{file_content_ui[:2000]}...") 
                         elif uploaded_file_item.type in ["image/png", "image/jpeg"]:
                             st.image(Image.open(uploaded_file_item), caption=f"Imagem: {uploaded_file_item.name}", width=100)
                             image_info_ui.append(f"O usuário também carregou uma imagem chamada '{uploaded_file_item.name}'.")
@@ -449,25 +451,24 @@ if llm_model_instance:
                 if image_info_ui: full_context_ui += "\n\n--- INFORMAÇÃO SOBRE IMAGENS CARREGADAS ---\n" + "\n".join(image_info_ui)
                 
                 if full_context_ui:
-                    st.session_state.uploaded_file_info_ideias_for_prompt = full_context_ui.strip() # Salva no session_state
-                    contexto_para_ia_ideias_local = st.session_state.uploaded_file_info_ideias_for_prompt # Usa para este ciclo
+                    st.session_state.uploaded_file_info_ideias_for_prompt = full_context_ui.strip()
+                    contexto_para_ia_ideias_local = st.session_state.uploaded_file_info_ideias_for_prompt 
                     st.info("Arquivo(s) pronto(s) para serem considerados no próximo diálogo.")
                 else:
                     st.session_state.uploaded_file_info_ideias_for_prompt = None
                 st.session_state.processed_file_id_ideias = current_file_ids_ui
-            else: # Se os arquivos são os mesmos já processados, usa o contexto do session_state
+            else: 
                 contexto_para_ia_ideias_local = st.session_state.get('uploaded_file_info_ideias_for_prompt')
         
         kwargs_ideias_chat_ui = {}
-        if contexto_para_ia_ideias_local: # Passa o contexto para a função de chat
+        if contexto_para_ia_ideias_local: 
             kwargs_ideias_chat_ui['contexto_arquivos'] = contexto_para_ia_ideias_local
         
         exibir_chat_e_obter_input(current_section_key, "Descreva seu desafio ou peça ideias:", agente.gerar_ideias_para_negocios, **kwargs_ideias_chat_ui)
         
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias:
-            # Não limpa o uploaded_file_info_ideias_for_prompt aqui, para que ele persista
-            # até que novos arquivos sejam carregados ou a sessão seja resetada.
-            # A IA será instruída a perguntar se deve continuar usando o contexto dos arquivos.
+            if st.session_state.get('uploaded_file_info_ideias_for_prompt'):
+                pass # Não limpa aqui para o contexto persistir
             st.session_state.user_input_processed_ideias = False
         
         if st.sidebar.button("Nova Sessão de Ideias", key="btn_reset_ideias_v4"): 
@@ -477,4 +478,5 @@ else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google") # TEXTO ALTERADO
+# >>>>> LINHA DO st.sidebar.info ALTERADA CONFORME SEU PEDIDO <<<<<
+st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google")
