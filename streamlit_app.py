@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Assistente PME Pro", 
     layout="wide", 
     initial_sidebar_state="expanded",
-    page_icon="🚀"  # <--- SEU FAVICON AQUI (PODE SER EMOJI OU URL DE IMAGEM .ico/.png)
+    page_icon="🚀"  # Altere aqui para o seu favicon (URL de .ico/.png ou emoji)
 )
 
 # --- Carregar API Key e Configurar Modelo ---
@@ -248,11 +248,8 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # >>>>> LOGO NA SIDEBAR <<<<<
-    # Substitua pela URL do seu logo. Deixei o placeholder do foguete por enquanto.
-    # Se você já tem a URL do seu logo "MPE - IA Pro", coloque aqui!
-    URL_DO_SEU_LOGO_NA_SIDEBAR = "https://i.imgur.com/rGkzKxN.png" # Exemplo: foguete placeholder
-    st.sidebar.image(URL_DO_SEU_LOGO_NA_SIDEBAR, width=120) # Ajuste a largura (width) se necessário.
+    # >>>>> LOGO NA SIDEBAR - SUBSTITUA PELA URL DO SEU LOGO <<<<<
+    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) 
     
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
@@ -269,6 +266,7 @@ if llm_model_instance:
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     
+    # Inicialização global dos displays de chat e outros estados de sessão
     for nome_menu_init, chave_secao_init in opcoes_menu.items():
         if chave_secao_init and f"chat_display_{chave_secao_init}" not in st.session_state:
             st.session_state[f"chat_display_{chave_secao_init}"] = []
@@ -333,9 +331,8 @@ if llm_model_instance:
         st.markdown("---") 
         
         # LOGO CENTRALIZADO NA PÁGINA INICIAL 
-        # >>>>> SUBSTITUA PELA URL DO SEU LOGO <<<<<
-        url_logo_principal = "https://i.imgur.com/ShsUFm0.png" # URL DO SEU LOGO (PNG)
-        st.markdown(f"<div style='text-align: center;'><img src='{url_logo_principal}' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) # Ajuste a largura (width) se necessário
+        url_logo_principal = "https://i.imgur.com/ShsUFm0.png" # SUA URL DO LOGO AQUI
+        st.markdown(f"<div style='text-align: center;'><img src='{url_logo_principal}' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) 
         st.markdown("---")
 
         num_botoes_funcionais = len(opcoes_menu) -1 
@@ -474,14 +471,16 @@ if llm_model_instance:
         exibir_chat_e_obter_input(current_section_key, "Descreva seu desafio ou peça ideias:", agente.gerar_ideias_para_negocios, **kwargs_ideias_chat_ui)
         
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias:
-            # Não limpa uploaded_file_info_ideias_for_prompt para persistir até novo upload ou reset da aba
+            if st.session_state.get('uploaded_file_info_ideias_for_prompt'):
+                # Mantém o contexto do arquivo para o caso de o usuário continuar a conversa sobre ele
+                pass 
             st.session_state.user_input_processed_ideias = False
         
         if st.sidebar.button("Nova Sessão de Ideias", key="btn_reset_ideias_v4"): 
-            inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar uma nova busca por ideias! Conte-me um pouco sobre um novo desafio, dor ou área para inovar.", agente.memoria_gerador_ideias)
+            inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar uma nova busca por ideias! Conte-me sobre um novo desafio, dor ou área para inovar.", agente.memoria_gerador_ideias)
             st.rerun()
 else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google") # TEXTO DA SIDEBAR ALTERADO
+st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google")
