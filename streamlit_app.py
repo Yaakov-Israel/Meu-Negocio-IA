@@ -463,4 +463,4 @@ else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov Israel com Gemini Gaberdau")
+st.sidebar.info("Desenvolvido por Yaakov Israel")
