@@ -7,10 +7,15 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
 from PIL import Image 
-# import fitz # PyMuPDF - Deixe comentado por enquanto, adicionaremos o processamento de PDF depois
 
 # --- Configuração da Página Streamlit ---
-st.set_page_config(page_title="Assistente PME Pro", layout="wide", initial_sidebar_state="expanded")
+# Título da aba do navegador e favicon podem ser ajustados aqui:
+st.set_page_config(
+    page_title="Assistente PME Pro", 
+    layout="wide", 
+    initial_sidebar_state="expanded",
+    # page_icon="🚀"  # Exemplo de favicon com emoji, ou você pode usar uma URL para uma imagem .ico ou .png
+)
 
 # --- Carregar API Key e Configurar Modelo ---
 GOOGLE_API_KEY = None
@@ -73,22 +78,22 @@ class AssistentePMEPro:
         return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria_especifica, verbose=False)
 
     def marketing_digital_guiado(self):
-        st.header("🚀 Marketing Digital Inteligente para sua Empresa")
+        st.header("🚀 Marketing Digital com IA (Guia Prático)")
         st.markdown("Bem-vindo! Preencha os campos abaixo para criarmos juntos uma estratégia de marketing digital eficaz usando IA.")
-        with st.form(key='marketing_form_guiado_v8'): 
+        with st.form(key='marketing_form_guiado_v9'): # Nova key
             st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
-            publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v8")
-            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v8")
-            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing?", ["", "Aumentar vendas online", "Gerar mais contatos (leads)", "Fortalecer o reconhecimento da marca", "Aumentar o engajamento"], key="mdg_objetivo_v8")
+            publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v9")
+            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v9")
+            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing?", ["", "Aumentar vendas online", "Gerar mais contatos (leads)", "Fortalecer o reconhecimento da marca", "Aumentar o engajamento"], key="mdg_objetivo_v9")
             st.markdown("---")
-            mensagem_principal = st.text_area("4. Qual mensagem chave você quer comunicar?", key="mdg_mensagem_v8")
-            diferencial = st.text_input("5. O que torna seu produto/serviço especial?", key="mdg_diferencial_v8")
+            mensagem_principal = st.text_area("4. Qual mensagem chave você quer comunicar?", key="mdg_mensagem_v9")
+            diferencial = st.text_input("5. O que torna seu produto/serviço especial?", key="mdg_diferencial_v9")
             st.markdown("---")
-            descricao_imagem = st.text_input("6. Ideia para imagem (opcional):", key="mdg_img_v8")
-            descricao_video = st.text_input("7. Ideia para vídeo (opcional):", key="mdg_video_v8")
-            orcamento_ideia = st.text_input("8. Ideia de orçamento para esta ação (opcional):", key="mdg_orcamento_v8")
+            descricao_imagem = st.text_input("6. Ideia para imagem (opcional):", key="mdg_img_v9")
+            descricao_video = st.text_input("7. Ideia para vídeo (opcional):", key="mdg_video_v9")
+            orcamento_ideia = st.text_input("8. Ideia de orçamento para esta ação (opcional):", key="mdg_orcamento_v9")
             redes_opcoes = { "Não tenho certeza, preciso de sugestão": "Sugestão da IA", "Instagram": "Instagram", "Facebook": "Facebook", "TikTok": "TikTok", "LinkedIn": "LinkedIn", "WhatsApp Business": "WhatsApp", "E-mail Marketing": "E-mail Marketing", "Google Ads/Meu Negócio": "Google", "Integrada": "Integrada"}
-            rede_social_alvo_label = st.selectbox("9. Canal digital principal ou pedir sugestão?", options=list(redes_opcoes.keys()), key="mdg_canal_v8")
+            rede_social_alvo_label = st.selectbox("9. Canal digital principal ou pedir sugestão?", options=list(redes_opcoes.keys()), key="mdg_canal_v9")
             rede_social_alvo = redes_opcoes[rede_social_alvo_label]
             submit_button = st.form_submit_button(label='Gerar Meu Guia de Marketing com IA 🚀')
 
@@ -115,7 +120,7 @@ class AssistentePMEPro:
         Você é o "Assistente PME Pro", especialista em precificação com IA.
         Sua tarefa é ajudar o usuário a definir o preço de venda de um produto ou serviço, atuando como um consultor que busca as informações necessárias.
         Você faz perguntas UMA DE CADA VEZ e guia o usuário.
-        {(f"Contexto adicional: O usuário carregou uma imagem que pode ser do produto, descrita como: '{descricao_imagem_contexto}'. Considere esta informação ao falar sobre o produto.") if descricao_imagem_contexto else ""}
+        {(f"Contexto da imagem que o usuário enviou: '{descricao_imagem_contexto}'. Considere esta informação ao falar sobre o produto.") if descricao_imagem_contexto else ""}
 
         **FLUXO DA CONVERSA PARA PRECIFICAR:**
 
@@ -128,16 +133,17 @@ class AssistentePMEPro:
            c. PERGUNTE: "Em qual CIDADE e ESTADO (Ex: Juiz de Fora - MG) sua loja ou negócio principal opera? Isso nos ajudará a considerar o mercado."
            d. APÓS OBTER ESSAS INFORMAÇÕES, DIGA:
               "Ok, tenho as informações básicas: produto '[NOME DO PRODUTO INFORMADO PELO USUÁRIO]', seu custo de R$[VALOR DO CUSTO INFORMADO] em [CIDADE/ESTADO INFORMADO].
-              Agora, o passo CRUCIAL é entendermos o preço de mercado. **Eu vou te ajudar a analisar os preços praticados para produtos similares na sua região.** (No futuro, este app poderá fazer buscas automáticas na web, mas por enquanto, vamos analisar juntos com base no seu conhecimento e no que eu posso inferir).
+              Agora, o passo CRUCIAL é entendermos o preço de mercado. **Vou te ajudar a analisar os preços praticados para produtos similares na sua região.** (No futuro, este app poderá fazer buscas automáticas na web, mas por enquanto, vamos analisar juntos com base no seu conhecimento e no que eu posso inferir).
               Para termos um ponto de partida, qual MARGEM DE LUCRO (em porcentagem, ex: 20%, 50%, 100%) você gostaria de ter sobre o seu custo de R$[VALOR DO CUSTO INFORMADO]? Ou você já tem um PREÇO DE VENDA ALVO em mente?"
            e. QUANDO O USUÁRIO RESPONDER A MARGEM/PREÇO ALVO:
               - Calcule o preço de venda sugerido (Custo / (1 - %MargemDesejada/100)) ou (Custo * (1 + %MarkupDesejado/100)). Explique o cálculo de forma simples.
               - APRESENTE O PREÇO CALCULADO e diga: "Com base no seu custo e na margem desejada, o preço de venda sugerido seria R$ X.XX.
-                É muito importante que você também pesquise os preços dos seus concorrentes diretos em [CIDADE/ESTADO INFORMADO] para este produto. Você pode fazer isso visitando lojas, olhando sites de classificados locais ou grandes varejistas online que entregam na sua região. Anote os preços que encontrar."
-              - PERGUNTE: "Este preço calculado de R$ X.XX parece competitivo em relação ao que você imagina ser o preço de mercado? Ou com base na sua pesquisa (se já fez alguma), como ele se compara? Gostaria de simular com outra margem?"
+                Para validar este preço, sugiro que você pesquise em pelo menos 3-5 concorrentes online e locais. Compare este preço calculado com os preços praticados. Se estiver muito diferente, precisaremos ajustar a margem ou reanalisar os custos e a estratégia de precificação."
+              - PERGUNTE: "Este preço inicial faz sentido? Quer simular com outra margem?"
 
         **3. SE O USUÁRIO ESCOLHER "PRODUZ/CRIA":**
            a. PERGUNTE: "Excelente! Para precificar seu produto/serviço próprio, vamos detalhar os custos. Qual o nome do produto ou tipo de serviço que você cria/oferece?"
+           # ... (restante da lógica para PRODUZ/CRIA como antes) ...
            b. PERGUNTE sobre CUSTOS DIRETOS DE MATERIAL/INSUMOS: "Quais são os custos diretos de material ou insumos que você gasta para produzir UMA unidade do produto ou para realizar UMA vez o serviço? Por favor, liste os principais itens e seus custos."
            c. PERGUNTE sobre MÃO DE OBRA DIRETA: "Quanto tempo de trabalho (seu ou de funcionários) é gasto diretamente na produção de UMA unidade ou na prestação de UMA vez o serviço? E qual o custo estimado dessa mão de obra por unidade/serviço?"
            d. PERGUNTE sobre CUSTOS FIXOS MENSAIS TOTAIS: "Quais são seus custos fixOS mensais totais (aluguel, luz, internet, salários administrativos, etc.) que precisam ser cobertos?"
@@ -171,7 +177,7 @@ class AssistentePMEPro:
         - Se o usuário indicar que quer ideias (ex: "Preciso de ideias para aumentar vendas", "Estou com dificuldade em X", "Como posso inovar meu serviço Y?") ou simplesmente iniciar a conversa nesta seção,
           SUA PRIMEIRA PERGUNTA DEVE SER (de forma empática e aberta): "Olá! Que bom que você quer explorar novas ideias. {('Recebi as informações dos arquivos que você carregou. ' if contexto_arquivos else 'Você também pode carregar arquivos de texto ou imagens se achar que ajudam a dar contexto. ')} Para que eu possa te ajudar da melhor forma, conte-me um pouco mais sobre o principal desafio que você está enfrentando, a dor que sente no seu negócio, ou a área específica em que você gostaria de inovar ou receber sugestões."
 
-        **EXPLORAÇÃO DO PROBLEMA/OPORTUNidade (SE NECESSÁRIO):**
+        **EXPLORAÇÃO DO PROBLEMA/OPORTUNIDADE (SE NECESSÁRIO):**
         - Após a primeira descrição do usuário, se precisar de mais clareza (e considerando o contexto de arquivos, se houver), faça UMA ou DUAS perguntas abertas para aprofundar, como:
             - "Interessante. Para eu entender melhor a dimensão disso, [faça uma pergunta específica sobre o que ele disse ou o contexto do arquivo]?"
             - "Quais são os principais obstáculos ou dificuldades que você enfrenta atualmente em relação a isso?"
@@ -198,37 +204,34 @@ def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_
     
     st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
     
-    if memoria_agente_instancia: # Verifica se a instância da memória foi passada
+    if memoria_agente_instancia:
         memoria_agente_instancia.clear()
         memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
     
-    # Limpa estados específicos de upload ao resetar
     if area_chave == "calculo_precos":
         st.session_state.last_uploaded_image_info_pricing = None
         st.session_state.processed_image_id_pricing = None
     elif area_chave == "gerador_ideias":
-        st.session_state.uploaded_file_content_ideias = None # Para texto do .txt
-        st.session_state.uploaded_file_info_ideias_for_prompt = None # Para info de imagem ou nome do txt
+        st.session_state.uploaded_file_info_ideias_for_prompt = None 
         st.session_state.processed_file_id_ideias = None
 
 
 def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
     chat_display_key = f"chat_display_{area_chave}"
-    if chat_display_key not in st.session_state: # Segurança extra
+    if chat_display_key not in st.session_state: 
         st.session_state[chat_display_key] = []
 
     for msg_info in st.session_state[chat_display_key]:
         with st.chat_message(msg_info["role"]):
             st.markdown(msg_info["content"])
     
-    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v5") # Nova key
+    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v5") 
 
     if prompt_usuario:
         st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
         with st.chat_message("user"):
             st.markdown(prompt_usuario)
         
-        # Atualiza flags para indicar que um novo input do usuário foi processado
         if area_chave == "calculo_precos": st.session_state.user_input_processed_pricing = True
         elif area_chave == "gerador_ideias": st.session_state.user_input_processed_ideias = True
 
@@ -244,8 +247,8 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100)
-    st.sidebar.title("Assistente PME Pro")
+    st.sidebar.image("https://i.imgur.com/rGkzKxN.png", width=100) 
+    st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!")
     st.sidebar.markdown("---")
 
@@ -268,7 +271,7 @@ if llm_model_instance:
     if 'last_uploaded_image_info_pricing' not in st.session_state: st.session_state.last_uploaded_image_info_pricing = None
     if 'processed_image_id_pricing' not in st.session_state: st.session_state.processed_image_id_pricing = None
     if 'user_input_processed_pricing' not in st.session_state: st.session_state.user_input_processed_pricing = False
-    if 'uploaded_file_content_ideias' not in st.session_state: st.session_state.uploaded_file_content_ideias = None 
+    
     if 'uploaded_file_info_ideias_for_prompt' not in st.session_state: st.session_state.uploaded_file_info_ideias_for_prompt = None 
     if 'processed_file_id_ideias' not in st.session_state: st.session_state.processed_file_id_ideias = None
     if 'user_input_processed_ideias' not in st.session_state: st.session_state.user_input_processed_ideias = False
@@ -289,18 +292,16 @@ if llm_model_instance:
             st.session_state.last_uploaded_image_info_pricing = None
             st.session_state.processed_image_id_pricing = None
         if st.session_state.area_selecionada != "Gerador de Ideias para Negócios": 
-            st.session_state.uploaded_file_content_ideias = None
-            st.session_state.processed_file_id_ideias = None
             st.session_state.uploaded_file_info_ideias_for_prompt = None
+            st.session_state.processed_file_id_ideias = None
         
         if chave_secao_nav == "marketing_guiado":
             st.session_state.start_marketing_form = False
-        elif chave_secao_nav: 
+        elif chave_secao_nav and chave_secao_nav != "pagina_inicial": 
             chat_display_key_nav = f"chat_display_{chave_secao_nav}"
-            # Inicializa o chat SOMENTE SE o histórico de display estiver vazio para essa seção
             if not st.session_state.get(chat_display_key_nav, []): 
                 msg_inicial_nav = ""
-                memoria_agente_nav = None
+                memoria_agente_nav = None # Inicializa como None
                 if chave_secao_nav == "plano_negocios":
                     msg_inicial_nav = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
                     memoria_agente_nav = agente.memoria_plano_negocios
@@ -311,44 +312,49 @@ if llm_model_instance:
                     msg_inicial_nav = "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar a ter novas ideias para o seu negócio. Conte-me um pouco sobre um desafio, uma dor ou uma área que você gostaria de inovar."
                     memoria_agente_nav = agente.memoria_gerador_ideias
                 
-                if msg_inicial_nav and memoria_agente_nav:
+                if msg_inicial_nav and memoria_agente_nav: # Garante que memoria_agente_nav não é None
                     inicializar_ou_resetar_chat(chave_secao_nav, msg_inicial_nav, memoria_agente_nav)
         st.rerun()
 
     current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
 
     if current_section_key == "pagina_inicial":
-        st.title("🌟 Bem-vindo ao Assistente PME Pro! 🌟")
+        # >>>>> LINHA QUE VOCÊ PEDIU PARA ALTERAR <<<<<
+        st.title("🚀 Bem-vindo ao seu Assistente PME Pro!") 
         st.markdown("Sou seu parceiro de IA pronto para ajudar sua pequena ou média empresa a crescer e se organizar melhor.")
+        st.markdown("Use o menu à esquerda para explorar as ferramentas disponíveis.")
         st.markdown("---")
+        
         num_botoes_funcionais = len(opcoes_menu) -1 
         if num_botoes_funcionais > 0 :
-            cols_botoes_pg_inicial = st.columns(num_botoes_funcionais)
+            num_cols_render = min(num_botoes_funcionais, 3) 
+            cols_botoes_pg_inicial = st.columns(num_cols_render)
+            
             btn_idx_pg_inicial = 0
             for nome_menu_btn_pg, chave_secao_btn_pg in opcoes_menu.items():
                 if chave_secao_btn_pg != "pagina_inicial":
-                    col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_botoes_funcionais] 
+                    col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_cols_render] 
                     button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" para ")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" (Guia)","").replace(" (Criar Campanha)","")
-                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v8", use_container_width=True):
+                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v9", use_container_width=True): # Nova key
                         st.session_state.area_selecionada = nome_menu_btn_pg
-                        # Garante que, ao clicar no botão, o chat da respectiva seção seja inicializado se estiver vazio
-                        chat_display_key_btn_pg = f"chat_display_{chave_secao_btn_pg}"
                         if chave_secao_btn_pg == "marketing_guiado":
                             st.session_state.start_marketing_form = False
-                        elif not st.session_state.get(chat_display_key_btn_pg,[]):
-                            msg_inicial_btn_pg = ""
-                            memoria_agente_btn_pg = None
-                            if chave_secao_btn_pg == "plano_negocios": 
-                                msg_inicial_btn_pg = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
-                                memoria_agente_btn_pg = agente.memoria_plano_negocios
-                            elif chave_secao_btn_pg == "calculo_precos": 
-                                msg_inicial_btn_pg = "Olá! Bem-vindo ao assistente de Cálculo de Preços. Para começar, você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?"
-                                memoria_agente_btn_pg = agente.memoria_calculo_precos
-                            elif chave_secao_btn_pg == "gerador_ideias": 
-                                msg_inicial_btn_pg = "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar a ter novas ideias para o seu negócio. Conte-me um pouco sobre um desafio, uma dor ou uma área que você gostaria de inovar."
-                                memoria_agente_btn_pg = agente.memoria_gerador_ideias
-                            if msg_inicial_btn_pg and memoria_agente_btn_pg:
-                                inicializar_ou_resetar_chat(chave_secao_btn_pg, msg_inicial_btn_pg, memoria_agente_btn_pg)
+                        else: 
+                            chat_display_key_btn_pg = f"chat_display_{chave_secao_btn_pg}"
+                            if not st.session_state.get(chat_display_key_btn_pg,[]):
+                                msg_inicial_btn_pg = ""
+                                memoria_agente_btn_pg = None
+                                if chave_secao_btn_pg == "plano_negocios": 
+                                    msg_inicial_btn_pg = "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!"
+                                    memoria_agente_btn_pg = agente.memoria_plano_negocios
+                                elif chave_secao_btn_pg == "calculo_precos": 
+                                    msg_inicial_btn_pg = "Olá! Bem-vindo ao assistente de Cálculo de Preços. Para começar, você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?"
+                                    memoria_agente_btn_pg = agente.memoria_calculo_precos
+                                elif chave_secao_btn_pg == "gerador_ideias": 
+                                    msg_inicial_btn_pg = "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar a ter novas ideias para o seu negócio. Conte-me um pouco sobre um desafio, uma dor ou uma área que você gostaria de inovar."
+                                    memoria_agente_btn_pg = agente.memoria_gerador_ideias
+                                if msg_inicial_btn_pg and memoria_agente_btn_pg:
+                                    inicializar_ou_resetar_chat(chave_secao_btn_pg, msg_inicial_btn_pg, memoria_agente_btn_pg)
                         st.rerun()
                     btn_idx_pg_inicial +=1
             st.balloons()
@@ -359,7 +365,7 @@ if llm_model_instance:
     elif current_section_key == "plano_negocios":
         st.header("📝 Elaborando seu Plano de Negócios com IA")
         st.caption("Converse comigo para construirmos seu plano passo a passo.")
-        if not st.session_state.get(f"chat_display_{current_section_key}", []): # Garante inicialização
+        if not st.session_state.get(f"chat_display_{current_section_key}", []):
             inicializar_ou_resetar_chat(current_section_key, "Olá! Sou seu Assistente PME Pro. Se você gostaria de criar um plano de negócios, pode me dizer 'sim' ou 'vamos começar'!", agente.memoria_plano_negocios)
         exibir_chat_e_obter_input(current_section_key, "Sua resposta ou diga 'Crie meu plano de negócios'", agente.conversar_plano_de_negocios)
         if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v7"): 
@@ -369,37 +375,41 @@ if llm_model_instance:
     elif current_section_key == "calculo_precos":
         st.header("💲 Cálculo de Preços Inteligente com IA")
         st.caption("Vamos definir os melhores preços para seus produtos ou serviços!")
-        if not st.session_state.get(f"chat_display_{current_section_key}", []): # Garante inicialização
+        if not st.session_state.get(f"chat_display_{current_section_key}", []):
             inicializar_ou_resetar_chat(current_section_key, "Olá! Bem-vindo ao assistente de Cálculo de Preços. Para começar, você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?", agente.memoria_calculo_precos)
         
         uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v7")
-        descricao_imagem_para_ia = None
+        descricao_imagem_para_ia = None # Será preenchida se uma imagem for carregada
         if uploaded_image is not None:
+            # Apenas processa a imagem e define a descrição se for uma nova imagem
             if st.session_state.get('processed_image_id_pricing') != uploaded_image.id:
                 try:
                     st.image(Image.open(uploaded_image), caption=f"Imagem: {uploaded_image.name}", width=150)
+                    # Prepara a descrição para ser usada no kwargs da função de chat
                     descricao_imagem_para_ia = f"O usuário carregou uma imagem chamada '{uploaded_image.name}'. Considere esta informação."
                     st.session_state.last_uploaded_image_info_pricing = descricao_imagem_para_ia
                     st.session_state.processed_image_id_pricing = uploaded_image.id 
                     st.info(f"Imagem '{uploaded_image.name}' pronta para ser considerada no próximo diálogo.")
                 except Exception as e:
                     st.error(f"Erro ao processar a imagem: {e}")
-                    st.session_state.last_uploaded_image_info_pricing = None
+                    st.session_state.last_uploaded_image_info_pricing = None # Limpa em caso de erro
                     st.session_state.processed_image_id_pricing = None
         
         kwargs_preco_chat = {}
-        current_image_context = st.session_state.get('last_uploaded_image_info_pricing')
-        if current_image_context:
-             kwargs_preco_chat['descricao_imagem_contexto'] = current_image_context
+        # Usa a informação da imagem que acabou de ser processada ou a que estava no session_state
+        contexto_imagem_ativo = descricao_imagem_para_ia or st.session_state.get('last_uploaded_image_info_pricing')
+        if contexto_imagem_ativo:
+             kwargs_preco_chat['descricao_imagem_contexto'] = contexto_imagem_ativo
         
         exibir_chat_e_obter_input(current_section_key, "Sua resposta ou descreva o produto/serviço", agente.calcular_precos_interativo, **kwargs_preco_chat)
         
+        # Se um input do usuário foi processado e havia informação de imagem, ela foi "consumida"
         if 'user_input_processed_pricing' in st.session_state and st.session_state.user_input_processed_pricing:
-            if st.session_state.get('last_uploaded_image_info_pricing'):
-                 st.session_state.last_uploaded_image_info_pricing = None 
+            if st.session_state.get('last_uploaded_image_info_pricing'): # Se a info da imagem foi usada
+                 st.session_state.last_uploaded_image_info_pricing = None # Limpa para não usar no próximo input automaticamente
             st.session_state.user_input_processed_pricing = False 
 
-        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v7"):
+        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v8"): # Nova key
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar um novo cálculo de preços! Você quer precificar um produto que você COMPRA E REVENDE, ou um produto/serviço que você MESMO PRODUZ/CRIA?", agente.memoria_calculo_precos)
             st.rerun()
 
@@ -407,21 +417,21 @@ if llm_model_instance:
         st.header("💡 Gerador de Ideias para seu Negócio com IA")
         st.caption("Descreva seus desafios ou áreas onde busca inovação, e vamos encontrar soluções juntos!")
         
-        if not st.session_state.get(f"chat_display_{current_section_key}", []): # Garante msg inicial
+        if not st.session_state.get(f"chat_display_{current_section_key}", []): 
             inicializar_ou_resetar_chat(current_section_key, "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar a ter novas ideias para o seu negócio. Conte-me um pouco sobre um desafio, uma dor ou uma área que você gostaria de inovar.", agente.memoria_gerador_ideias)
 
-        # UPLOAD DE ARQUIVOS PARA GERADOR DE IDEIAS
-        uploaded_files_ideias_ui = st.file_uploader( # Nome da variável diferente para evitar conflito
+        uploaded_files_ideias_ui = st.file_uploader(
             "Envie arquivos com informações (.txt, .png, .jpg):",
             type=["txt", "png", "jpg", "jpeg"], 
             accept_multiple_files=True, 
-            key="ideias_file_uploader_v3" # Nova key
+            key="ideias_file_uploader_v3" 
         )
         
-        # Processa os arquivos e armazena o contexto no session_state para o próximo input do usuário
+        contexto_para_ia_ideias = None 
         if uploaded_files_ideias_ui:
             current_file_ids_ui = sorted([f.id for f in uploaded_files_ideias_ui])
-            if st.session_state.get('processed_file_id_ideias') != current_file_ids_ui:
+            # Processa os arquivos somente se forem diferentes dos já processados ou se o contexto ainda não foi preparado para o prompt
+            if st.session_state.get('processed_file_id_ideias') != current_file_ids_ui or not st.session_state.get('uploaded_file_info_ideias_for_prompt'):
                 text_contents_ui = []
                 image_info_ui = []
                 for uploaded_file_item in uploaded_files_ideias_ui:
@@ -442,6 +452,9 @@ if llm_model_instance:
                 if full_context_ui:
                     st.session_state.uploaded_file_info_ideias_for_prompt = full_context_ui.strip()
                     st.info("Arquivo(s) pronto(s) para serem considerados no próximo diálogo.")
+                else: # Se nenhum arquivo foi processado com sucesso mas houve tentativa de upload
+                    st.session_state.uploaded_file_info_ideias_for_prompt = None
+
                 st.session_state.processed_file_id_ideias = current_file_ids_ui
         
         kwargs_ideias_chat_ui = {}
@@ -451,6 +464,7 @@ if llm_model_instance:
         
         exibir_chat_e_obter_input(current_section_key, "Descreva seu desafio ou peça ideias:", agente.gerar_ideias_para_negocios, **kwargs_ideias_chat_ui)
         
+        # Limpa o contexto do arquivo APÓS ter sido potencialmente usado pela IA na chamada acima
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias:
             if st.session_state.get('uploaded_file_info_ideias_for_prompt'):
                 st.session_state.uploaded_file_info_ideias_for_prompt = None 
@@ -463,4 +477,5 @@ else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov Israel")
+# >>>>> LINHA QUE VOCÊ QUERIA ALTERAR (abaixo) <<<<<
+st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google") # TEXTO ALTERADO
