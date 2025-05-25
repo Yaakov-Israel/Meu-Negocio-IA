@@ -197,7 +197,7 @@ class AssistentePMEPro:
 # --- Funções Utilitárias de Chat ---
 def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
     chat_display_key = f"chat_display_{area_chave}"
-    if chat_display_key not in st.session_state: # Inicializa se não existir
+    if chat_display_key not in st.session_state:
         st.session_state[chat_display_key] = []
     
     st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
@@ -212,6 +212,7 @@ def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_
     elif area_chave == "gerador_ideias":
         st.session_state.uploaded_file_info_ideias_for_prompt = None 
         st.session_state.processed_file_id_ideias = None
+
 
 def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
     chat_display_key = f"chat_display_{area_chave}"
@@ -244,9 +245,9 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # >>>>> SEU LOGO NA SIDEBAR <<<<<
-    URL_DO_SEU_LOGO = "https://i.imgur.com/ShsUFm0.png" # Link direto do seu logo
-    st.sidebar.image(URL_DO_SEU_LOGO, width=150) # AUMENTEI A LARGURA (width) PARA TESTE
+    # >>>>> SEU LOGO NA SIDEBAR - URL ATUALIZADA E WIDTH AJUSTADO <<<<<
+    URL_DO_SEU_LOGO = "https://i.imgur.com/7IIYxq1.png" 
+    st.sidebar.image(URL_DO_SEU_LOGO, width=200) # <<<< WIDTH AJUSTADO PARA 200
     
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
@@ -265,13 +266,13 @@ if llm_model_instance:
     
     for nome_menu_init, chave_secao_init in opcoes_menu.items():
         if chave_secao_init and f"chat_display_{chave_secao_init}" not in st.session_state:
-            st.session_state[f"chat_display_{chave_secao_init}"] = [] # Inicializa como lista vazia
+            st.session_state[f"chat_display_{chave_secao_init}"] = []
     
-    # Inicialização de outros estados de sessão
     if 'start_marketing_form' not in st.session_state: st.session_state.start_marketing_form = False
     if 'last_uploaded_image_info_pricing' not in st.session_state: st.session_state.last_uploaded_image_info_pricing = None
     if 'processed_image_id_pricing' not in st.session_state: st.session_state.processed_image_id_pricing = None
     if 'user_input_processed_pricing' not in st.session_state: st.session_state.user_input_processed_pricing = False
+    
     if 'uploaded_file_info_ideias_for_prompt' not in st.session_state: st.session_state.uploaded_file_info_ideias_for_prompt = None 
     if 'processed_file_id_ideias' not in st.session_state: st.session_state.processed_file_id_ideias = None
     if 'user_input_processed_ideias' not in st.session_state: st.session_state.user_input_processed_ideias = False
@@ -325,7 +326,7 @@ if llm_model_instance:
         st.markdown("---") 
         
         # >>>>> LOGO CENTRALIZADO NA PÁGINA INICIAL (USANDO SUA NOVA URL E TAMANHO AUMENTADO) <<<<<
-        st.markdown(f"<div style='text-align: center;'><img src='https://i.imgur.com/7IIYxq1.png' alt='Logo Assistente PME Pro' width='500'></div>", unsafe_allow_html=True) 
+        st.markdown(f"<div style='text-align: center;'><img src='https://i.imgur.com/7IIYxq1.png' alt='Logo Assistente PME Pro' width='200'></div>", unsafe_allow_html=True) # <<<< WIDTH AJUSTADO PARA 200
         st.markdown("---")
 
         num_botoes_funcionais = len(opcoes_menu) -1 
