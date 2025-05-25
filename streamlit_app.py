@@ -1,13 +1,35 @@
 import streamlit as st
 import os
+import google.generativeai as genai # Adicionado aqui, mas a configuração ainda precisa ser feita por você
 
 # --- Configuração Inicial do Modelo Gemini (Exemplo) ---
-# Substitua pela sua chave de API e configuração do modelo
-# Exemplo:
-# GOOGLE_API_KEY="SUA_CHAVE_API_AQUI"
-# import google.generativeai as genai
-# genai.configure(api_key=GOOGLE_API_KEY)
-# model = genai.GenerativeModel('gemini-pro') # Ou o modelo que estiver usando (gemini-1.5-pro-latest, etc)
+# Substitua pela sua chave de API e configuração do modelo.
+# Esta seção é um placeholder. VOCÊ PRECISA CONFIGURAR SUA CHAVE DE API.
+
+# GOOGLE_API_KEY = "SUA_CHAVE_API_AQUI" # Descomente e cole sua chave aqui ou use variáveis de ambiente
+# if 'gemini_model' not in st.session_state:
+#     try:
+#         api_key_to_use = os.getenv("GOOGLE_API_KEY") if not GOOGLE_API_KEY else GOOGLE_API_KEY # Prioriza a chave no código se preenchida
+#
+#         if api_key_to_use:
+#             genai.configure(api_key=api_key_to_use)
+#             model = genai.GenerativeModel(
+#                 model_name="gemini-1.5-pro-latest", # Ou seu modelo preferido
+#                 # generation_config=generation_config, # Se tiver config específica
+#                 # safety_settings=safety_settings # Se tiver config específica
+#             )
+#             st.session_state.gemini_model = model
+#             st.session_state.gemini_model_initialized = True
+#             # st.sidebar.success("✅ Modelo LLM (Gemini) inicializado!") # Feedback opcional
+#         else:
+#             st.sidebar.error("🔑 Chave da API do Google não configurada. A IA não funcionará.")
+#             st.session_state.gemini_model_initialized = False
+#             # st.stop() # Para a execução se a chave for crucial e não encontrada
+#
+#     except Exception as e:
+#         st.error(f"❌ Erro ao inicializar o modelo Gemini: {e}")
+#         st.session_state.gemini_model_initialized = False
+#         st.stop() # Para a execução se a inicialização falhar
 
 # --- Placeholder para a chamada à API do Gemini ---
 def call_gemini_api(prompt_text, user_files_info=None):
@@ -15,10 +37,15 @@ def call_gemini_api(prompt_text, user_files_info=None):
     Placeholder para a chamada real à API do Gemini.
     Substitua esta função pela sua implementação de chamada ao Gemini.
     """
+    # Verifique se o modelo foi inicializado (simulação)
+    # if not st.session_state.get('gemini_model_initialized', False) and not st.session_state.get('gemini_model'):
+    #     st.error("Modelo Gemini não inicializado. Verifique a configuração da API Key.")
+    #     return "Erro: Modelo não inicializado."
+
     st.markdown("---")
-    st.write("ℹ️ **Informação para Desenvolvimento:**")
+    st.write("ℹ️ **Informação para Desenvolvimento (Placeholder):**")
     st.write("**Prompt Enviado para IA (resumido):**")
-    st.text_area("Prompt:", prompt_text[:1000] + "..." if len(prompt_text) > 1000 else prompt_text, height=150)
+    st.text_area("Prompt:", prompt_text[:1000] + "..." if len(prompt_text) > 1000 else prompt_text, height=150, key=f"prompt_debug_{hash(prompt_text)}")
     if user_files_info:
         st.write("**Arquivos Considerados (simulado):**")
         for file_info in user_files_info:
@@ -26,9 +53,17 @@ def call_gemini_api(prompt_text, user_files_info=None):
     st.markdown("---")
 
     # Simulação de resposta da IA
-    # Na implementação real, você usaria:
-    # response = model.generate_content(prompt_text) # ou similar, dependendo da sua config/SDK
-    # return response.text
+    # Na implementação real, você usaria algo como:
+    # if st.session_state.get('gemini_model'):
+    # try:
+    #       response = st.session_state.gemini_model.generate_content(prompt_text)
+    #       return response.text
+    #     except Exception as e:
+    #         st.error(f"Erro na chamada ao Gemini: {e}")
+    #         return f"Erro ao gerar resposta da IA: {e}"
+    # else:
+    #     return "Modelo não disponível para gerar resposta."
+
     if "criar post" in prompt_text.lower():
         return f"Conteúdo do post gerado pela IA com base no prompt:\n{prompt_text[:200]}...\n\n[Aqui viria o post completo, hashtags, emojis, etc.]"
     elif "criar campanha" in prompt_text.lower():
@@ -62,13 +97,20 @@ def display_social_media_options(section_key, all_option_text="Selecionar Todas 
         with cols[col_index]:
             selected_platforms_map[platform_name] = st.checkbox(platform_name, key=platforms_options[platform_name])
 
+    # O checkbox "Selecionar Todas" precisa de uma lógica mais elaborada com callbacks ou st.form para refletir imediatamente na UI.
+    # Por simplicidade, ele definirá o estado que será lido no processamento.
     if st.checkbox(all_option_text, key=f"{section_key}_all_social"):
+        # Esta lógica de "selecionar todos" aqui é para quando o form for submetido.
+        # A UI dos checkboxes individuais não será atualizada dinamicamente por este checkbox sem callbacks.
         for platform_name in platform_keys:
             selected_platforms_map[platform_name] = True
-            # Para atualizar visualmente, precisaríamos de um re-run ou callbacks mais complexos.
-            # O estado é capturado corretamente no backend.
+
 
     actual_selected_platforms = [p for p, is_selected in selected_platforms_map.items() if is_selected]
+    # Se "Selecionar Todas" foi marcado, sobrescreve
+    if selected_platforms_map.get(all_option_text, False) or st.session_state.get(f"{section_key}_all_social", False): # Verifica o estado do checkbox "Selecionar Todas"
+         actual_selected_platforms = platform_keys
+
 
     if any(p in actual_selected_platforms for p in ["E-mail Marketing (lista própria)", "E-mail Marketing (Campanha Google Ads)"]):
         st.caption("💡 Para e-mail marketing, a IA ajudará na criação do texto, sugestões de imagens/layout e estratégia. O disparo da ação e a gestão de listas/campanhas no Google Ads requerem ferramentas externas.")
@@ -95,13 +137,14 @@ def get_objective_details(section_key, type_of_creation="post/campanha"):
 
 def display_output_options(generated_content, section_key, file_name_prefix="conteudo_gerado"):
     st.subheader("Resultado da IA e Próximos Passos:")
-    st.markdown(generated_content) # Usar markdown para melhor formatação da resposta da IA
+    st.markdown(generated_content)
 
     st.download_button(
         label="📥 Baixar Conteúdo Gerado",
         data=generated_content.encode('utf-8'),
         file_name=f"{file_name_prefix}_{section_key}.txt",
-        mime="text/plain"
+        mime="text/plain",
+        key=f"download_{section_key}"
     )
 
     cols_actions = st.columns(2)
@@ -119,7 +162,6 @@ def marketing_digital_section():
     st.caption("Seu copiloto para criar estratégias de marketing digital eficazes!")
     st.markdown("---")
 
-    # --- Upload de Arquivos de Suporte (na Sidebar) ---
     with st.sidebar:
         st.header("📎 Material de Suporte")
         st.caption("Envie arquivos para contextualizar a IA na criação das suas ações de marketing.")
@@ -133,16 +175,13 @@ def marketing_digital_section():
         if uploaded_files:
             for uploaded_file in uploaded_files:
                 user_files_info.append({"name": uploaded_file.name, "type": uploaded_file.type, "size": uploaded_file.size})
-                # Para usar o conteúdo: uploaded_file.read() - Cuidado com arquivos grandes
             st.success(f"{len(uploaded_files)} arquivo(s) carregado(s) com sucesso!")
             with st.expander("Ver arquivos carregados"):
                 for file_info in user_files_info:
                     st.write(f"- {file_info['name']} ({file_info['type']})")
         st.markdown("---")
         st.info("A IA poderá usar o nome e tipo dos arquivos para entender o contexto. Para análise de conteúdo de texto, a implementação da chamada ao Gemini precisará ler e enviar o texto do arquivo.")
-        # Removido o st.markdown("---") daqui para adicionar o solicitado pelo usuário no final do script global
 
-    # --- Pergunta Inicial e Menu de Ações ---
     main_action = st.radio(
         "Olá! O que você quer fazer agora em marketing digital?",
         (
@@ -158,8 +197,6 @@ def marketing_digital_section():
         key="main_marketing_action_choice"
     )
     st.markdown("---")
-
-    # --- Lógica para cada Ação ---
 
     if main_action == "1 - Criar post para redes sociais ou e-mail":
         st.subheader("✨ Criador de Posts com IA")
@@ -208,7 +245,7 @@ def marketing_digital_section():
         with st.form("campaign_creator_form"):
             campaign_name = st.text_input("Nome da Campanha (para sua organização):", key="campaign_name")
             selected_platforms_camp = display_social_media_options("campaign")
-            campaign_details = get_objective_details("campaign", "campanha") # Reutiliza a função
+            campaign_details = get_objective_details("campaign", "campanha")
             campaign_duration = st.text_input("Duração Estimada da Campanha (Ex: 1 semana, 1 mês, lançamento pontual):", key="campaign_duration")
             campaign_budget_approx = st.text_input("Orçamento Aproximado para Impulsionamento (opcional, ex: R$500):", key="campaign_budget")
             specific_kpis = st.text_area(
@@ -259,7 +296,6 @@ def marketing_digital_section():
                     st.session_state.generated_campaign_content = generated_content
         if 'generated_campaign_content' in st.session_state:
             display_output_options(st.session_state.generated_campaign_content, "campaign", "campanha_ia")
-
 
     elif main_action == "3 - Criar estrutura e conteúdo para landing page":
         st.subheader("📄 Gerador de Estrutura para Landing Pages com IA")
@@ -313,7 +349,8 @@ def marketing_digital_section():
                 label="📥 Baixar Sugestões da Landing Page",
                 data=st.session_state.generated_lp_content.encode('utf-8'),
                 file_name="landing_page_sugestoes_ia.txt",
-                mime="text/plain"
+                mime="text/plain",
+                key="download_lp"
             )
 
     elif main_action == "4 - Criar estrutura e conteúdo para site com IA":
@@ -370,7 +407,8 @@ def marketing_digital_section():
                 label="📥 Baixar Sugestões do Site",
                 data=st.session_state.generated_site_content.encode('utf-8'),
                 file_name="site_sugestoes_ia.txt",
-                mime="text/plain"
+                mime="text/plain",
+                key="download_site"
             )
 
     elif main_action == "5 - Encontrar meu cliente ideal (Análise de Público-Alvo)":
@@ -427,7 +465,8 @@ def marketing_digital_section():
                 label="📥 Baixar Análise de Público",
                 data=st.session_state.generated_client_analysis.encode('utf-8'),
                 file_name="analise_publico_alvo_ia.txt",
-                mime="text/plain"
+                mime="text/plain",
+                key="download_client_analysis"
             )
 
     elif main_action == "6 - Conhecer a concorrência (Análise Competitiva)":
@@ -488,46 +527,50 @@ def marketing_digital_section():
                 label="📥 Baixar Análise da Concorrência",
                 data=st.session_state.generated_competitor_analysis.encode('utf-8'),
                 file_name="analise_concorrencia_ia.txt",
-                mime="text/plain"
+                mime="text/plain",
+                key="download_competitor_analysis"
             )
 
     elif main_action == "Selecione uma opção...":
         st.info("👋 Bem-vindo à seção de Marketing Digital com IA! Escolha uma das opções acima para começar a impulsionar seu negócio.")
-        # st.image("https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1", caption="Vamos criar juntos estratégias incríveis!")
+        # st.image("https://via.placeholder.com/1260x300.png/007bff/FFFFFF?Text=Marketing+Digital+com+IA", caption="Vamos criar juntos estratégias incríveis!")
 
-    # --- Rodapé da Página Principal ---
+
     st.markdown("---")
     st.caption("Assistente PME Pro - Marketing Digital com IA")
 
 
-# --- Ponto de Entrada Principal do Aplicativo ---
 if __name__ == "__main__":
     st.set_page_config(page_title="PME Pro - Marketing Digital", layout="wide", initial_sidebar_state="expanded")
     
-    # Título principal do App (pode ser movido para uma página de boas-vindas se o app tiver múltiplas seções)
-    # st.title("Assistente PME Pro") # Comentado para focar no título da seção
-    # st.subheader("IA para seu Negócio Decolar!") # Comentado para focar no título da seção
+    # Bloco de inicialização do Gemini (placeholder, requer sua chave e configuração)
+    # Mantenha comentado e configure conforme suas necessidades.
+    # A inicialização real do 'genai' e 'model' deve ser feita aqui ou importada.
+    # O código abaixo é uma sugestão de como lidar com isso.
+    if 'gemini_model_initialized' not in st.session_state:
+        st.session_state.gemini_model_initialized = False # Default
+        # --- Exemplo de como você poderia inicializar ---
+        # GOOGLE_API_KEY_FROM_CODE = "" # Coloque sua chave aqui se não usar os.getenv
+        # api_key = os.getenv("GOOGLE_API_KEY") or GOOGLE_API_KEY_FROM_CODE
+        # if api_key:
+        #     try:
+        #         genai.configure(api_key=api_key)
+        #         model = genai.GenerativeModel('gemini-1.5-pro-latest') # Ou o modelo desejado
+        #         st.session_state.gemini_model = model
+        #         st.session_state.gemini_model_initialized = True
+        #         # st.sidebar.success("Modelo Gemini pronto!") # Descomente para feedback
+        #     except Exception as e:
+        #         st.sidebar.error(f"Erro ao inicializar Gemini: {e}")
+        #         st.session_state.gemini_model_initialized = False
+        # else:
+        #     st.sidebar.warning("Chave API Gemini não configurada.")
+        #     st.session_state.gemini_model_initialized = False
+        # Para este placeholder, vamos apenas simular que precisa ser configurado:
+        if not st.session_state.gemini_model_initialized:
+             st.sidebar.warning("Integração com IA (Gemini) não está ativa neste placeholder. Configure sua API Key.")
 
-    # Inicialização do modelo Gemini (faça isso uma vez, idealmente no início do script ou em um utilitário)
-    # try:
-    #    if 'gemini_model_initialized' not in st.session_state:
-    #        # Coloque sua lógica de inicialização do Gemini aqui
-    #        # Por exemplo, se estiver usando a biblioteca google.generativeai:
-    #        # GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") # Ou sua chave diretamente
-    #        # if not GOOGLE_API_KEY:
-    #        #    st.error("Chave da API do Google não encontrada. Configure a variável de ambiente GOOGLE_API_KEY.")
-    #        #    st.stop()
-    #        # genai.configure(api_key=GOOGLE_API_KEY)
-    #        # model = genai.GenerativeModel('gemini-pro') # ou seu modelo específico
-    #        # st.session_state.gemini_model = model
-    #        st.session_state.gemini_model_initialized = True
-    #        # st.sidebar.success("✅ Modelo LLM (Gemini) pronto!") # Opcional
-    # except Exception as e:
-    #    st.error(f"❌ Erro ao inicializar o modelo Gemini: {e}")
-    #    st.stop()
 
     marketing_digital_section()
 
-    # Linhas finais solicitadas pelo usuário para a sidebar
     st.sidebar.markdown("---")
     st.sidebar.info("Desenvolvido por Yaakov Israel com AI Google")
