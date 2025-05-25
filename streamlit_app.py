@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Assistente PME Pro", 
     layout="wide", 
     initial_sidebar_state="expanded",
-    page_icon="🚀"  # Altere aqui para o seu favicon (URL de .ico/.png ou emoji)
+    page_icon="🚀" 
 )
 
 # --- Carregar API Key e Configurar Modelo ---
@@ -79,21 +79,21 @@ class AssistentePMEPro:
     def marketing_digital_guiado(self):
         st.header("🚀 Marketing Digital com IA (Guia Prático)")
         st.markdown("Bem-vindo! Preencha os campos abaixo para criarmos juntos uma estratégia de marketing digital eficaz usando IA.")
-        with st.form(key='marketing_form_guiado_v9'): 
+        with st.form(key='marketing_form_guiado_v9_clean'): 
             st.markdown("##### 📋 Conte-nos sobre seu Negócio e Objetivos")
-            publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v9")
-            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v9")
-            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing?", ["", "Aumentar vendas online", "Gerar mais contatos (leads)", "Fortalecer o reconhecimento da marca", "Aumentar o engajamento"], key="mdg_objetivo_v9")
+            publico_alvo = st.text_input("1. Quem você quer alcançar?", key="mdg_publico_v9_clean")
+            produto_servico = st.text_input("2. Qual produto ou serviço principal você oferece?", key="mdg_produto_v9_clean")
+            objetivo_campanha = st.selectbox("3. Qual o principal objetivo com esta ação de marketing?", ["", "Aumentar vendas online", "Gerar mais contatos (leads)", "Fortalecer o reconhecimento da marca", "Aumentar o engajamento"], key="mdg_objetivo_v9_clean")
             st.markdown("---")
-            mensagem_principal = st.text_area("4. Qual mensagem chave você quer comunicar?", key="mdg_mensagem_v9")
-            diferencial = st.text_input("5. O que torna seu produto/serviço especial?", key="mdg_diferencial_v9")
+            mensagem_principal = st.text_area("4. Qual mensagem chave você quer comunicar?", key="mdg_mensagem_v9_clean")
+            diferencial = st.text_input("5. O que torna seu produto/serviço especial?", key="mdg_diferencial_v9_clean")
             st.markdown("---")
-            descricao_imagem = st.text_input("6. Ideia para imagem (opcional):", key="mdg_img_v9")
-            descricao_video = st.text_input("7. Ideia para vídeo (opcional):", key="mdg_video_v9")
-            orcamento_ideia = st.text_input("8. Ideia de orçamento para esta ação (opcional):", key="mdg_orcamento_v9")
+            descricao_imagem = st.text_input("6. Ideia para imagem (opcional):", key="mdg_img_v9_clean")
+            descricao_video = st.text_input("7. Ideia para vídeo (opcional):", key="mdg_video_v9_clean")
+            orcamento_ideia = st.text_input("8. Ideia de orçamento para esta ação (opcional):", key="mdg_orcamento_v9_clean")
             redes_opcoes = { "Não tenho certeza, preciso de sugestão": "Sugestão da IA", "Instagram": "Instagram", "Facebook": "Facebook", "TikTok": "TikTok", "LinkedIn": "LinkedIn", "WhatsApp Business": "WhatsApp", "E-mail Marketing": "E-mail Marketing", "Google Ads/Meu Negócio": "Google", "Integrada": "Integrada"}
-            rede_social_alvo_label = st.selectbox("9. Canal digital principal ou pedir sugestão?", options=list(redes_opcoes.keys()), key="mdg_canal_v9")
-            rede_social_alvo = redes_opcoes[rede_social_alvo_label]
+            rede_social_alvo_label = st.selectbox("9. Canal digital principal ou pedir sugestão?", options=list(redes_opcoes.keys()), key="mdg_canal_v9_clean")
+            rede_social_alvo = redes_opcoes.get(rede_social_alvo_label, "Sugestão da IA")
             submit_button = st.form_submit_button(label='Gerar Meu Guia de Marketing com IA 🚀')
 
         if submit_button:
@@ -197,24 +197,21 @@ class AssistentePMEPro:
 # --- Funções Utilitárias de Chat ---
 def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
     chat_display_key = f"chat_display_{area_chave}"
-    # Garante que a lista de display exista no session_state, inicializando se necessário
-    if chat_display_key not in st.session_state:
+    if chat_display_key not in st.session_state: # Inicializa se não existir
         st.session_state[chat_display_key] = []
     
     st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
     
-    if memoria_agente_instancia: # Verifica se a instância da memória foi passada
+    if memoria_agente_instancia:
         memoria_agente_instancia.clear()
         memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
     
-    # Limpa estados específicos de upload ao resetar
     if area_chave == "calculo_precos":
         st.session_state.last_uploaded_image_info_pricing = None
         st.session_state.processed_image_id_pricing = None
     elif area_chave == "gerador_ideias":
         st.session_state.uploaded_file_info_ideias_for_prompt = None 
         st.session_state.processed_file_id_ideias = None
-
 
 def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
     chat_display_key = f"chat_display_{area_chave}"
@@ -232,7 +229,6 @@ def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_ag
         with st.chat_message("user"):
             st.markdown(prompt_usuario)
         
-        # Atualiza flags para indicar que um novo input do usuário foi processado
         if area_chave == "calculo_precos": st.session_state.user_input_processed_pricing = True
         elif area_chave == "gerador_ideias": st.session_state.user_input_processed_ideias = True
 
@@ -248,8 +244,9 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # >>>>> LOGO NA SIDEBAR - SUBSTITUA PELA URL DO SEU LOGO <<<<<
-    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) 
+    # >>>>> SEU LOGO NA SIDEBAR <<<<<
+    URL_DO_SEU_LOGO = "https://i.imgur.com/ShsUFm0.png" # Link direto do seu logo
+    st.sidebar.image(URL_DO_SEU_LOGO, width=150) # AUMENTEI A LARGURA (width) PARA TESTE
     
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
@@ -266,16 +263,15 @@ if llm_model_instance:
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     
-    # Inicialização global dos displays de chat e outros estados de sessão
     for nome_menu_init, chave_secao_init in opcoes_menu.items():
         if chave_secao_init and f"chat_display_{chave_secao_init}" not in st.session_state:
-            st.session_state[f"chat_display_{chave_secao_init}"] = []
+            st.session_state[f"chat_display_{chave_secao_init}"] = [] # Inicializa como lista vazia
     
+    # Inicialização de outros estados de sessão
     if 'start_marketing_form' not in st.session_state: st.session_state.start_marketing_form = False
     if 'last_uploaded_image_info_pricing' not in st.session_state: st.session_state.last_uploaded_image_info_pricing = None
     if 'processed_image_id_pricing' not in st.session_state: st.session_state.processed_image_id_pricing = None
     if 'user_input_processed_pricing' not in st.session_state: st.session_state.user_input_processed_pricing = False
-    
     if 'uploaded_file_info_ideias_for_prompt' not in st.session_state: st.session_state.uploaded_file_info_ideias_for_prompt = None 
     if 'processed_file_id_ideias' not in st.session_state: st.session_state.processed_file_id_ideias = None
     if 'user_input_processed_ideias' not in st.session_state: st.session_state.user_input_processed_ideias = False
@@ -322,17 +318,14 @@ if llm_model_instance:
 
     current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
 
-    # --- PÁGINA INICIAL ---
     if current_section_key == "pagina_inicial":
-        # TÍTULO E TEXTOS CENTRALIZADOS
         st.markdown("<div style='text-align: center;'><h1>🚀 Bem-vindo ao seu Assistente PME Pro!</h1></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Sou seu parceiro de IA pronto para ajudar sua pequena ou média empresa a crescer e se organizar melhor.</p></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para explorar as ferramentas disponíveis.</p></div>", unsafe_allow_html=True)
         st.markdown("---") 
         
-        # LOGO CENTRALIZADO NA PÁGINA INICIAL 
-        url_logo_principal = "https://i.imgur.com/ShsUFm0.png" # SUA URL DO LOGO AQUI
-        st.markdown(f"<div style='text-align: center;'><img src='{url_logo_principal}' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) 
+        # >>>>> LOGO CENTRALIZADO NA PÁGINA INICIAL (USANDO SUA NOVA URL E TAMANHO AUMENTADO) <<<<<
+        st.markdown(f"<div style='text-align: center;'><img src='https://i.imgur.com/7IIYxq1.png' alt='Logo Assistente PME Pro' width='500'></div>", unsafe_allow_html=True) 
         st.markdown("---")
 
         num_botoes_funcionais = len(opcoes_menu) -1 
@@ -472,7 +465,6 @@ if llm_model_instance:
         
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias:
             if st.session_state.get('uploaded_file_info_ideias_for_prompt'):
-                # Mantém o contexto do arquivo para o caso de o usuário continuar a conversa sobre ele
                 pass 
             st.session_state.user_input_processed_ideias = False
         
