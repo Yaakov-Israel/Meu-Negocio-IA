@@ -53,8 +53,7 @@ else:
 def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
     st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
     details = {}
-    # Usando chaves ultra-únicas para esta versão
-    key_suffix = "_v15_final" 
+    key_suffix = "_v16_final" 
     details["objective"] = st.text_area(
         f"Qual o principal objetivo com est(e/a) {type_of_creation}?",
         key=f"{section_key}_obj_new{key_suffix}" 
@@ -74,7 +73,7 @@ def _marketing_get_objective_details(section_key, type_of_creation="post/campanh
 def _marketing_display_output_options(generated_content, section_key, file_name_prefix="conteudo_gerado"):
     st.subheader("🎉 Resultado da IA e Próximos Passos:")
     st.markdown(generated_content)
-    key_suffix = "_v15_final"
+    key_suffix = "_v16_final"
     st.download_button(
         label="📥 Baixar Conteúdo Gerado",
         data=generated_content.encode('utf-8'),
@@ -97,7 +96,7 @@ def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_pla
     if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo do post."); return
     with st.spinner("🤖 A IA está criando seu post... Aguarde!"):
         prompt_parts = [
-            "**Instrução para IA:** Você é um especialista em copywriting e marketing digital...", # Prompt completo omitido
+            "**Instrução para IA:** Você é um especialista em copywriting e marketing digital...", 
             f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.", f"**Objetivo:** {details_dict['objective']}",
              "6. Se o usuário enviou arquivos de suporte..."
         ] 
@@ -110,14 +109,13 @@ def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign
     if not selected_platforms_list: st.warning("Por favor, selecione pelo menos uma plataforma."); return
     if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo da campanha."); return
     with st.spinner("🧠 A IA está elaborando seu plano de campanha..."):
-        prompt_parts = ["**Instrução para IA:** Você é um estrategista de marketing digital...", f"**Nome da Campanha:** {campaign_specifics['name']}", # Prompt completo omitido
+        prompt_parts = ["**Instrução para IA:** Você é um estrategista de marketing digital...", f"**Nome da Campanha:** {campaign_specifics['name']}",
                         "Se o usuário enviou arquivos de suporte..."] 
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
         ai_response = llm.invoke(HumanMessage(content=final_prompt))
         st.session_state.generated_campaign_content_new = ai_response.content
 
-# ... (Outros _marketing_handle_... functions não precisam de alteração nesta etapa)
 def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
     if not lp_details["purpose"] or not lp_details["main_offer"] or not lp_details["cta"]: st.warning("Por favor, preencha objetivo, oferta e CTA."); return
     with st.spinner("🎨 A IA está desenhando a estrutura da sua landing page..."):
@@ -180,13 +178,13 @@ class AssistentePMEPro:
         st.markdown("---")
 
         marketing_files_info_for_prompt = []
-        with st.sidebar: # Este uploader é para arquivos de contexto geral da seção de marketing
+        with st.sidebar:
             st.subheader("📎 Suporte para Marketing")
             uploaded_marketing_files = st.file_uploader(
                 "Upload para Marketing (opcional):",
                 accept_multiple_files=True,
                 type=['png', 'jpg', 'jpeg', 'txt', 'md', 'pdf', 'csv', 'xlsx', 'docx', 'pptx', 'mp4', 'mov'],
-                key="marketing_files_uploader_v15_final" 
+                key="marketing_files_uploader_v16_final" 
             )
             if uploaded_marketing_files:
                 temp_marketing_files_info = []
@@ -200,7 +198,7 @@ class AssistentePMEPro:
                             st.write(f"- {finfo['name']} ({finfo['type']})")
             st.markdown("---")
 
-        main_action_key = "main_marketing_action_choice_v15_final"
+        main_action_key = "main_marketing_action_choice_v16_final"
         main_action = st.radio(
             "Olá! O que você quer fazer agora em marketing digital?",
             ("Selecione uma opção...", "1 - Criar post para redes sociais ou e-mail",
@@ -211,7 +209,6 @@ class AssistentePMEPro:
         )
         st.markdown("---")
         
-        # Configuração das plataformas, usada diretamente nos formulários abaixo
         platforms_config_options = { 
             "Instagram": "insta", "Facebook": "fb", "X (Twitter)": "x", "WhatsApp": "wpp", 
             "TikTok": "tt", "Kwai": "kwai", "YouTube (descrição/roteiro)": "yt",
@@ -223,25 +220,26 @@ class AssistentePMEPro:
 
         if main_action == "1 - Criar post para redes sociais ou e-mail":
             st.subheader("✨ Criador de Posts com IA")
-            with st.form("post_creator_form_v15_final"): # Chaves únicas para cada form
-                st.subheader(" Plataformas Desejadas:") # Subheader diretamente no form
+            with st.form("post_creator_form_v16_final"): 
+                st.subheader(" Plataformas Desejadas:") 
                 
-                key_select_all_post = f"post_v15_select_all"
-                st.checkbox("Selecionar Todas as Plataformas Acima", key=key_select_all_post)
+                key_for_select_all_post = f"post_v16_select_all"
+                # Label do checkbox "Selecionar Todas" AQUI ABAIXO 👇
+                st.checkbox("Selecionar todas as plataformas abaixo", key=key_for_select_all_post) 
                 
                 cols_post = st.columns(2)
-                keys_for_platforms_post = {} # Dicionário para armazenar platform_name: key
-                has_email_option_post = False
+                keys_for_platforms_post = {} 
+                has_email_option_post = any("E-mail Marketing" in name for name in platforms_config_options.keys())
+
                 for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                     col_index = i % 2
-                    platform_key = f"post_v15_platform_{platform_suffix}" # Chave única para este checkbox
+                    platform_key = f"post_v16_platform_{platform_suffix}"
                     keys_for_platforms_post[platform_name] = platform_key
                     with cols_post[col_index]:
-                        st.checkbox(platform_name, key=platform_key) # Renderização simples
-                    if "E-mail Marketing" in platform_name: has_email_option_post = True
+                        st.checkbox(platform_name, key=platform_key) 
                 if has_email_option_post: st.caption("💡 Para e-mail marketing...")
 
-                post_details = _marketing_get_objective_details("post_v15", "post")
+                post_details = _marketing_get_objective_details("post_v16", "post")
                 submit_button_pressed_post = st.form_submit_button("💡 Gerar Post!")
 
             if submit_button_pressed_post:
@@ -256,33 +254,33 @@ class AssistentePMEPro:
                 _marketing_handle_criar_post(marketing_files_info_for_prompt, post_details, actual_selected_platforms, self.llm)
 
             if 'generated_post_content_new' in st.session_state:
-                _marketing_display_output_options(st.session_state.generated_post_content_new, "post_v15", "post_ia")
+                _marketing_display_output_options(st.session_state.generated_post_content_new, "post_v16", "post_ia")
 
         elif main_action == "2 - Criar campanha de marketing completa":
             st.subheader("🌍 Planejador de Campanhas de Marketing com IA")
-            with st.form("campaign_creator_form_v15_final"):
-                campaign_name = st.text_input("Nome da Campanha:", key="campaign_name_new_v15")
+            with st.form("campaign_creator_form_v16_final"):
+                campaign_name = st.text_input("Nome da Campanha:", key="campaign_name_new_v16")
                 st.subheader(" Plataformas Desejadas:")
 
-                key_for_select_all_camp = f"campaign_v15_select_all"
-                st.checkbox("Selecionar Todas as Plataformas Acima", key=key_for_select_all_camp)
+                key_for_select_all_camp = f"campaign_v16_select_all"
+                # Label do checkbox "Selecionar Todas" AQUI ABAIXO 👇
+                st.checkbox("Selecionar todas as plataformas abaixo", key=key_for_select_all_camp)
 
                 cols_camp = st.columns(2)
                 keys_for_platforms_camp = {}
-                has_email_option_camp = False
+                has_email_option_camp = any("E-mail Marketing" in name for name in platforms_config_options.keys())
                 for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                     col_index = i % 2
-                    platform_key = f"campaign_v15_platform_{platform_suffix}"
+                    platform_key = f"campaign_v16_platform_{platform_suffix}"
                     keys_for_platforms_camp[platform_name] = platform_key
                     with cols_camp[col_index]:
-                        st.checkbox(platform_name, key=platform_key) # Renderização simples
-                    if "E-mail Marketing" in platform_name: has_email_option_camp = True
+                        st.checkbox(platform_name, key=platform_key) 
                 if has_email_option_camp: st.caption("💡 Para e-mail marketing...")
                 
-                campaign_details_obj = _marketing_get_objective_details("campaign_v15", "campanha")
-                campaign_duration = st.text_input("Duração Estimada:", key="campaign_duration_new_v15")
-                campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key="campaign_budget_new_v15")
-                specific_kpis = st.text_area("KPIs mais importantes:", key="campaign_kpis_new_v15")
+                campaign_details_obj = _marketing_get_objective_details("campaign_v16", "campanha")
+                campaign_duration = st.text_input("Duração Estimada:", key="campaign_duration_new_v16")
+                campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key="campaign_budget_new_v16")
+                specific_kpis = st.text_area("KPIs mais importantes:", key="campaign_kpis_new_v16")
                 submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha!")
 
             if submit_button_pressed_camp:
@@ -300,19 +298,17 @@ class AssistentePMEPro:
                 _marketing_handle_criar_campanha(marketing_files_info_for_prompt, campaign_details_obj, campaign_specifics_dict, actual_selected_platforms_camp, self.llm)
 
             if 'generated_campaign_content_new' in st.session_state:
-                _marketing_display_output_options(st.session_state.generated_campaign_content_new, "campaign_v15", "campanha_ia")
+                _marketing_display_output_options(st.session_state.generated_campaign_content_new, "campaign_v16", "campanha_ia")
         
-        # ... (Restante dos blocos elif para outras ações de marketing, que não usam os checkboxes de plataforma)
         elif main_action == "3 - Criar estrutura e conteúdo para landing page":
             st.subheader("📄 Gerador de Estrutura para Landing Pages com IA")
-            with st.form("landing_page_form_new_v15"):
-                # ... (inputs como antes)
-                lp_purpose = st.text_input("Principal objetivo da landing page:", key="lp_purpose_new_v15")
-                lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key="lp_audience_new_v15")
-                lp_main_offer = st.text_area("Oferta principal e irresistível:", key="lp_offer_new_v15")
-                lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key="lp_benefits_new_v15")
-                lp_cta = st.text_input("Chamada para ação (CTA) principal:", key="lp_cta_new_v15")
-                lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key="lp_visual_new_v15")
+            with st.form("landing_page_form_new_v16"):
+                lp_purpose = st.text_input("Principal objetivo da landing page:", key="lp_purpose_new_v16")
+                lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key="lp_audience_new_v16")
+                lp_main_offer = st.text_area("Oferta principal e irresistível:", key="lp_offer_new_v16")
+                lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key="lp_benefits_new_v16")
+                lp_cta = st.text_input("Chamada para ação (CTA) principal:", key="lp_cta_new_v16")
+                lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key="lp_visual_new_v16")
                 submitted_lp = st.form_submit_button("🛠️ Gerar Estrutura da LP!")
             if submitted_lp:
                 lp_details_dict = {"purpose": lp_purpose, "target_audience": lp_target_audience, "main_offer": lp_main_offer, "key_benefits": lp_key_benefits, "cta": lp_cta, "visual_prefs": lp_visual_prefs}
@@ -320,19 +316,18 @@ class AssistentePMEPro:
             if 'generated_lp_content_new' in st.session_state:
                 st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
                 st.markdown(st.session_state.generated_lp_content_new)
-                st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state.generated_lp_content_new.encode('utf-8'), file_name="landing_page_sugestoes_ia_new.txt", mime="text/plain", key="download_lp_new_v15") 
+                st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state.generated_lp_content_new.encode('utf-8'), file_name="landing_page_sugestoes_ia_new.txt", mime="text/plain", key="download_lp_new_v16") 
 
         elif main_action == "4 - Criar estrutura e conteúdo para site com IA":
             st.subheader("🏗️ Arquiteto de Sites com IA")
-            with st.form("site_creator_form_new_v15"): 
-                # ... (inputs como antes)
-                site_business_type = st.text_input("Tipo do seu negócio/empresa:", key="site_biz_type_new_v15")
-                site_main_purpose = st.text_area("Principal objetivo do seu site:", key="site_purpose_new_v15")
-                site_target_audience = st.text_input("Público principal do site:", key="site_audience_new_v15")
-                site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key="site_pages_new_v15")
-                site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key="site_features_new_v15")
-                site_brand_personality = st.text_input("Personalidade da sua marca:", key="site_brand_new_v15")
-                site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key="site_visual_ref_new_v15")
+            with st.form("site_creator_form_new_v16"): 
+                site_business_type = st.text_input("Tipo do seu negócio/empresa:", key="site_biz_type_new_v16")
+                site_main_purpose = st.text_area("Principal objetivo do seu site:", key="site_purpose_new_v16")
+                site_target_audience = st.text_input("Público principal do site:", key="site_audience_new_v16")
+                site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key="site_pages_new_v16")
+                site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key="site_features_new_v16")
+                site_brand_personality = st.text_input("Personalidade da sua marca:", key="site_brand_new_v16")
+                site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key="site_visual_ref_new_v16")
                 submitted_site = st.form_submit_button("🏛️ Gerar Estrutura do Site!")
             if submitted_site:
                 site_details_dict = {"business_type": site_business_type, "main_purpose": site_main_purpose, "target_audience": site_target_audience, "essential_pages": site_essential_pages, "key_features": site_key_features, "brand_personality": site_brand_personality, "visual_references": site_visual_references}
@@ -340,19 +335,18 @@ class AssistentePMEPro:
             if 'generated_site_content_new' in st.session_state:
                 st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
                 st.markdown(st.session_state.generated_site_content_new)
-                st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state.generated_site_content_new.encode('utf-8'), file_name="site_sugestoes_ia_new.txt", mime="text/plain",key="download_site_new_v15")
+                st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state.generated_site_content_new.encode('utf-8'), file_name="site_sugestoes_ia_new.txt", mime="text/plain",key="download_site_new_v16")
 
         elif main_action == "5 - Encontrar meu cliente ideal (Análise de Público-Alvo)":
             st.subheader("🎯 Decodificador de Clientes com IA")
-            with st.form("find_client_form_new_v15"):
-                # ... (inputs como antes)
-                fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key="fc_campaign_new_v15")
-                fc_location = st.text_input("Cidade(s) ou região de alcance:", key="fc_location_new_v15")
-                fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key="fc_budget_new_v15")
-                fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key="fc_age_gender_new_v15")
-                fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key="fc_interests_new_v15")
-                fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key="fc_channels_new_v15")
-                fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key="fc_deep_new_v15")
+            with st.form("find_client_form_new_v16"):
+                fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key="fc_campaign_new_v16")
+                fc_location = st.text_input("Cidade(s) ou região de alcance:", key="fc_location_new_v16")
+                fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key="fc_budget_new_v16")
+                fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key="fc_age_gender_new_v16")
+                fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key="fc_interests_new_v16")
+                fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key="fc_channels_new_v16")
+                fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key="fc_deep_new_v16")
                 submitted_fc = st.form_submit_button("🔍 Encontrar Meu Cliente!")
             if submitted_fc:
                 client_details_dict = {"product_campaign": fc_product_campaign, "location": fc_location, "budget": fc_budget, "age_gender": fc_age_gender, "interests": fc_interests, "current_channels": fc_current_channels, "deep_research": fc_deep_research}
@@ -360,15 +354,14 @@ class AssistentePMEPro:
             if 'generated_client_analysis_new' in st.session_state:
                 st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
                 st.markdown(st.session_state.generated_client_analysis_new)
-                st.download_button(label="📥 Baixar Análise de Público",data=st.session_state.generated_client_analysis_new.encode('utf-8'), file_name="analise_publico_alvo_ia_new.txt", mime="text/plain",key="download_client_analysis_new_v15")
+                st.download_button(label="📥 Baixar Análise de Público",data=st.session_state.generated_client_analysis_new.encode('utf-8'), file_name="analise_publico_alvo_ia_new.txt", mime="text/plain",key="download_client_analysis_new_v16")
         
         elif main_action == "6 - Conhecer a concorrência (Análise Competitiva)":
             st.subheader("🧐 Radar da Concorrência com IA")
-            with st.form("competitor_analysis_form_new_v15"):
-                # ... (inputs como antes)
-                ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key="ca_your_biz_new_v15")
-                ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key="ca_competitors_new_v15")
-                ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key="ca_aspects_new_v15")
+            with st.form("competitor_analysis_form_new_v16"):
+                ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key="ca_your_biz_new_v16")
+                ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key="ca_competitors_new_v16")
+                ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key="ca_aspects_new_v16")
                 submitted_ca = st.form_submit_button("📡 Analisar Concorrentes!")
             if submitted_ca:
                 competitor_details_dict = {"your_business": ca_your_business, "competitors_list": ca_competitors_list, "aspects_to_analyze": ca_aspects_to_analyze}
@@ -376,7 +369,7 @@ class AssistentePMEPro:
             if 'generated_competitor_analysis_new' in st.session_state:
                 st.subheader("📊 Análise da Concorrência e Insights:")
                 st.markdown(st.session_state.generated_competitor_analysis_new)
-                st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state.generated_competitor_analysis_new.encode('utf-8'), file_name="analise_concorrencia_ia_new.txt",mime="text/plain",key="download_competitor_analysis_new_v15")
+                st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state.generated_competitor_analysis_new.encode('utf-8'), file_name="analise_concorrencia_ia_new.txt",mime="text/plain",key="download_competitor_analysis_new_v16")
 
         elif main_action == "Selecione uma opção...":
             st.info("👋 Bem-vindo à seção interativa de Marketing Digital com IA! Escolha uma das opções acima para começar.")
@@ -384,19 +377,19 @@ class AssistentePMEPro:
             st.image(logo_url_marketing_welcome, caption="Assistente PME Pro", width=200)
 
     def conversar_plano_de_negocios(self, input_usuario):
-        system_message_plano = "Você é o \"Assistente PME Pro\"..." # Prompt completo omitido
+        system_message_plano = "Você é o \"Assistente PME Pro\"..." 
         cadeia = self._criar_cadeia_conversacional(system_message_plano, self.memoria_plano_negocios, memory_key_placeholder="historico_chat_plano")
         resposta_ai_obj = cadeia.invoke({"input_usuario": input_usuario})
         return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
     def calcular_precos_interativo(self, input_usuario, descricao_imagem_contexto=None):
-        system_message_precos = f"""Você é o "Assistente PME Pro", especialista em precificação com IA...""" # Prompt completo omitido
+        system_message_precos = f"""Você é o "Assistente PME Pro", especialista em precificação com IA..."""
         cadeia = self._criar_cadeia_conversacional(system_message_precos, self.memoria_calculo_precos, memory_key_placeholder="historico_chat_precos")
         resposta_ai_obj = cadeia.invoke({"input_usuario": input_usuario})
         return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
     def gerar_ideias_para_negocios(self, input_usuario, contexto_arquivos=None):
-        system_message_ideias = f"""Você é o "Assistente PME Pro", um consultor de negócios especialista em IA...""" # Prompt completo omitido
+        system_message_ideias = f"""Você é o "Assistente PME Pro", um consultor de negócios especialista em IA..."""
         cadeia = self._criar_cadeia_conversacional(system_message_ideias, self.memoria_gerador_ideias, memory_key_placeholder="historico_chat_ideias")
         resposta_ai_obj = cadeia.invoke({"input_usuario": input_usuario})
         return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
@@ -419,7 +412,7 @@ def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_ag
     if chat_display_key not in st.session_state: st.session_state[chat_display_key] = []
     for msg_info in st.session_state[chat_display_key]:
         with st.chat_message(msg_info["role"]): st.markdown(msg_info["content"])
-    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v15_final")
+    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v16_final")
     if prompt_usuario:
         st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
         with st.chat_message("user"): st.markdown(prompt_usuario)
@@ -451,17 +444,17 @@ if llm_model_instance:
         if chave_secao_init != "marketing_guiado" and f"chat_display_{chave_secao_init}" not in st.session_state:
             st.session_state[f"chat_display_{chave_secao_init}"] = []
     
-    if 'previous_area_selecionada_for_chat_init_processed_v15' not in st.session_state:
-        st.session_state['previous_area_selecionada_for_chat_init_processed_v15'] = None
+    if 'previous_area_selecionada_for_chat_init_processed_v16' not in st.session_state:
+        st.session_state['previous_area_selecionada_for_chat_init_processed_v16'] = None
 
     area_selecionada_label = st.sidebar.radio(
-        "Como posso te ajudar hoje?", options=list(opcoes_menu.keys()), key='sidebar_selection_v25_final', 
+        "Como posso te ajudar hoje?", options=list(opcoes_menu.keys()), key='sidebar_selection_v26_final', 
         index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
     if area_selecionada_label != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_label
-        if area_selecionada_label != "Marketing Digital com IA (Guia)": # Limpa estados específicos do marketing ao sair
+        if area_selecionada_label != "Marketing Digital com IA (Guia)":
             for key_to_clear in list(st.session_state.keys()):
                 if key_to_clear.startswith("generated_") and key_to_clear.endswith("_new"): del st.session_state[key_to_clear]
                 if "_marketing_select_all_v" in key_to_clear or "_marketing_platform_" in key_to_clear:
@@ -470,17 +463,16 @@ if llm_model_instance:
 
     current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
 
-    # Lógica de inicialização de chat para seções conversacionais
     if current_section_key not in ["pagina_inicial", "marketing_guiado"]:
-        if st.session_state.area_selecionada != st.session_state.get('previous_area_selecionada_for_chat_init_processed_v15'):
+        if st.session_state.area_selecionada != st.session_state.get('previous_area_selecionada_for_chat_init_processed_v16'):
             chat_display_key_nav = f"chat_display_{current_section_key}"
-            if chat_display_key_nav not in st.session_state or not st.session_state[chat_display_key_nav]: # Inicializa se não existir ou estiver vazio
+            if chat_display_key_nav not in st.session_state or not st.session_state[chat_display_key_nav]:
                 msg_inicial_nav = ""; memoria_agente_nav = None
                 if current_section_key == "plano_negocios": msg_inicial_nav = "Olá! Sou seu Assistente PME Pro..."; memoria_agente_nav = agente.memoria_plano_negocios
                 elif current_section_key == "calculo_precos": msg_inicial_nav = "Olá! Bem-vindo ao assistente de Cálculo de Preços..."; memoria_agente_nav = agente.memoria_calculo_precos
                 elif current_section_key == "gerador_ideias": msg_inicial_nav = "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar..."; memoria_agente_nav = agente.memoria_gerador_ideias
                 if msg_inicial_nav and memoria_agente_nav: inicializar_ou_resetar_chat(current_section_key, msg_inicial_nav, memoria_agente_nav)
-            st.session_state['previous_area_selecionada_for_chat_init_processed_v15'] = st.session_state.area_selecionada
+            st.session_state['previous_area_selecionada_for_chat_init_processed_v16'] = st.session_state.area_selecionada
 
 
     if current_section_key == "pagina_inicial":
@@ -496,7 +488,7 @@ if llm_model_instance:
                 if chave_secao_btn_pg != "pagina_inicial":
                     col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_cols_render]
                     button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" para ")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" (Guia)","")
-                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v15_final", use_container_width=True):
+                    if col_para_botao_pg.button(button_label_pg, key=f"btn_goto_{chave_secao_btn_pg}_v16_final", use_container_width=True):
                         st.session_state.area_selecionada = nome_menu_btn_pg; st.rerun()
                     btn_idx_pg_inicial +=1
             st.balloons()
@@ -505,18 +497,16 @@ if llm_model_instance:
     elif current_section_key == "plano_negocios":
         st.header("📝 Elaborando seu Plano de Negócios com IA"); st.caption("Converse comigo...")
         exibir_chat_e_obter_input(current_section_key, "Sua resposta...", agente.conversar_plano_de_negocios)
-        if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v15_final"):
+        if st.sidebar.button("Reiniciar Plano de Negócios", key="btn_reset_plano_v16_final"):
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos recomeçar...", agente.memoria_plano_negocios); st.rerun()
     elif current_section_key == "calculo_precos":
         st.header("💲 Cálculo de Preços Inteligente com IA"); st.caption("Vamos definir os melhores preços...")
-        uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v15_final")
-        descricao_imagem_para_ia = None # Reset para cada renderização da seção
+        uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v16_final")
+        descricao_imagem_para_ia = None 
         if uploaded_image is not None:
-            # Lógica para processar a imagem e atualizar st.session_state.last_uploaded_image_info_pricing
-            # Esta lógica de processamento de imagem deve ser idempotente ou gerenciada com cuidado
             if st.session_state.get('processed_image_id_pricing') != uploaded_image.id:
                 try:
-                    img_pil = Image.open(uploaded_image) # Abrir com PIL para validar
+                    img_pil = Image.open(uploaded_image) 
                     st.image(img_pil, caption=f"Imagem: {uploaded_image.name}", width=150)
                     descricao_imagem_para_ia = f"O usuário carregou uma imagem chamada '{uploaded_image.name}'. Considere esta informação."
                     st.session_state.last_uploaded_image_info_pricing = descricao_imagem_para_ia
@@ -526,32 +516,23 @@ if llm_model_instance:
                     st.error(f"Erro ao processar a imagem: {e}")
                     st.session_state.last_uploaded_image_info_pricing = None
                     st.session_state.processed_image_id_pricing = None
-            else: # Imagem já processada, reutilizar descrição se disponível
+            else: 
                  descricao_imagem_para_ia = st.session_state.get('last_uploaded_image_info_pricing')
-
-
         kwargs_preco_chat = {}
-        # Usar a descrição da imagem que foi definida nesta renderização ou da sessão
         contexto_imagem_para_chat = st.session_state.get('last_uploaded_image_info_pricing')
         if contexto_imagem_para_chat: 
             kwargs_preco_chat['descricao_imagem_contexto'] = contexto_imagem_para_chat
-        
         exibir_chat_e_obter_input(current_section_key, "Sua resposta ou descreva o produto/serviço", agente.calcular_precos_interativo, **kwargs_preco_chat)
-        
-        # Limpar o contexto da imagem após o input do usuário ter sido processado e enviado para a IA
         if 'user_input_processed_pricing' in st.session_state and st.session_state.user_input_processed_pricing:
             if st.session_state.get('last_uploaded_image_info_pricing'): 
                 st.session_state.last_uploaded_image_info_pricing = None 
-                # st.session_state.processed_image_id_pricing = None # Não resetar o ID para evitar reprocessamento se o usuário não mudar a imagem mas continuar o chat
             st.session_state.user_input_processed_pricing = False
-
-        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v15_final"):
+        if st.sidebar.button("Reiniciar Cálculo de Preços", key="btn_reset_precos_v16_final"):
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar um novo cálculo de preços! ...", agente.memoria_calculo_precos); st.rerun()
 
     elif current_section_key == "gerador_ideias":
         st.header("💡 Gerador de Ideias para seu Negócio com IA"); st.caption("Descreva seus desafios...")
-        uploaded_files_ideias_ui = st.file_uploader("Envie arquivos (.txt, .png, .jpg):", type=["txt", "png", "jpg", "jpeg"], accept_multiple_files=True, key="ideias_file_uploader_v15_final")
-        # ... (lógica de upload e chat de ideias como antes, com chaves atualizadas se necessário)
+        uploaded_files_ideias_ui = st.file_uploader("Envie arquivos (.txt, .png, .jpg):", type=["txt", "png", "jpg", "jpeg"], accept_multiple_files=True, key="ideias_file_uploader_v16_final")
         contexto_para_ia_ideias_local = None
         if uploaded_files_ideias_ui:
             current_file_signature = "-".join(sorted([f"{f.name}-{f.size}" for f in uploaded_files_ideias_ui]))
@@ -573,9 +554,8 @@ if llm_model_instance:
         if contexto_para_ia_ideias_local: kwargs_ideias_chat_ui['contexto_arquivos'] = contexto_para_ia_ideias_local
         exibir_chat_e_obter_input(current_section_key, "Descreva seu desafio ou peça ideias:", agente.gerar_ideias_para_negocios, **kwargs_ideias_chat_ui)
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias: st.session_state.user_input_processed_ideias = False
-        if st.sidebar.button("Nova Sessão de Ideias", key="btn_reset_ideias_v15_final"):
+        if st.sidebar.button("Nova Sessão de Ideias", key="btn_reset_ideias_v16_final"):
             inicializar_ou_resetar_chat(current_section_key, "Ok, vamos começar uma nova busca por ideias! ...", agente.memoria_gerador_ideias); st.rerun()
-
 else:
     st.error("🚨 O Assistente PME Pro não pôde ser iniciado. Verifique a API Key e o modelo LLM.")
 
