@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Assistente PME Pro", 
     layout="wide", 
     initial_sidebar_state="expanded",
-    page_icon="🚀"  # Você pode adicionar seu favicon aqui depois, quando tiver o logo
+    page_icon="🚀"  # Altere aqui para o seu favicon (URL de .ico/.png ou emoji)
 )
 
 # --- Carregar API Key e Configurar Modelo ---
@@ -197,15 +197,17 @@ class AssistentePMEPro:
 # --- Funções Utilitárias de Chat ---
 def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
     chat_display_key = f"chat_display_{area_chave}"
+    # Garante que a lista de display exista no session_state, inicializando se necessário
     if chat_display_key not in st.session_state:
         st.session_state[chat_display_key] = []
     
     st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
     
-    if memoria_agente_instancia:
+    if memoria_agente_instancia: # Verifica se a instância da memória foi passada
         memoria_agente_instancia.clear()
         memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
     
+    # Limpa estados específicos de upload ao resetar
     if area_chave == "calculo_precos":
         st.session_state.last_uploaded_image_info_pricing = None
         st.session_state.processed_image_id_pricing = None
@@ -230,6 +232,7 @@ def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_ag
         with st.chat_message("user"):
             st.markdown(prompt_usuario)
         
+        # Atualiza flags para indicar que um novo input do usuário foi processado
         if area_chave == "calculo_precos": st.session_state.user_input_processed_pricing = True
         elif area_chave == "gerador_ideias": st.session_state.user_input_processed_ideias = True
 
@@ -245,8 +248,8 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # LOGO NA SIDEBAR (SUBSTITUA PELA URL DO SEU LOGO)
-    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) # <--- SEU LOGO AQUI
+    # >>>>> LOGO NA SIDEBAR - SUBSTITUA PELA URL DO SEU LOGO <<<<<
+    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) 
     
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
@@ -263,6 +266,7 @@ if llm_model_instance:
     if 'area_selecionada' not in st.session_state:
         st.session_state.area_selecionada = "Página Inicial"
     
+    # Inicialização global dos displays de chat e outros estados de sessão
     for nome_menu_init, chave_secao_init in opcoes_menu.items():
         if chave_secao_init and f"chat_display_{chave_secao_init}" not in st.session_state:
             st.session_state[f"chat_display_{chave_secao_init}"] = []
@@ -320,6 +324,7 @@ if llm_model_instance:
 
     # --- PÁGINA INICIAL ---
     if current_section_key == "pagina_inicial":
+        # TÍTULO E TEXTOS CENTRALIZADOS
         st.markdown("<div style='text-align: center;'><h1>🚀 Bem-vindo ao seu Assistente PME Pro!</h1></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Sou seu parceiro de IA pronto para ajudar sua pequena ou média empresa a crescer e se organizar melhor.</p></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para explorar as ferramentas disponíveis.</p></div>", unsafe_allow_html=True)
@@ -467,6 +472,7 @@ if llm_model_instance:
         
         if 'user_input_processed_ideias' in st.session_state and st.session_state.user_input_processed_ideias:
             if st.session_state.get('uploaded_file_info_ideias_for_prompt'):
+                # Mantém o contexto do arquivo para o caso de o usuário continuar a conversa sobre ele
                 pass 
             st.session_state.user_input_processed_ideias = False
         
