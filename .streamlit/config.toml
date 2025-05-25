@@ -1,7 +1,24 @@
 [theme]
-primaryColor="#1E88E5" 
-backgroundColor="#F0F2F6" 
-secondaryBackgroundColor="#FFFFFF" 
-textColor="#262730" 
-font="sans serif" 
-# base="light" # Você pode forçar 'light' ou 'dark' aqui se quiser
+# Cor primária para botões, links e elementos interativos
+# Um azul moderno e profissional
+primaryColor="#2A7DE1"  # Azul Google (aproximado) / Azul vibrante
+
+# Cor de fundo principal da aplicação
+# Um cinza muito claro, quase branco, para limpeza e clareza
+backgroundColor="#F0F2F6"
+
+# Cor de fundo para elementos como a sidebar, expanders, etc.
+# Branco para contraste e limpeza, ou um cinza um pouco mais escuro que o backgroundColor
+secondaryBackgroundColor="#FFFFFF" # Branco
+
+# Cor do texto principal
+# Um cinza escuro para boa legibilidade sobre fundos claros
+textColor="#31333F"
+
+# Fonte padrão
+# "sans serif" é uma escolha segura e moderna. Outras opções "serif" ou "monospace".
+# Para um visual ainda mais limpo, podemos tentar fontes específicas depois se quiser (exige importação de fontes).
+font="sans serif"
+
+# (Opcional) Forçar a base do tema, se 'light' ou 'dark'
+# base="light"
