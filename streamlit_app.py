@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="Assistente PME Pro", 
     layout="wide", 
     initial_sidebar_state="expanded",
-    page_icon="🚀"  # Substitua pela URL do seu favicon ou deixe um emoji
+    page_icon="🚀"  # Você pode adicionar seu favicon aqui depois, quando tiver o logo
 )
 
 # --- Carregar API Key e Configurar Modelo ---
@@ -223,7 +223,7 @@ def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_ag
         with st.chat_message(msg_info["role"]):
             st.markdown(msg_info["content"])
     
-    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v6")
+    prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}_v6") 
 
     if prompt_usuario:
         st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
@@ -245,8 +245,8 @@ if llm_model_instance:
         st.session_state.agente_pme = AssistentePMEPro(llm_passed_model=llm_model_instance)
     agente = st.session_state.agente_pme
 
-    # >>>>> LOGO NA SIDEBAR INSERIDO AQUI <<<<<
-    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) 
+    # LOGO NA SIDEBAR (SUBSTITUA PELA URL DO SEU LOGO)
+    st.sidebar.image("https://i.imgur.com/ShsUFm0.png", width=120) # <--- SEU LOGO AQUI
     
     st.sidebar.title("Assistente PME Pro") 
     st.sidebar.markdown("IA para seu Negócio Decolar!") 
@@ -325,8 +325,9 @@ if llm_model_instance:
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para explorar as ferramentas disponíveis.</p></div>", unsafe_allow_html=True)
         st.markdown("---") 
         
-        # >>>>> LOGO CENTRALIZADO NA PÁGINA INICIAL <<<<<
-        st.markdown(f"<div style='text-align: center;'><img src='https://i.imgur.com/ShsUFm0.png' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) 
+        # LOGO CENTRALIZADO NA PÁGINA INICIAL 
+        url_logo_principal = "https://i.imgur.com/ShsUFm0.png" # SUA URL DO LOGO AQUI
+        st.markdown(f"<div style='text-align: center;'><img src='{url_logo_principal}' alt='Logo Assistente PME Pro' width='150'></div>", unsafe_allow_html=True) 
         st.markdown("---")
 
         num_botoes_funcionais = len(opcoes_menu) -1 
