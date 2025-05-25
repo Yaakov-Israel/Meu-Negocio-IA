@@ -3,33 +3,31 @@ import os
 import google.generativeai as genai # Adicionado aqui, mas a configuração ainda precisa ser feita por você
 
 # --- Configuração Inicial do Modelo Gemini (Exemplo) ---
-# Substitua pela sua chave de API e configuração do modelo.
-# Esta seção é um placeholder. VOCÊ PRECISA CONFIGURAR SUA CHAVE DE API.
-
-# GOOGLE_API_KEY = "SUA_CHAVE_API_AQUI" # Descomente e cole sua chave aqui ou use variáveis de ambiente
-# if 'gemini_model' not in st.session_state:
-#     try:
-#         api_key_to_use = os.getenv("GOOGLE_API_KEY") if not GOOGLE_API_KEY else GOOGLE_API_KEY # Prioriza a chave no código se preenchida
+# Esta seção é um placeholder completo.
+# Descomente e preencha com sua chave da API e lógica de inicialização do Gemini quando estiver pronto.
 #
-#         if api_key_to_use:
+# GOOGLE_API_KEY = "SUA_CHAVE_API_AQUI" # Descomente e cole sua chave aqui ou use variáveis de ambiente
+#
+# if 'gemini_model' not in st.session_state:
+#     st.session_state.gemini_model_initialized = False
+#     try:
+#         api_key_to_use = os.getenv("GOOGLE_API_KEY") if not GOOGLE_API_KEY or GOOGLE_API_KEY == "SUA_CHAVE_API_AQUI" else GOOGLE_API_KEY
+#
+#         if api_key_to_use and api_key_to_use != "SUA_CHAVE_API_AQUI":
 #             genai.configure(api_key=api_key_to_use)
 #             model = genai.GenerativeModel(
 #                 model_name="gemini-1.5-pro-latest", # Ou seu modelo preferido
-#                 # generation_config=generation_config, # Se tiver config específica
-#                 # safety_settings=safety_settings # Se tiver config específica
 #             )
 #             st.session_state.gemini_model = model
 #             st.session_state.gemini_model_initialized = True
 #             # st.sidebar.success("✅ Modelo LLM (Gemini) inicializado!") # Feedback opcional
-#         else:
-#             st.sidebar.error("🔑 Chave da API do Google não configurada. A IA não funcionará.")
-#             st.session_state.gemini_model_initialized = False
-#             # st.stop() # Para a execução se a chave for crucial e não encontrada
+#         # else: # Removido o warning daqui para não aparecer por padrão
+#             # st.sidebar.warning("🔑 Chave da API do Google não configurada. A IA não funcionará plenamente.")
 #
 #     except Exception as e:
 #         st.error(f"❌ Erro ao inicializar o modelo Gemini: {e}")
 #         st.session_state.gemini_model_initialized = False
-#         st.stop() # Para a execução se a inicialização falhar
+#         # st.stop() # Considere parar a execução se a inicialização for crítica e falhar
 
 # --- Placeholder para a chamada à API do Gemini ---
 def call_gemini_api(prompt_text, user_files_info=None):
@@ -37,13 +35,14 @@ def call_gemini_api(prompt_text, user_files_info=None):
     Placeholder para a chamada real à API do Gemini.
     Substitua esta função pela sua implementação de chamada ao Gemini.
     """
-    # Verifique se o modelo foi inicializado (simulação)
-    # if not st.session_state.get('gemini_model_initialized', False) and not st.session_state.get('gemini_model'):
-    #     st.error("Modelo Gemini não inicializado. Verifique a configuração da API Key.")
-    #     return "Erro: Modelo não inicializado."
+    # Verifique se o modelo foi inicializado antes de tentar usar
+    # if not st.session_state.get('gemini_model_initialized', False) or not st.session_state.get('gemini_model'):
+    #     # Este aviso só aparecerá se uma chamada for feita sem o modelo estar pronto
+    #     st.warning("Modelo Gemini não inicializado. Configure sua API Key e descomente a seção de inicialização.")
+    #     return "Alerta: Modelo Gemini não configurado para responder."
 
     st.markdown("---")
-    st.write("ℹ️ **Informação para Desenvolvimento (Placeholder):**")
+    st.write("ℹ️ **Informação para Desenvolvimento (Função `call_gemini_api` - Placeholder):**")
     st.write("**Prompt Enviado para IA (resumido):**")
     st.text_area("Prompt:", prompt_text[:1000] + "..." if len(prompt_text) > 1000 else prompt_text, height=150, key=f"prompt_debug_{hash(prompt_text)}")
     if user_files_info:
@@ -54,15 +53,15 @@ def call_gemini_api(prompt_text, user_files_info=None):
 
     # Simulação de resposta da IA
     # Na implementação real, você usaria algo como:
-    # if st.session_state.get('gemini_model'):
+    # if st.session_state.get('gemini_model_initialized') and st.session_state.get('gemini_model'):
     # try:
-    #       response = st.session_state.gemini_model.generate_content(prompt_text)
+    #       response = st.session_state.gemini_model.generate_content(prompt_text) # Adicionar tratamento de 'user_files_info' se o modelo for multimodal
     #       return response.text
     #     except Exception as e:
     #         st.error(f"Erro na chamada ao Gemini: {e}")
     #         return f"Erro ao gerar resposta da IA: {e}"
     # else:
-    #     return "Modelo não disponível para gerar resposta."
+    #     return "Lembrete: Modelo Gemini não está ativo. Descomente e configure a inicialização no código."
 
     if "criar post" in prompt_text.lower():
         return f"Conteúdo do post gerado pela IA com base no prompt:\n{prompt_text[:200]}...\n\n[Aqui viria o post completo, hashtags, emojis, etc.]"
@@ -89,27 +88,38 @@ def display_social_media_options(section_key, all_option_text="Selecionar Todas 
         "E-mail Marketing (Campanha Google Ads)": f"{section_key}_email_google"
     }
     cols = st.columns(2)
+    # Usar st.session_state para persistir o estado dos checkboxes "Selecionar Todas"
+    if f"{section_key}_all_social_value" not in st.session_state:
+        st.session_state[f"{section_key}_all_social_value"] = False
+
+    current_select_all_value = st.session_state[f"{section_key}_all_social_value"]
+    new_select_all_value = st.checkbox(all_option_text, value=current_select_all_value, key=f"{section_key}_all_social_trigger")
+    if new_select_all_value != current_select_all_value:
+        st.session_state[f"{section_key}_all_social_value"] = new_select_all_value
+        # Forçar um rerun para atualizar os checkboxes abaixo se o estado de "Selecionar Todas" mudou
+        # No entanto, a forma mais idiomática em Streamlit é deixar que o fluxo natural atualize na próxima interação ou submissão de form.
+        # Para uma atualização imediata e visual de todos os checkboxes, seria necessário um callback mais complexo ou um re-run explícito (st.experimental_rerun() ou st.rerun()),
+        # que pode ter efeitos colaterais se não gerenciado com cuidado.
+        # Vamos manter simples: o estado é atualizado e será usado quando o form for submetido.
+
     selected_platforms_map = {}
     platform_keys = list(platforms_options.keys())
 
     for i, platform_name in enumerate(platform_keys):
         col_index = i % 2
+        # Se "Selecionar Todos" estiver ativo, todos os checkboxes devem estar marcados.
+        is_checked_due_to_select_all = st.session_state[f"{section_key}_all_social_value"]
         with cols[col_index]:
-            selected_platforms_map[platform_name] = st.checkbox(platform_name, key=platforms_options[platform_name])
-
-    # O checkbox "Selecionar Todas" precisa de uma lógica mais elaborada com callbacks ou st.form para refletir imediatamente na UI.
-    # Por simplicidade, ele definirá o estado que será lido no processamento.
-    if st.checkbox(all_option_text, key=f"{section_key}_all_social"):
-        # Esta lógica de "selecionar todos" aqui é para quando o form for submetido.
-        # A UI dos checkboxes individuais não será atualizada dinamicamente por este checkbox sem callbacks.
-        for platform_name in platform_keys:
-            selected_platforms_map[platform_name] = True
+            # A chave do checkbox individual precisa ser única e não deve ser a mesma que a do "Selecionar Todas"
+            selected_platforms_map[platform_name] = st.checkbox(platform_name, value=is_checked_due_to_select_all, key=platforms_options[platform_name])
 
 
-    actual_selected_platforms = [p for p, is_selected in selected_platforms_map.items() if is_selected]
-    # Se "Selecionar Todas" foi marcado, sobrescreve
-    if selected_platforms_map.get(all_option_text, False) or st.session_state.get(f"{section_key}_all_social", False): # Verifica o estado do checkbox "Selecionar Todas"
-         actual_selected_platforms = platform_keys
+    # A lógica de quais plataformas estão realmente selecionadas deve considerar tanto os cliques individuais quanto o "Selecionar Todos".
+    # Se "Selecionar Todas" está marcado, todas as plataformas são consideradas selecionadas, independentemente dos cliques individuais (que seriam sobrescritos).
+    if st.session_state[f"{section_key}_all_social_value"]:
+        actual_selected_platforms = platform_keys
+    else:
+        actual_selected_platforms = [p for p, is_selected in selected_platforms_map.items() if is_selected]
 
 
     if any(p in actual_selected_platforms for p in ["E-mail Marketing (lista própria)", "E-mail Marketing (Campanha Google Ads)"]):
@@ -533,6 +543,7 @@ def marketing_digital_section():
 
     elif main_action == "Selecione uma opção...":
         st.info("👋 Bem-vindo à seção de Marketing Digital com IA! Escolha uma das opções acima para começar a impulsionar seu negócio.")
+        # Exemplo de imagem, pode ser local ou URL
         # st.image("https://via.placeholder.com/1260x300.png/007bff/FFFFFF?Text=Marketing+Digital+com+IA", caption="Vamos criar juntos estratégias incríveis!")
 
 
@@ -543,32 +554,25 @@ def marketing_digital_section():
 if __name__ == "__main__":
     st.set_page_config(page_title="PME Pro - Marketing Digital", layout="wide", initial_sidebar_state="expanded")
     
-    # Bloco de inicialização do Gemini (placeholder, requer sua chave e configuração)
-    # Mantenha comentado e configure conforme suas necessidades.
-    # A inicialização real do 'genai' e 'model' deve ser feita aqui ou importada.
-    # O código abaixo é uma sugestão de como lidar com isso.
-    if 'gemini_model_initialized' not in st.session_state:
-        st.session_state.gemini_model_initialized = False # Default
-        # --- Exemplo de como você poderia inicializar ---
-        # GOOGLE_API_KEY_FROM_CODE = "" # Coloque sua chave aqui se não usar os.getenv
-        # api_key = os.getenv("GOOGLE_API_KEY") or GOOGLE_API_KEY_FROM_CODE
-        # if api_key:
-        #     try:
-        #         genai.configure(api_key=api_key)
-        #         model = genai.GenerativeModel('gemini-1.5-pro-latest') # Ou o modelo desejado
-        #         st.session_state.gemini_model = model
-        #         st.session_state.gemini_model_initialized = True
-        #         # st.sidebar.success("Modelo Gemini pronto!") # Descomente para feedback
-        #     except Exception as e:
-        #         st.sidebar.error(f"Erro ao inicializar Gemini: {e}")
-        #         st.session_state.gemini_model_initialized = False
-        # else:
-        #     st.sidebar.warning("Chave API Gemini não configurada.")
-        #     st.session_state.gemini_model_initialized = False
-        # Para este placeholder, vamos apenas simular que precisa ser configurado:
-        if not st.session_state.gemini_model_initialized:
-             st.sidebar.warning("Integração com IA (Gemini) não está ativa neste placeholder. Configure sua API Key.")
-
+    # --- Bloco de inicialização do Gemini (Totalmente Placeholder) ---
+    # Descomente e adapte esta seção quando for integrar o Gemini com sua API Key.
+    # Certifique-se de que a variável 'GOOGLE_API_KEY' (no início do arquivo) está preenchida
+    # ou que você está carregando a chave de outra forma (ex: os.getenv).
+    #
+    # if 'gemini_model_initialized' not in st.session_state:
+    #     st.session_state.gemini_model_initialized = False # Default
+    #     # api_key = GOOGLE_API_KEY # ou os.getenv("GOOGLE_API_KEY")
+    #     # if api_key and api_key != "SUA_CHAVE_API_AQUI":
+    #     #     try:
+    #     #         genai.configure(api_key=api_key)
+    #     #         model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    #     #         st.session_state.gemini_model = model
+    #     #         st.session_state.gemini_model_initialized = True
+    #     #     except Exception as e:
+    #     #         # st.sidebar.error(f"Erro ao inicializar Gemini: {e}") # Mostra erro se a inicialização falhar
+    #     #         pass # Evita mostrar erro por padrão no placeholder
+    #     # else:
+    #     #     pass # Evita mostrar warning por padrão no placeholder
 
     marketing_digital_section()
 
