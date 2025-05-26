@@ -49,11 +49,11 @@ else:
         st.info("Verifique sua chave API, se a 'Generative Language API' está ativa no Google Cloud e suas cotas.")
         st.stop()
 
-# --- FUNÇÕES AUXILIARES PARA MARKETING DIGITAL (Objetivos e Output) ---
+# --- FUNÇÕES AUXILIARES PARA MARKETING DIGITAL ---
 def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
     st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
     details = {}
-    key_suffix = "_v16_final" 
+    key_suffix = "_v17_robust" 
     details["objective"] = st.text_area(
         f"Qual o principal objetivo com est(e/a) {type_of_creation}?",
         key=f"{section_key}_obj_new{key_suffix}" 
@@ -61,19 +61,19 @@ def _marketing_get_objective_details(section_key, type_of_creation="post/campanh
     details["target_audience"] = st.text_input("Quem você quer alcançar?", key=f"{section_key}_audience_new{key_suffix}")
     details["product_service"] = st.text_area("Qual produto ou serviço principal você está promovendo?", key=f"{section_key}_product_new{key_suffix}")
     details["key_message"] = st.text_area("Qual mensagem chave você quer comunicar?", key=f"{section_key}_message_new{key_suffix}")
-    details["usp"] = st.text_area("O que torna seu produto/serviço especial (USP)?", key=f"{section_key}_usp_new{key_suffix}")
+    details["usp"] = st.text_area("O que torna seu produto/serviço especial (USP)? (Opcional)", key=f"{section_key}_usp_new{key_suffix}") # Marcando como opcional
     details["style_tone"] = st.selectbox(
         "Qual o tom/estilo da comunicação?",
         ("Profissional e direto", "Amigável e informal", "Criativo e inspirador", "Urgente e promocional", "Engraçado e leve", "Educacional e informativo"),
         key=f"{section_key}_tone_new{key_suffix}"
     )
-    details["extra_info"] = st.text_area("Alguma informação adicional/CTA?", key=f"{section_key}_extra_new{key_suffix}")
+    details["extra_info"] = st.text_area("Alguma informação adicional/CTA? (Opcional)", key=f"{section_key}_extra_new{key_suffix}") # Marcando como opcional
     return details
 
 def _marketing_display_output_options(generated_content, section_key, file_name_prefix="conteudo_gerado"):
     st.subheader("🎉 Resultado da IA e Próximos Passos:")
     st.markdown(generated_content)
-    key_suffix = "_v16_final"
+    key_suffix = "_v17_robust"
     st.download_button(
         label="📥 Baixar Conteúdo Gerado",
         data=generated_content.encode('utf-8'),
@@ -84,74 +84,193 @@ def _marketing_display_output_options(generated_content, section_key, file_name_
     cols_actions = st.columns(2)
     with cols_actions[0]:
         if st.button("🔗 Copiar para Compartilhar (Simulado)", key=f"{section_key}_share_btn_new{key_suffix}"):
-            st.success("Conteúdo pronto para ser copiado e compartilhado nas suas redes ou e-mail!")
+            st.success("Conteúdo pronto para ser copiado e compartilhado!")
             st.caption("Lembre-se de adaptar para cada plataforma, se necessário.")
     with cols_actions[1]:
         if st.button("🗓️ Simular Agendamento", key=f"{section_key}_schedule_btn_new{key_suffix}"):
-            st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
+            st.info("Agendamento simulado. Use ferramentas dedicadas para agendamento real.")
 
 # --- HANDLER FUNCTIONS ---
 def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
-    if not selected_platforms_list: st.warning("Por favor, selecione pelo menos uma plataforma."); return
-    if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo do post."); return
+    # Validação de campos obrigatórios para Post
+    required_post_fields = {
+        "objective": "o objetivo principal do post",
+        "target_audience": "o público-alvo",
+        "product_service": "o produto/serviço principal a ser promovido",
+        "key_message": "a mensagem chave a ser comunicada"
+    }
+    for field, description in required_post_fields.items():
+        if not details_dict.get(field) or not str(details_dict[field]).strip():
+            st.warning(f"Por favor, preencha {description}.")
+            return
+
+    if not selected_platforms_list: 
+        st.warning("Por favor, selecione pelo menos uma plataforma.")
+        return
+        
     with st.spinner("🤖 A IA está criando seu post... Aguarde!"):
         prompt_parts = [
-            "**Instrução para IA:** Você é um especialista em copywriting e marketing digital...", 
-            f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.", f"**Objetivo:** {details_dict['objective']}",
+            "**Instrução para IA:** Você é um especialista em copywriting e marketing digital criando um post para pequenas empresas.",
+            f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.",
+            f"**Objetivo do Post:** {details_dict['objective']}",
+            f"**Público-Alvo:** {details_dict['target_audience']}",
+            f"**Produto/Serviço Promovido:** {details_dict['product_service']}",
+            f"**Mensagem Chave:** {details_dict['key_message']}",
+            f"**Diferencial (USP):** {details_dict.get('usp', '').strip() or 'Não informado'}",
+            f"**Tom/Estilo:** {details_dict['style_tone']}",
+            f"**Informações Adicionais/CTA:** {details_dict.get('extra_info', '').strip() or 'Não informado'}",
+            "**Tarefa:**",
+            "1. Gere o conteúdo do post...", # Prompt completo omitido para brevidade
              "6. Se o usuário enviou arquivos de suporte..."
-        ] 
+        ]
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt))
-        st.session_state.generated_post_content_new = ai_response.content
+        
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt))
+            generated_content = ai_response.content
+            st.session_state.generated_post_content_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao gerar o post com a IA: {e}")
+            st.error("Verifique se todos os campos essenciais foram preenchidos de forma significativa.")
+
 
 def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
-    if not selected_platforms_list: st.warning("Por favor, selecione pelo menos uma plataforma."); return
-    if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo da campanha."); return
-    with st.spinner("🧠 A IA está elaborando seu plano de campanha..."):
-        prompt_parts = ["**Instrução para IA:** Você é um estrategista de marketing digital...", f"**Nome da Campanha:** {campaign_specifics['name']}",
-                        "Se o usuário enviou arquivos de suporte..."] 
-        if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
-        final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt))
-        st.session_state.generated_campaign_content_new = ai_response.content
+    # Validação de campos obrigatórios para Campanha
+    if not campaign_specifics.get("name") or not str(campaign_specifics["name"]).strip():
+        st.warning("Por favor, preencha o Nome da Campanha.")
+        return
+        
+    required_details_fields = {
+        "objective": "o objetivo principal da campanha",
+        "target_audience": "o público-alvo",
+        "product_service": "o produto/serviço central da campanha",
+        "key_message": "a mensagem chave central"
+    }
+    for field, description in required_details_fields.items():
+        if not details_dict.get(field) or not str(details_dict[field]).strip():
+            st.warning(f"Por favor, preencha {description}.")
+            return
 
-def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
-    if not lp_details["purpose"] or not lp_details["main_offer"] or not lp_details["cta"]: st.warning("Por favor, preencha objetivo, oferta e CTA."); return
-    with st.spinner("🎨 A IA está desenhando a estrutura da sua landing page..."):
-        prompt_parts = ["**Instrução para IA:** Você é um especialista em UX/UI e copywriting...", f"**Objetivo da Landing Page:** {lp_details['purpose']}", f"**Público-Alvo (Persona):** {lp_details['target_audience']}", f"**Oferta Principal:** {lp_details['main_offer']}", f"**Principais Benefícios:** {lp_details['key_benefits']}", f"**Chamada para Ação (CTA):** {lp_details['cta']}", f"**Preferências Visuais:** {lp_details['visual_prefs']}", "**Tarefa:** Crie uma estrutura detalhada..."]
+    if not selected_platforms_list: 
+        st.warning("Por favor, selecione pelo menos uma plataforma para a campanha.")
+        return
+        
+    with st.spinner("🧠 A IA está elaborando seu plano de campanha..."):
+        prompt_parts = [
+            "**Instrução para IA:** Você é um estrategista de marketing digital sênior...",
+            f"**Nome da Campanha:** {campaign_specifics['name']}",
+            f"**Plataformas Envolvidas:** {', '.join(selected_platforms_list)}.",
+            f"**Duração Estimada:** {campaign_specifics.get('duration', '').strip() or 'Não informada'}",
+            f"**Orçamento para Impulsionamento (Referência):** {campaign_specifics.get('budget', '').strip() or 'Não informado'}",
+            f"**Objetivo Principal da Campanha:** {details_dict['objective']}",
+            f"**Público-Alvo Detalhado:** {details_dict['target_audience']}",
+            f"**Produto/Serviço Central:** {details_dict['product_service']}",
+            f"**Mensagem Chave Central:** {details_dict['key_message']}",
+            f"**Principal Diferencial (USP):** {details_dict.get('usp', '').strip() or 'Não informado'}",
+            f"**Tom/Estilo Geral da Campanha:** {details_dict['style_tone']}", # Já tem valor default
+            f"**KPIs Principais:** {campaign_specifics.get('kpis', '').strip() or 'Não informados'}",
+            f"**Informações Adicionais/CTA Principal:** {details_dict.get('extra_info', '').strip() or 'Não informado'}",
+            "**Tarefa:** Elabore um plano de campanha detalhado...", # Prompt completo omitido
+            "Se o usuário enviou arquivos de suporte..."
+        ]
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
-        st.session_state.generated_lp_content_new = generated_content
+
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt))
+            generated_content = ai_response.content
+            st.session_state.generated_campaign_content_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao gerar o plano de campanha com a IA: {e}")
+            st.error("Verifique se todos os campos essenciais foram preenchidos de forma significativa.")
+
+
+# ... (Os outros _marketing_handle_... functions permanecem os mesmos por enquanto) ...
+def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
+    if not lp_details["purpose"] or not str(lp_details["purpose"]).strip() or \
+       not lp_details["main_offer"] or not str(lp_details["main_offer"]).strip() or \
+       not lp_details["cta"] or not str(lp_details["cta"]).strip():
+        st.warning("Por favor, preencha o objetivo, a oferta principal e o CTA da landing page.")
+        return
+    with st.spinner("🎨 A IA está desenhando a estrutura da sua landing page..."):
+        prompt_parts = ["**Instrução para IA:** Você é um especialista em UX/UI e copywriting...", 
+                        f"**Objetivo da Landing Page:** {lp_details['purpose']}", 
+                        f"**Público-Alvo (Persona):** {lp_details.get('target_audience','').strip() or 'Não informado'}", 
+                        f"**Oferta Principal:** {lp_details['main_offer']}", 
+                        f"**Principais Benefícios:** {lp_details.get('key_benefits','').strip() or 'Não informados'}", 
+                        f"**Chamada para Ação (CTA):** {lp_details['cta']}", 
+                        f"**Preferências Visuais:** {lp_details.get('visual_prefs','').strip() or 'Não informadas'}", 
+                        "**Tarefa:** Crie uma estrutura detalhada..."]
+        if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
+        final_prompt = "\n\n".join(prompt_parts)
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
+            st.session_state.generated_lp_content_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao gerar a estrutura da landing page: {e}")
 
 def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
-    if not site_details["business_type"] or not site_details["main_purpose"]: st.warning("Informe tipo de negócio e objetivo do site."); return
+    if not site_details["business_type"] or not str(site_details["business_type"]).strip() or \
+       not site_details["main_purpose"] or not str(site_details["main_purpose"]).strip():
+        st.warning("Informe tipo de negócio e objetivo do site."); return
     with st.spinner("🛠️ A IA está arquitetando a estrutura do seu site..."):
-        prompt_parts = ["**Instrução para IA:** Você é um arquiteto de informação...", f"**Tipo de Negócio:** {site_details['business_type']}", f"**Objetivo do Site:** {site_details['main_purpose']}", f"**Público-Alvo:** {site_details['target_audience']}", f"**Páginas Essenciais:** {site_details['essential_pages']}", f"**Principais Produtos/Serviços:** {site_details['key_features']}", f"**Personalidade da Marca:** {site_details['brand_personality']}", f"**Preferências Visuais:** {site_details['visual_references']}", "**Tarefa:** Desenvolva uma proposta de estrutura..."]
+        prompt_parts = ["**Instrução para IA:** Você é um arquiteto de informação...", 
+                        f"**Tipo de Negócio:** {site_details['business_type']}", 
+                        f"**Objetivo do Site:** {site_details['main_purpose']}", 
+                        f"**Público-Alvo:** {site_details.get('target_audience','').strip() or 'Não informado'}", 
+                        f"**Páginas Essenciais:** {site_details.get('essential_pages','').strip() or 'Não informadas'}", 
+                        f"**Principais Produtos/Serviços:** {site_details.get('key_features','').strip() or 'Não informados'}", 
+                        f"**Personalidade da Marca:** {site_details.get('brand_personality','').strip() or 'Não informada'}", 
+                        f"**Preferências Visuais:** {site_details.get('visual_references','').strip() or 'Não informadas'}", 
+                        "**Tarefa:** Desenvolva uma proposta de estrutura..."]
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
-        st.session_state.generated_site_content_new = generated_content
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
+            st.session_state.generated_site_content_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao gerar a estrutura do site: {e}")
+
 
 def _marketing_handle_encontre_cliente(uploaded_files_info, client_details, llm):
-    if not client_details["product_campaign"]: st.warning("Descreva o produto/serviço ou campanha."); return
+    if not client_details["product_campaign"] or not str(client_details["product_campaign"]).strip() : 
+        st.warning("Descreva o produto/serviço ou campanha."); return
     with st.spinner("🕵️ A IA está investigando seu público-alvo..."):
-        prompt_parts = ["**Instrução para IA:** Você é um 'Agente Detetive de Clientes'...", f"**Produto/Campanha:** {client_details['product_campaign']}", f"**Localização:** {client_details['location']}", f"**Verba:** {client_details['budget']}", f"**Faixa Etária/Gênero:** {client_details['age_gender']}", f"**Interesses:** {client_details['interests']}", f"**Canais:** {client_details['current_channels']}", f"**Deep Research:** {'Ativado' if client_details['deep_research'] else 'Padrão'}", "**Tarefa:** Realize uma análise completa do público-alvo..."]
+        prompt_parts = ["**Instrução para IA:** Você é um 'Agente Detetive de Clientes'...", 
+                        f"**Produto/Campanha:** {client_details['product_campaign']}", 
+                        f"**Localização:** {client_details.get('location','').strip() or 'Não informada'}", 
+                        f"**Verba:** {client_details.get('budget','').strip() or 'Não informada'}", 
+                        f"**Faixa Etária/Gênero:** {client_details.get('age_gender','').strip() or 'Não informados'}", 
+                        f"**Interesses:** {client_details.get('interests','').strip() or 'Não informados'}", 
+                        f"**Canais:** {client_details.get('current_channels','').strip() or 'Não informados'}", 
+                        f"**Deep Research:** {'Ativado' if client_details['deep_research'] else 'Padrão'}", 
+                        "**Tarefa:** Realize uma análise completa do público-alvo..."]
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
-        st.session_state.generated_client_analysis_new = generated_content
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
+            st.session_state.generated_client_analysis_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao analisar o público-alvo: {e}")
 
 def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
-    if not competitor_details["your_business"] or not competitor_details["competitors_list"]: st.warning("Descreva seu negócio e liste concorrentes."); return
+    if not competitor_details["your_business"] or not str(competitor_details["your_business"]).strip() or \
+       not competitor_details["competitors_list"] or not str(competitor_details["competitors_list"]).strip(): 
+        st.warning("Descreva seu negócio e liste concorrentes."); return
     with st.spinner("🔬 A IA está analisando a concorrência..."):
-        prompt_parts = ["**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva'...", f"**Negócio do Usuário:** {competitor_details['your_business']}", f"**Concorrentes:** {competitor_details['competitors_list']}", f"**Aspectos para Análise:** {', '.join(competitor_details['aspects_to_analyze'])}", "**Tarefa:** Elabore um relatório breve e útil..."]
+        prompt_parts = ["**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva'...", 
+                        f"**Negócio do Usuário:** {competitor_details['your_business']}", 
+                        f"**Concorrentes:** {competitor_details['competitors_list']}", 
+                        f"**Aspectos para Análise:** {', '.join(competitor_details['aspects_to_analyze'])}", 
+                        "**Tarefa:** Elabore um relatório breve e útil..."]
         if uploaded_files_info: prompt_parts.append(f"**Arquivos de Suporte:** {', '.join([f['name'] for f in uploaded_files_info])}.")
         final_prompt = "\n\n".join(prompt_parts)
-        ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
-        st.session_state.generated_competitor_analysis_new = generated_content
-
+        try:
+            ai_response = llm.invoke(HumanMessage(content=final_prompt)); generated_content = ai_response.content
+            st.session_state.generated_competitor_analysis_new = generated_content
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao analisar a concorrência: {e}")
 
 # --- Classe do Agente (AssistentePMEPro) ---
 class AssistentePMEPro:
@@ -184,7 +303,7 @@ class AssistentePMEPro:
                 "Upload para Marketing (opcional):",
                 accept_multiple_files=True,
                 type=['png', 'jpg', 'jpeg', 'txt', 'md', 'pdf', 'csv', 'xlsx', 'docx', 'pptx', 'mp4', 'mov'],
-                key="marketing_files_uploader_v16_final" 
+                key="marketing_files_uploader_v17_final" 
             )
             if uploaded_marketing_files:
                 temp_marketing_files_info = []
@@ -198,7 +317,7 @@ class AssistentePMEPro:
                             st.write(f"- {finfo['name']} ({finfo['type']})")
             st.markdown("---")
 
-        main_action_key = "main_marketing_action_choice_v16_final"
+        main_action_key = "main_marketing_action_choice_v17_final"
         main_action = st.radio(
             "Olá! O que você quer fazer agora em marketing digital?",
             ("Selecione uma opção...", "1 - Criar post para redes sociais ou e-mail",
@@ -217,98 +336,83 @@ class AssistentePMEPro:
         }
         platform_names_available_list = list(platforms_config_options.keys())
 
-
         if main_action == "1 - Criar post para redes sociais ou e-mail":
             st.subheader("✨ Criador de Posts com IA")
-            with st.form("post_creator_form_v16_final"): 
+            with st.form("post_creator_form_v17_final"): 
                 st.subheader(" Plataformas Desejadas:") 
-                
-                key_for_select_all_post = f"post_v16_select_all"
-                # Label do checkbox "Selecionar Todas" AQUI ABAIXO 👇
-                st.checkbox("Selecionar todas as plataformas abaixo", key=key_for_select_all_post) 
-                
+                key_for_select_all_post = f"post_v17_select_all"
+                st.checkbox("Selecionar todas as plataformas abaixo", key=key_for_select_all_post)
                 cols_post = st.columns(2)
                 keys_for_platforms_post = {} 
                 has_email_option_post = any("E-mail Marketing" in name for name in platforms_config_options.keys())
-
                 for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                     col_index = i % 2
-                    platform_key = f"post_v16_platform_{platform_suffix}"
+                    platform_key = f"post_v17_platform_{platform_suffix}"
                     keys_for_platforms_post[platform_name] = platform_key
-                    with cols_post[col_index]:
-                        st.checkbox(platform_name, key=platform_key) 
+                    with cols_post[col_index]: st.checkbox(platform_name, key=platform_key) 
                 if has_email_option_post: st.caption("💡 Para e-mail marketing...")
-
-                post_details = _marketing_get_objective_details("post_v16", "post")
+                post_details = _marketing_get_objective_details("post_v17", "post")
                 submit_button_pressed_post = st.form_submit_button("💡 Gerar Post!")
 
             if submit_button_pressed_post:
                 submitted_select_all_value = st.session_state.get(key_for_select_all_post, False)
                 actual_selected_platforms = []
-                if submitted_select_all_value:
-                    actual_selected_platforms = platform_names_available_list
+                if submitted_select_all_value: actual_selected_platforms = platform_names_available_list
                 else:
                     for p_name, p_key in keys_for_platforms_post.items():
-                        if st.session_state.get(p_key, False):
-                            actual_selected_platforms.append(p_name)
+                        if st.session_state.get(p_key, False): actual_selected_platforms.append(p_name)
                 _marketing_handle_criar_post(marketing_files_info_for_prompt, post_details, actual_selected_platforms, self.llm)
 
             if 'generated_post_content_new' in st.session_state:
-                _marketing_display_output_options(st.session_state.generated_post_content_new, "post_v16", "post_ia")
+                _marketing_display_output_options(st.session_state.generated_post_content_new, "post_v17", "post_ia")
 
         elif main_action == "2 - Criar campanha de marketing completa":
             st.subheader("🌍 Planejador de Campanhas de Marketing com IA")
-            with st.form("campaign_creator_form_v16_final"):
-                campaign_name = st.text_input("Nome da Campanha:", key="campaign_name_new_v16")
+            with st.form("campaign_creator_form_v17_final"):
+                campaign_name = st.text_input("Nome da Campanha:", key="campaign_name_new_v17")
                 st.subheader(" Plataformas Desejadas:")
-
-                key_for_select_all_camp = f"campaign_v16_select_all"
-                # Label do checkbox "Selecionar Todas" AQUI ABAIXO 👇
+                key_for_select_all_camp = f"campaign_v17_select_all"
                 st.checkbox("Selecionar todas as plataformas abaixo", key=key_for_select_all_camp)
-
                 cols_camp = st.columns(2)
                 keys_for_platforms_camp = {}
                 has_email_option_camp = any("E-mail Marketing" in name for name in platforms_config_options.keys())
                 for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                     col_index = i % 2
-                    platform_key = f"campaign_v16_platform_{platform_suffix}"
+                    platform_key = f"campaign_v17_platform_{platform_suffix}"
                     keys_for_platforms_camp[platform_name] = platform_key
-                    with cols_camp[col_index]:
-                        st.checkbox(platform_name, key=platform_key) 
+                    with cols_camp[col_index]: st.checkbox(platform_name, key=platform_key) 
                 if has_email_option_camp: st.caption("💡 Para e-mail marketing...")
                 
-                campaign_details_obj = _marketing_get_objective_details("campaign_v16", "campanha")
-                campaign_duration = st.text_input("Duração Estimada:", key="campaign_duration_new_v16")
-                campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key="campaign_budget_new_v16")
-                specific_kpis = st.text_area("KPIs mais importantes:", key="campaign_kpis_new_v16")
+                campaign_details_obj = _marketing_get_objective_details("campaign_v17", "campanha")
+                campaign_duration = st.text_input("Duração Estimada:", key="campaign_duration_new_v17")
+                campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key="campaign_budget_new_v17")
+                specific_kpis = st.text_area("KPIs mais importantes:", key="campaign_kpis_new_v17")
                 submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha!")
 
             if submit_button_pressed_camp:
                 submitted_select_all_value_camp = st.session_state.get(key_for_select_all_camp, False)
                 actual_selected_platforms_camp = []
-                if submitted_select_all_value_camp:
-                    actual_selected_platforms_camp = platform_names_available_list
+                if submitted_select_all_value_camp: actual_selected_platforms_camp = platform_names_available_list
                 else:
                     for p_name, p_key in keys_for_platforms_camp.items():
-                        if st.session_state.get(p_key, False):
-                            actual_selected_platforms_camp.append(p_name)
+                        if st.session_state.get(p_key, False): actual_selected_platforms_camp.append(p_name)
                 
                 campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration,
                                            "budget": campaign_budget_approx, "kpis": specific_kpis}
                 _marketing_handle_criar_campanha(marketing_files_info_for_prompt, campaign_details_obj, campaign_specifics_dict, actual_selected_platforms_camp, self.llm)
 
             if 'generated_campaign_content_new' in st.session_state:
-                _marketing_display_output_options(st.session_state.generated_campaign_content_new, "campaign_v16", "campanha_ia")
+                _marketing_display_output_options(st.session_state.generated_campaign_content_new, "campaign_v17", "campanha_ia")
         
         elif main_action == "3 - Criar estrutura e conteúdo para landing page":
             st.subheader("📄 Gerador de Estrutura para Landing Pages com IA")
-            with st.form("landing_page_form_new_v16"):
-                lp_purpose = st.text_input("Principal objetivo da landing page:", key="lp_purpose_new_v16")
-                lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key="lp_audience_new_v16")
-                lp_main_offer = st.text_area("Oferta principal e irresistível:", key="lp_offer_new_v16")
-                lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key="lp_benefits_new_v16")
-                lp_cta = st.text_input("Chamada para ação (CTA) principal:", key="lp_cta_new_v16")
-                lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key="lp_visual_new_v16")
+            with st.form("landing_page_form_new_v17"):
+                lp_purpose = st.text_input("Principal objetivo da landing page:", key="lp_purpose_new_v17")
+                lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key="lp_audience_new_v17")
+                lp_main_offer = st.text_area("Oferta principal e irresistível:", key="lp_offer_new_v17")
+                lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key="lp_benefits_new_v17")
+                lp_cta = st.text_input("Chamada para ação (CTA) principal:", key="lp_cta_new_v17")
+                lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key="lp_visual_new_v17")
                 submitted_lp = st.form_submit_button("🛠️ Gerar Estrutura da LP!")
             if submitted_lp:
                 lp_details_dict = {"purpose": lp_purpose, "target_audience": lp_target_audience, "main_offer": lp_main_offer, "key_benefits": lp_key_benefits, "cta": lp_cta, "visual_prefs": lp_visual_prefs}
@@ -316,18 +420,18 @@ class AssistentePMEPro:
             if 'generated_lp_content_new' in st.session_state:
                 st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
                 st.markdown(st.session_state.generated_lp_content_new)
-                st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state.generated_lp_content_new.encode('utf-8'), file_name="landing_page_sugestoes_ia_new.txt", mime="text/plain", key="download_lp_new_v16") 
+                st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state.generated_lp_content_new.encode('utf-8'), file_name="landing_page_sugestoes_ia_new.txt", mime="text/plain", key="download_lp_new_v17") 
 
         elif main_action == "4 - Criar estrutura e conteúdo para site com IA":
             st.subheader("🏗️ Arquiteto de Sites com IA")
-            with st.form("site_creator_form_new_v16"): 
-                site_business_type = st.text_input("Tipo do seu negócio/empresa:", key="site_biz_type_new_v16")
-                site_main_purpose = st.text_area("Principal objetivo do seu site:", key="site_purpose_new_v16")
-                site_target_audience = st.text_input("Público principal do site:", key="site_audience_new_v16")
-                site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key="site_pages_new_v16")
-                site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key="site_features_new_v16")
-                site_brand_personality = st.text_input("Personalidade da sua marca:", key="site_brand_new_v16")
-                site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key="site_visual_ref_new_v16")
+            with st.form("site_creator_form_new_v17"): 
+                site_business_type = st.text_input("Tipo do seu negócio/empresa:", key="site_biz_type_new_v17")
+                site_main_purpose = st.text_area("Principal objetivo do seu site:", key="site_purpose_new_v17")
+                site_target_audience = st.text_input("Público principal do site:", key="site_audience_new_v17")
+                site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key="site_pages_new_v17")
+                site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key="site_features_new_v17")
+                site_brand_personality = st.text_input("Personalidade da sua marca:", key="site_brand_new_v17")
+                site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key="site_visual_ref_new_v17")
                 submitted_site = st.form_submit_button("🏛️ Gerar Estrutura do Site!")
             if submitted_site:
                 site_details_dict = {"business_type": site_business_type, "main_purpose": site_main_purpose, "target_audience": site_target_audience, "essential_pages": site_essential_pages, "key_features": site_key_features, "brand_personality": site_brand_personality, "visual_references": site_visual_references}
@@ -335,18 +439,18 @@ class AssistentePMEPro:
             if 'generated_site_content_new' in st.session_state:
                 st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
                 st.markdown(st.session_state.generated_site_content_new)
-                st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state.generated_site_content_new.encode('utf-8'), file_name="site_sugestoes_ia_new.txt", mime="text/plain",key="download_site_new_v16")
+                st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state.generated_site_content_new.encode('utf-8'), file_name="site_sugestoes_ia_new.txt", mime="text/plain",key="download_site_new_v17")
 
         elif main_action == "5 - Encontrar meu cliente ideal (Análise de Público-Alvo)":
             st.subheader("🎯 Decodificador de Clientes com IA")
-            with st.form("find_client_form_new_v16"):
-                fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key="fc_campaign_new_v16")
-                fc_location = st.text_input("Cidade(s) ou região de alcance:", key="fc_location_new_v16")
-                fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key="fc_budget_new_v16")
-                fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key="fc_age_gender_new_v16")
-                fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key="fc_interests_new_v16")
-                fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key="fc_channels_new_v16")
-                fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key="fc_deep_new_v16")
+            with st.form("find_client_form_new_v17"):
+                fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key="fc_campaign_new_v17")
+                fc_location = st.text_input("Cidade(s) ou região de alcance:", key="fc_location_new_v17")
+                fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key="fc_budget_new_v17")
+                fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key="fc_age_gender_new_v17")
+                fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key="fc_interests_new_v17")
+                fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key="fc_channels_new_v17")
+                fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key="fc_deep_new_v17")
                 submitted_fc = st.form_submit_button("🔍 Encontrar Meu Cliente!")
             if submitted_fc:
                 client_details_dict = {"product_campaign": fc_product_campaign, "location": fc_location, "budget": fc_budget, "age_gender": fc_age_gender, "interests": fc_interests, "current_channels": fc_current_channels, "deep_research": fc_deep_research}
@@ -354,14 +458,14 @@ class AssistentePMEPro:
             if 'generated_client_analysis_new' in st.session_state:
                 st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
                 st.markdown(st.session_state.generated_client_analysis_new)
-                st.download_button(label="📥 Baixar Análise de Público",data=st.session_state.generated_client_analysis_new.encode('utf-8'), file_name="analise_publico_alvo_ia_new.txt", mime="text/plain",key="download_client_analysis_new_v16")
+                st.download_button(label="📥 Baixar Análise de Público",data=st.session_state.generated_client_analysis_new.encode('utf-8'), file_name="analise_publico_alvo_ia_new.txt", mime="text/plain",key="download_client_analysis_new_v17")
         
         elif main_action == "6 - Conhecer a concorrência (Análise Competitiva)":
             st.subheader("🧐 Radar da Concorrência com IA")
-            with st.form("competitor_analysis_form_new_v16"):
-                ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key="ca_your_biz_new_v16")
-                ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key="ca_competitors_new_v16")
-                ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key="ca_aspects_new_v16")
+            with st.form("competitor_analysis_form_new_v17"):
+                ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key="ca_your_biz_new_v17")
+                ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key="ca_competitors_new_v17")
+                ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key="ca_aspects_new_v17")
                 submitted_ca = st.form_submit_button("📡 Analisar Concorrentes!")
             if submitted_ca:
                 competitor_details_dict = {"your_business": ca_your_business, "competitors_list": ca_competitors_list, "aspects_to_analyze": ca_aspects_to_analyze}
@@ -369,7 +473,7 @@ class AssistentePMEPro:
             if 'generated_competitor_analysis_new' in st.session_state:
                 st.subheader("📊 Análise da Concorrência e Insights:")
                 st.markdown(st.session_state.generated_competitor_analysis_new)
-                st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state.generated_competitor_analysis_new.encode('utf-8'), file_name="analise_concorrencia_ia_new.txt",mime="text/plain",key="download_competitor_analysis_new_v16")
+                st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state.generated_competitor_analysis_new.encode('utf-8'), file_name="analise_concorrencia_ia_new.txt",mime="text/plain",key="download_competitor_analysis_new_v17")
 
         elif main_action == "Selecione uma opção...":
             st.info("👋 Bem-vindo à seção interativa de Marketing Digital com IA! Escolha uma das opções acima para começar.")
@@ -444,25 +548,27 @@ if llm_model_instance:
         if chave_secao_init != "marketing_guiado" and f"chat_display_{chave_secao_init}" not in st.session_state:
             st.session_state[f"chat_display_{chave_secao_init}"] = []
     
-    if 'previous_area_selecionada_for_chat_init_processed_v16' not in st.session_state:
+    if 'previous_area_selecionada_for_chat_init_processed_v16' not in st.session_state: # Chave atualizada
         st.session_state['previous_area_selecionada_for_chat_init_processed_v16'] = None
 
     area_selecionada_label = st.sidebar.radio(
-        "Como posso te ajudar hoje?", options=list(opcoes_menu.keys()), key='sidebar_selection_v26_final', 
+        "Como posso te ajudar hoje?", options=list(opcoes_menu.keys()), key='sidebar_selection_v26_final_v16', # Chave atualizada
         index=list(opcoes_menu.keys()).index(st.session_state.area_selecionada) if st.session_state.area_selecionada in opcoes_menu else 0
     )
 
     if area_selecionada_label != st.session_state.area_selecionada:
         st.session_state.area_selecionada = area_selecionada_label
         if area_selecionada_label != "Marketing Digital com IA (Guia)":
-            for key_to_clear in list(st.session_state.keys()):
+            for key_to_clear in list(st.session_state.keys()): # Limpeza de chaves do marketing
                 if key_to_clear.startswith("generated_") and key_to_clear.endswith("_new"): del st.session_state[key_to_clear]
-                if "_marketing_select_all_v" in key_to_clear or "_marketing_platform_" in key_to_clear:
+                if ("_marketing_select_all_v" in key_to_clear or "_marketing_platform_" in key_to_clear or 
+                    key_to_clear.startswith("post_v16_") or key_to_clear.startswith("campaign_v16_")): # Adicionado prefixos de formulário
                      if st.session_state.get(key_to_clear) is not None: del st.session_state[key_to_clear]
         st.rerun()
 
     current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
 
+    # Lógica de inicialização de chat para seções conversacionais
     if current_section_key not in ["pagina_inicial", "marketing_guiado"]:
         if st.session_state.area_selecionada != st.session_state.get('previous_area_selecionada_for_chat_init_processed_v16'):
             chat_display_key_nav = f"chat_display_{current_section_key}"
@@ -477,6 +583,7 @@ if llm_model_instance:
 
     if current_section_key == "pagina_inicial":
         st.markdown("<div style='text-align: center;'><h1>🚀 Bem-vindo ao seu Assistente PME Pro!</h1></div>", unsafe_allow_html=True)
+        # ... (resto da página inicial)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Sou seu parceiro de IA...</p></div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda...</p></div>", unsafe_allow_html=True)
         st.markdown("---"); st.markdown(f"<div style='text-align: center;'><img src='{URL_DO_SEU_LOGO}' alt='Logo' width='200'></div>", unsafe_allow_html=True); st.markdown("---")
@@ -502,6 +609,7 @@ if llm_model_instance:
     elif current_section_key == "calculo_precos":
         st.header("💲 Cálculo de Preços Inteligente com IA"); st.caption("Vamos definir os melhores preços...")
         uploaded_image = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key="preco_img_uploader_v16_final")
+        # ... (lógica de upload e chat de preços)
         descricao_imagem_para_ia = None 
         if uploaded_image is not None:
             if st.session_state.get('processed_image_id_pricing') != uploaded_image.id:
@@ -532,6 +640,7 @@ if llm_model_instance:
 
     elif current_section_key == "gerador_ideias":
         st.header("💡 Gerador de Ideias para seu Negócio com IA"); st.caption("Descreva seus desafios...")
+        # ... (lógica de upload e chat de ideias)
         uploaded_files_ideias_ui = st.file_uploader("Envie arquivos (.txt, .png, .jpg):", type=["txt", "png", "jpg", "jpeg"], accept_multiple_files=True, key="ideias_file_uploader_v16_final")
         contexto_para_ia_ideias_local = None
         if uploaded_files_ideias_ui:
