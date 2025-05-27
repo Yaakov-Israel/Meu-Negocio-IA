@@ -4,3 +4,4 @@ langchain
 langchain-google-genai
 pillow
 # PyMuPDF (descomente se/quando formos usar para ler PDF
+streamlit-firebase-auth
