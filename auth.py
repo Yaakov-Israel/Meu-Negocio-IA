@@ -1,4 +1,4 @@
-# auth.py (para streamlit-authenticator)
+# auth.py (para streamlit-authenticator - Tentativa de correção do TypeError)
 import streamlit as st
 import streamlit_authenticator as stauth
 
@@ -8,22 +8,24 @@ def initialize_authenticator():
     usando as credenciais e configurações de cookie dos Streamlit Secrets.
     """
     try:
-        credentials_config = st.secrets.get("credentials", {}).to_dict()
-        cookie_config = st.secrets.get("cookie", {}).to_dict()
+        credentials_config = st.secrets.get("credentials")
+        cookie_config = st.secrets.get("cookie")
 
         if not credentials_config or not credentials_config.get("usernames"):
             st.error("ERRO: Configuração de 'credentials.usernames' não encontrada ou vazia nos Segredos.")
             st.stop()
-        
+
+        # Converte para dict se for SectionProxy (comportamento do st.secrets)
+        credentials_dict = credentials_config.to_dict() if hasattr(credentials_config, 'to_dict') else credentials_config
+
         cookie_name = cookie_config.get("name")
         cookie_key = cookie_config.get("key")
-        cookie_expiry_days_str = cookie_config.get("expiry_days") # Será convertido para int depois
+        cookie_expiry_days_str = cookie_config.get("expiry_days")
 
         if not cookie_name or not cookie_key or cookie_expiry_days_str is None:
             st.error("ERRO: Configurações de 'cookie' (name, key, expiry_days) incompletas nos Segredos.")
             st.stop()
-        
-        # Chaves de cookie que disparam aviso de segurança
+
         placeholder_cookie_keys = [
             "some_signature_key", 
             "NovaChaveSecretaSuperForteParaAuthenticatorV2", 
@@ -32,10 +34,10 @@ def initialize_authenticator():
             "wR#sVn8gP!zY2qXmK7@cJ3*bL1$fH9" 
         ]
         if cookie_key in placeholder_cookie_keys:
-            st.warning("ATENÇÃO: A 'cookie.key' nos seus segredos parece ser um placeholder ou uma chave de exemplo. Para produção, defina uma chave secreta ÚNICA, longa e forte!")
+            st.warning("ATENÇÃO: A 'cookie.key' parece ser um placeholder. Para produção, use uma chave ÚNICA e FORTE!")
 
         authenticator = stauth.Authenticate(
-            credentials_config, 
+            credentials_dict, 
             cookie_name,
             cookie_key,
             int(cookie_expiry_days_str) 
@@ -49,20 +51,33 @@ def initialize_authenticator():
         st.info("Verifique a estrutura dos Segredos e o requirements.txt.")
         st.stop()
 
-def authentication_flow_stauth(authenticator_obj): # Nome da função como esperado por streamlit_app.py
-    """
-    Renderiza o widget de login e gerencia o estado da autenticação.
-    """
+def authentication_flow_stauth(authenticator_obj):
     if authenticator_obj is None:
         st.error("Falha na inicialização do autenticador.")
-        st.session_state['authentication_status'] = False # Garante estado definido
+        st.session_state['authentication_status'] = False
         return
 
-    name, authentication_status, username = authenticator_obj.login(location='main')
+    # O método login retorna name, authentication_status, username
+    # Ele também pode levantar exceções ou retornar None em alguns casos.
+    login_result = authenticator_obj.login(location='main')
 
-    st.session_state['name'] = name
-    st.session_state['authentication_status'] = authentication_status
-    st.session_state['username'] = username
-    
-    # Não é necessário retornar um valor booleano aqui, pois o status é gerenciado via session_state
-    # e o widget de login/erro já é renderizado pelo authenticator_obj.login()
+    if login_result is not None:
+        name, authentication_status, username = login_result
+        st.session_state['name'] = name
+        st.session_state['authentication_status'] = authentication_status
+        st.session_state['username'] = username
+    else:
+        # Se login_result for None, significa que o usuário ainda não interagiu
+        # ou o formulário está sendo exibido. O status deve ser None.
+        st.session_state['authentication_status'] = None
+        st.session_state['name'] = None
+        st.session_state['username'] = None
+
+    # Feedback visual baseado no status
+    if st.session_state['authentication_status'] is False:
+        st.error('Nome de usuário/senha incorretos.')
+    elif st.session_state['authentication_status'] is None:
+        # A biblioteca já mostra "Please enter your username and password."
+        # Podemos adicionar uma mensagem extra se quisermos.
+        # st.info('Por favor, insira seu nome de usuário e senha para continuar.')
+        pass
