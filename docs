@@ -1,1 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lançamento MPE - IA - Pro: Revolucione sua PME!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Open+Sans:wght@400;600&family=Poppins:wght@600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Visualization & Content Choices: 
+        - Headline/Subtítulo: Texto direto e impactante (HTML).
+        - Problema/Solução: Texto com ícones Unicode (HTML, Unicode).
+        - Sobre o App: Descrição textual, funcionalidades com ícones Unicode, benefícios destacados (HTML, Unicode). Mockups são representados por placeholders (img). Logo inserida.
+        - Sobre o Workshop: Detalhes textuais (HTML).
+        - Oferta Irresistível: Destaque visual forte com texto (HTML, Tailwind).
+        - Urgência/Escassez: Contador regressivo (JavaScript), frases de urgência textuais (HTML).
+        - Prova Social: Layout de cards para depoimentos simulados (HTML, Tailwind), placeholders para fotos.
+        - CTAs: Botões estilizados com Tailwind, visualmente destacados.
+        - Garantia: Texto com ícones Unicode (HTML, Unicode).
+        - FAQ: Perguntas com respostas expansíveis (HTML, JavaScript).
+        - Rodapé: Links e informações (HTML). Logo inserida.
+        - Justificativa: A ausência de gráficos (Chart.js/Plotly.js) deve-se à natureza do "Source Report", que é um plano de landing page sem dados quantitativos brutos para visualização. A interatividade foca na experiência do usuário e na conversão.
+        - Bibliotecas: Tailwind CSS para estilo. Vanilla JavaScript para interações.
+    -->
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            scroll-behavior: smooth;
+        }
+        h1, h2, h3, .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+        .font-montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .font-lato {
+            font-family: 'Lato', sans-serif;
+        }
+        .cta-button {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .faq-question.active + .faq-answer {
+            display: block;
+        }
+        .faq-answer {
+            display: none;
+        }
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2.25rem; /* text-4xl */
+            line-height: 2.5rem; /* leading-10 */
+            text-align: center;
+            margin-bottom: 2rem; /* mb-8 */
+            color: #1F2937; /* text-gray-800 */
+        }
+         .benefit-card, .testimonial-card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+            transition: transform 0.3s ease;
+        }
+        .benefit-card:hover, .testimonial-card:hover {
+            transform: translateY(-5px);
+        }
+        .header-logo {
+            height: 40px; /* Equivalente a h-10 do Tailwind */
+        }
+        .footer-logo {
+            height: 48px; /* Equivalente a h-12 do Tailwind */
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 1rem; /* mb-4 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700">
 
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#">
+                <img src="https://storage.googleapis.com/generativeai-downloads/images/MPE-IA FINAL.png" alt="Logo MPE - IA - Pro" class="header-logo">
+            </a>
+            <div class="space-x-4">
+                <a href="#sobre-app" class="text-gray-600 hover:text-blue-600">O App</a>
+                <a href="#workshop" class="text-gray-600 hover:text-blue-600">Workshop</a>
+                <a href="#oferta" class="text-gray-600 hover:text-blue-600">Oferta</a>
+                <a href="#faq" class="text-gray-600 hover:text-blue-600">FAQ</a>
+                <a href="#cta-final" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg cta-button">Inscreva-se Já!</a>
+            </div>
+        </nav>
+    </header>
+
+    <section id="hero" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20 md:py-32">
+        <div class="container mx-auto px-6 text-center">
+            <h1 class="text-4xl md:text-6xl font-montserrat font-bold mb-6">REVOLUCIONE SUA PME COM INTELIGÊNCIA ARTIFICIAL!</h1>
+            <p class="text-lg md:text-2xl font-lato mb-8">Participe do Workshop Exclusivo MPE - IA - Pro e Ganhe <span class="font-bold text-yellow-300">1 ANO de Acesso Total</span> por <span class="font-bold text-yellow-300">APENAS R$99!</span></p>
+            <a href="#oferta" class="bg-orange-500 hover:bg-orange-600 text-white font-poppins font-semibold py-4 px-10 text-xl rounded-lg cta-button shadow-xl">
+                QUERO MINHA VAGA + 1 ANO DE APP!
+            </a>
+        </div>
+    </section>
+
+    <section id="problema-solucao" class="py-16 md:py-24 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="section-title">Sua PME Enfrenta Esses Desafios Diariamente?</h2>
+            <p class="text-center text-lg mb-12 max-w-3xl mx-auto">Sabemos que gerenciar uma PME é um desafio constante. Sobrecarga de trabalho, tarefas repetitivas que consomem seu tempo precioso, dificuldade em competir, marketing que não traz resultados, gestão complexa?</p>
+            
+            <div class="text-center p-8 bg-blue-50 rounded-xl shadow-lg">
+                <h3 class="font-poppins text-3xl font-semibold text-blue-700 mb-4">A Solução Inteligente Chegou: MPE - IA - Pro!</h3>
+                <p class="text-lg max-w-3xl mx-auto">Imagine automatizar processos, tomar decisões baseadas em dados precisos, criar campanhas de marketing impactantes e treinar seus colaboradores de forma eficaz, tudo com o poder da Inteligência Artificial. O MPE - IA - Pro foi desenhado especificamente para as necessidades da sua PME, transformando desafios em oportunidades de crescimento.</p>
+                <img src="https://placehold.co/800x450/E0E7FF/3B82F6?text=Mockup+MPE-IA-Pro+Dashboard" alt="Mockup do App MPE - IA - Pro" class="mt-8 mx-auto rounded-lg shadow-xl" style="max-width: 700px;">
+            </div>
+        </div>
+    </section>
+
+    <section id="sobre-app" class="py-16 md:py-24 bg-gray-100">
+        <div class="container mx-auto px-6">
+            <h2 class="section-title">Conheça o MPE - IA - Pro: Sua Nova Ferramenta Estratégica</h2>
+            <p class="text-center text-lg mb-12 max-w-3xl mx-auto">O MPE - IA - Pro é uma plataforma de Inteligência Artificial intuitiva e poderosa, criada para simplificar e potencializar a gestão de Pequenas e Médias Empresas. Integramos as melhores soluções de IA para que você foque no que realmente importa: o crescimento do seu negócio.</p>
+
+            <div class="grid md:grid-cols-3 gap-8 mb-12">
+                <div class="benefit-card text-center">
+                    <span class="text-5xl mb-4 block">⚙️</span>
+                    <h3 class="font-poppins text-xl font-semibold text-blue-700 mb-2">Gestão Inteligente</h3>
+                    <p>Otimize seu fluxo de trabalho, administre finanças com precisão e gerencie projetos com eficiência automatizada.</p>
+                </div>
+                <div class="benefit-card text-center">
+                    <span class="text-5xl mb-4 block">🎯</span>
+                    <h3 class="font-poppins text-xl font-semibold text-blue-700 mb-2">Marketing de Precisão</h3>
+                    <p>Crie campanhas personalizadas, analise o comportamento do seu cliente e aumente suas vendas com IA.</p>
+                </div>
+                <div class="benefit-card text-center">
+                    <span class="text-5xl mb-4 block">🧠</span>
+                    <h3 class="font-poppins text-xl font-semibold text-blue-700 mb-2">Treinamento Dinâmico</h3>
+                    <p>Desenvolva e capacite seus colaboradores com módulos de treinamento inteligentes e personalizados.</p>
+                </div>
+            </div>
+
+            <h3 class="font-poppins text-2xl font-semibold text-center text-gray-800 mb-8">Benefícios Chave para sua Empresa:</h3>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
+                    <span class="text-3xl text-orange-500">🚀</span> <p class="font-semibold">PRODUTIVIDADE AMPLIADA: Mais de 100x com IA!</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
+                    <span class="text-3xl text-orange-500">💡</span> <p class="font-semibold">DECISÕES INTELIGENTES: Baseadas em dados e insights.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
+                    <span class="text-3xl text-orange-500">🔁</span> <p class="font-semibold">AUTOMAÇÃO EFICIENTE: Reduza tarefas manuais.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
+                    <span class="text-3xl text-orange-500">⏳</span> <p class="font-semibold">ECONOMIA DE TEMPO E RECURSOS: Maximize resultados.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
+                    <span class="text-3xl text-orange-500">📈</span> <p class="font-semibold">SIMPLICIDADE E FOCO: Gestão, marketing e treinamento.</p>
+                </div>
+            </div>
+             <img src="https://placehold.co/1000x500/E0E7FF/3B82F6?text=App+em+Múltiplos+Dispositivos" alt="Mockup do App MPE - IA - Pro em diversos dispositivos" class="mt-12 mx-auto rounded-lg shadow-xl" style="max-width: 800px;">
+        </div>
+    </section>
+
+    <section id="workshop" class="py-16 md:py-24 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="section-title">Workshop Online Exclusivo: Domine o MPE - IA - Pro na Prática!</h2>
+            <div class="max-w-3xl mx-auto text-lg">
+                <p class="mb-6">Participe do nosso workshop online e ao vivo onde você vai:</p>
+                <ul class="list-disc list-inside space-y-3 mb-8 text-gray-700">
+                    <li>Ver uma demonstração completa do MPE - IA - Pro em ação.</li>
+                    <li>Aprender como aplicar as funcionalidades de IA para resolver problemas reais da sua PME.</li>
+                    <li>Descobrir estratégias práticas para otimizar sua gestão, marketing e treinamento usando a plataforma.</li>
+                    <li>Tirar suas dúvidas diretamente com nossos especialistas.</li>
+                </ul>
+                <div class="bg-blue-50 p-8 rounded-xl shadow-lg text-center">
+                    <h3 class="font-poppins text-2xl font-semibold text-blue-700 mb-2">Informações Essenciais:</h3>
+                    <p class="text-xl"><span class="font-semibold">Formato:</span> 100% Online e Ao Vivo</p>
+                    <p class="text-xl"><span class="font-semibold">Data:</span> Quinta-feira, 05 de Junho de 2025</p>
+                    <p class="text-xl"><span class="font-semibold">Horário:</span> 20:00 (Horário de Brasília)</p>
+                    <img src="https://placehold.co/600x300/E0E7FF/3B82F6?text=Webinar+Online" alt="Webinar online" class="mt-6 mx-auto rounded-lg shadow-md" style="max-width: 400px;">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="oferta" class="py-16 md:py-24 bg-gradient-to-br from-orange-500 to-red-600 text-white">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-poppins text-4xl md:text-5xl font-bold mb-6">OFERTA DE LANÇAMENTO IMPERDÍVEL: Sua Chance ÚNICA!</h2>
+            <div class="bg-white text-gray-800 p-8 md:p-12 rounded-xl shadow-2xl max-w-2xl mx-auto">
+                <p class="text-2xl md:text-3xl font-semibold mb-6">Ao se inscrever no Workshop de Lançamento por</p>
+                <p class="font-poppins font-bold text-6xl md:text-7xl text-orange-600 mb-4">APENAS R$99,00</p>
+                <p class="text-2xl md:text-3xl font-semibold mb-6">você NÃO SÓ garante seu aprendizado prático, mas também GANHA</p>
+                <p class="font-poppins font-bold text-4xl md:text-5xl text-blue-700 mb-8">1 ANO DE ACESSO TOTAL<br><span class="text-2xl">à versão Beta do MPE - IA - Pro!</span></p>
+                
+                <p class="text-lg mb-6">Esta é uma oportunidade exclusiva! Após o lançamento, o valor será outro. <span class="font-bold">Economize AGORA e saia na frente!</span></p>
+                
+                <div class="text-left text-lg space-y-2 mb-8 inline-block">
+                    <p class="flex items-center"><span class="text-green-500 text-2xl mr-2">✅</span> Vaga no Workshop Online Exclusivo</p>
+                    <p class="flex items-center"><span class="text-green-500 text-2xl mr-2">✅</span> 1 Ano de Acesso Completo ao App (Beta)</p>
+                    <p class="flex items-center"><span class="text-green-500 text-2xl mr-2">✅</span> Todas as funcionalidades de IA</p>
+                    <p class="flex items-center"><span class="text-green-500 text-2xl mr-2">✅</span> Suporte prioritário no período Beta</p>
+                </div>
+                <br>
+                <a href="#payment-link" class="bg-green-500 hover:bg-green-600 text-white font-poppins font-semibold py-4 px-10 text-xl rounded-lg cta-button shadow-xl">
+                    QUERO MINHA VAGA + 1 ANO DE APP POR R$99!
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="urgencia" class="py-16 bg-gray-800 text-white">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-poppins text-3xl md:text-4xl font-bold mb-4">NÃO PERCA TEMPO! AS VAGAS SÃO LIMITADAS!</h2>
+            <p class="text-yellow-300 text-xl mb-8">Oferta Exclusiva de Lançamento – Por tempo limitado!</p>
+            <div id="countdown" class="text-4xl md:text-5xl font-montserrat font-bold space-x-2 md:space-x-4">
+                <span><span id="days">00</span> Dias</span>
+                <span><span id="hours">00</span> Horas</span>
+                <span><span id="minutes">00</span> Min</span>
+                <span><span id="seconds">00</span> Seg</span>
+            </div>
+            <p class="mt-6 text-lg">Contagem regressiva para o início do Workshop!</p>
+        </div>
+    </section>
+
+    <section id="testemunhos" class="py-16 md:py-24 bg-gray-100">
+        <div class="container mx-auto px-6">
+            <h2 class="section-title">Veja o Que Estão Dizendo (ou o Que Esperamos Ouvir!)</h2>
+            <p class="text-center text-lg mb-12 max-w-3xl mx-auto">Estamos ansiosos para ver o impacto do MPE - IA - Pro no seu negócio. Veja alguns depoimentos de quem já está vislumbrando o futuro:</p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="testimonial-card">
+                    <img src="https://placehold.co/100x100/E0E7FF/3B82F6?text=JS" alt="Foto João Silva" class="w-20 h-20 rounded-full mx-auto mb-4">
+                    <p class="text-gray-600 mb-4 italic">"O MPE - IA - Pro parece ser a ferramenta que faltava para organizar minha empresa e finalmente ter tempo para focar na estratégia. A demonstração já me deixou animado!"</p>
+                    <p class="font-semibold text-blue-700 text-right">- João Silva, Dono de E-commerce</p>
+                </div>
+                <div class="testimonial-card">
+                    <img src="https://placehold.co/100x100/E0E7FF/3B82F6?text=MO" alt="Foto Maria Oliveira" class="w-20 h-20 rounded-full mx-auto mb-4">
+                    <p class="text-gray-600 mb-4 italic">"A possibilidade de automatizar o marketing e entender melhor meus clientes com IA é incrível. O MPE - IA - Pro tem um potencial enorme para PMEs como a minha."</p>
+                    <p class="font-semibold text-blue-700 text-right">- Maria Oliveira, Gestora de Agência</p>
+                </div>
+                <div class="testimonial-card">
+                    <img src="https://placehold.co/100x100/E0E7FF/3B82F6?text=CP" alt="Foto Carlos Pereira" class="w-20 h-20 rounded-full mx-auto mb-4">
+                    <p class="text-gray-600 mb-4 italic">"Finalmente uma solução de IA que entende as dores de uma pequena empresa! Intuitivo e com foco no que realmente precisamos."</p>
+                    <p class="font-semibold text-blue-700 text-right">- Carlos Pereira, Proprietário de Consultoria</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="garantia" class="py-16 md:py-24 bg-blue-600 text-white">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-poppins text-3xl md:text-4xl font-bold mb-8">Seu Sucesso é Nosso Compromisso!</h2>
+            <p class="text-lg mb-10 max-w-3xl mx-auto">Ao entrar para o universo MPE - IA - Pro, você não adquire apenas um software, mas um parceiro para o seu crescimento. Garantimos:</p>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-blue-700 p-6 rounded-lg shadow-lg">
+                    <span class="text-5xl mb-3 block">📚</span>
+                    <h3 class="font-poppins text-xl font-semibold mb-2">Treinamento Completo</h3>
+                    <p>Além do workshop, acesso a materiais de apoio e tutoriais.</p>
+                </div>
+                <div class="bg-blue-700 p-6 rounded-lg shadow-lg">
+                    <span class="text-5xl mb-3 block">💡</span>
+                    <h3 class="font-poppins text-xl font-semibold mb-2">Aperfeiçoamento Contínuo</h3>
+                    <p>Acesso antecipado a novas funcionalidades e melhorias.</p>
+                </div>
+                <div class="bg-blue-700 p-6 rounded-lg shadow-lg">
+                    <span class="text-5xl mb-3 block">💬</span>
+                    <h3 class="font-poppins text-xl font-semibold mb-2">Suporte Dedicado</h3>
+                    <p>Nossa equipe à disposição para auxiliar em suas dúvidas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="py-16 md:py-24 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="section-title">Perguntas Frequentes (FAQ)</h2>
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="faq-item border border-gray-200 rounded-lg shadow-sm">
+                    <button class="faq-question w-full text-left p-5 font-semibold text-lg text-gray-800 hover:bg-gray-50 focus:outline-none flex justify-between items-center">
+                        Preciso ter conhecimento técnico em IA para usar o MPE - IA - Pro?
+                        <span class="arrow transform transition-transform duration-300 text-orange-500 text-2xl ">▼</span>
+                    </button>
+                    <div class="faq-answer p-5 border-t border-gray-200 bg-gray-50 text-gray-700">
+                        Não! Nossa plataforma é intuitiva e desenhada para todos os níveis de usuários, desde iniciantes até os mais experientes em tecnologia. Nosso objetivo é simplificar a IA para você.
+                    </div>
+                </div>
+                <div class="faq-item border border-gray-200 rounded-lg shadow-sm">
+                    <button class="faq-question w-full text-left p-5 font-semibold text-lg text-gray-800 hover:bg-gray-50 focus:outline-none flex justify-between items-center">
+                        O que acontece após 1 ano de acesso Beta?
+                        <span class="arrow transform transition-transform duration-300 text-orange-500 text-2xl">▼</span>
+                    </button>
+                    <div class="faq-answer p-5 border-t border-gray-200 bg-gray-50 text-gray-700">
+                        Informaremos com antecedência as opções para continuar utilizando o MPE - IA - Pro. Os participantes do workshop de lançamento e usuários Beta pioneiros terão condições especiais e vantajosas para continuar conosco!
+                    </div>
+                </div>
+                <div class="faq-item border border-gray-200 rounded-lg shadow-sm">
+                    <button class="faq-question w-full text-left p-5 font-semibold text-lg text-gray-800 hover:bg-gray-50 focus:outline-none flex justify-between items-center">
+                        O workshop será gravado?
+                        <span class="arrow transform transition-transform duration-300 text-orange-500 text-2xl">▼</span>
+                    </button>
+                    <div class="faq-answer p-5 border-t border-gray-200 bg-gray-50 text-gray-700">
+                        Sim! Todos os inscritos no workshop terão acesso à gravação completa por um período determinado (informaremos qual) para rever o conteúdo quantas vezes quiser.
+                    </div>
+                </div>
+                 <div class="faq-item border border-gray-200 rounded-lg shadow-sm">
+                    <button class="faq-question w-full text-left p-5 font-semibold text-lg text-gray-800 hover:bg-gray-50 focus:outline-none flex justify-between items-center">
+                        Quais são as formas de pagamento para o workshop?
+                        <span class="arrow transform transition-transform duration-300 text-orange-500 text-2xl">▼</span>
+                    </button>
+                    <div class="faq-answer p-5 border-t border-gray-200 bg-gray-50 text-gray-700">
+                        Aceitaremos pagamentos via Cartão de Crédito (principais bandeiras) e PIX. O link de pagamento será disponibilizado ao clicar nos botões de inscrição. (Este é um exemplo, defina suas formas de pagamento).
+                    </div>
+                </div>
+                 <div class="faq-item border border-gray-200 rounded-lg shadow-sm">
+                    <button class="faq-question w-full text-left p-5 font-semibold text-lg text-gray-800 hover:bg-gray-50 focus:outline-none flex justify-between items-center">
+                        Como acesso o app após a inscrição no workshop?
+                        <span class="arrow transform transition-transform duration-300 text-orange-500 text-2xl">▼</span>
+                    </button>
+                    <div class="faq-answer p-5 border-t border-gray-200 bg-gray-50 text-gray-700">
+                        Após a confirmação do seu pagamento para o workshop, você receberá um e-mail com todas as instruções detalhadas para criar sua conta e acessar a versão Beta do MPE - IA - Pro. O acesso será liberado próximo à data do workshop.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="cta-final" class="py-16 md:py-24 bg-gray-800 text-white">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="font-poppins text-3xl md:text-4xl font-bold mb-6">Pronto para Decolar seu Negócio com a IA?</h2>
+            <p class="text-xl mb-8 max-w-2xl mx-auto">Não perca a chance de ter acesso antecipado e EXCLUSIVO à versão Beta do MPE - IA - Pro por 1 ano, participando do nosso workshop transformador por apenas R$99!</p>
+            <a href="#payment-link-final" class="bg-orange-500 hover:bg-orange-600 text-white font-poppins font-semibold py-4 px-10 text-xl rounded-lg cta-button shadow-xl">
+                GARANTIR MEU ACESSO EXCLUSIVO AGORA!
+            </a>
+            <p class="mt-6 text-sm text-gray-400">Transforme sua PME com Inteligência Artificial. Vagas limitadas!</p>
+        </div>
+    </section>
+
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="container mx-auto px-6 text-center">
+            <img src="https://storage.googleapis.com/generativeai-downloads/images/MPE-IA FINAL.png" alt="Logo MPE - IA - Pro" class="footer-logo">
+            <p class="font-poppins text-lg mb-2 text-white">MPE - IA - Pro</p>
+            <p class="mb-4">&copy; 2024-2025 MPE - IA - Pro. Todos os direitos reservados.</p>
+            <div class="space-x-4 mb-4">
+                <a href="mailto:suporte@mpeiapro.com.br" class="hover:text-orange-400">suporte@mpeiapro.com.br</a>
+                <span>|</span>
+                <a href="#politica-privacidade" class="hover:text-orange-400">Política de Privacidade</a>
+                <span>|</span>
+                <a href="#termos-uso" class="hover:text-orange-400">Termos de Uso</a>
+            </div>
+            <p class="text-sm">Esta é uma página de lançamento para a versão Beta. O produto final pode ter alterações.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Countdown Timer
+        const countdownDate = new Date("2025-06-05T20:00:00-03:00").getTime();
+
+        const countdownFunction = setInterval(function() {
+            const now = new Date().getTime();
+            const distance = countdownDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const daysEl = document.getElementById("days");
+            const hoursEl = document.getElementById("hours");
+            const minutesEl = document.getElementById("minutes");
+            const secondsEl = document.getElementById("seconds");
+
+            if(daysEl && hoursEl && minutesEl && secondsEl) {
+                daysEl.innerText = String(days).padStart(2, '0');
+                hoursEl.innerText = String(hours).padStart(2, '0');
+                minutesEl.innerText = String(minutes).padStart(2, '0');
+                secondsEl.innerText = String(seconds).padStart(2, '0');
+            }
+
+
+            if (distance < 0) {
+                clearInterval(countdownFunction);
+                const countdownEl = document.getElementById("countdown");
+                if (countdownEl) {
+                    countdownEl.innerHTML = "O WORKSHOP COMEÇOU OU A OFERTA EXPIROU!";
+                }
+            }
+        }, 1000);
+
+        // FAQ Toggle
+        const faqQuestions = document.querySelectorAll('.faq-question');
+        faqQuestions.forEach(question => {
+            question.addEventListener('click', () => {
+                const answer = question.nextElementSibling;
+                const arrow = question.querySelector('.arrow');
+                
+                question.classList.toggle('active');
+                
+                if (question.classList.contains('active')) {
+                    answer.style.display = 'block';
+                    if(arrow) arrow.style.transform = 'rotate(180deg)';
+                } else {
+                    answer.style.display = 'none';
+                    if(arrow) arrow.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
+        // Smooth scroll for navigation links
+        document.querySelectorAll('header nav a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                if (this.getAttribute('href').startsWith('#') && this.getAttribute('href').length > 1) {
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+
+                    if (targetElement) {
+                        if (targetId.includes('payment-link')) {
+                            console.log("Redirecionar para a página de pagamento para: " + targetId);
+                            // window.location.href = "SUA_URL_DE_PAGAMENTO"; // Descomente e substitua
+                        } else {
+                             e.preventDefault();
+                             targetElement.scrollIntoView({
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
