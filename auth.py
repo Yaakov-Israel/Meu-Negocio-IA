@@ -1,6 +1,22 @@
 # auth.py
 import streamlit as st
-import streamlit_firebase_auth
+# Tentativa de importar Authenticator diretamente do submódulo .core
+try:
+    from streamlit_firebase_auth.core import Authenticator
+except ImportError:
+    # Fallback para a tentativa anterior se a importação direta de .core falhar
+    # Isso também ajuda a isolar se o problema é o 'Authenticator' em si ou o módulo 'core'
+    try:
+        import streamlit_firebase_auth
+        if hasattr(streamlit_firebase_auth, 'Authenticator'):
+            Authenticator = streamlit_firebase_auth.Authenticator
+        else:
+            st.error("ERRO CRÍTICO: Não foi possível encontrar a classe 'Authenticator' na biblioteca 'streamlit_firebase_auth', nem diretamente nem em '.core'. Verifique a instalação da biblioteca.")
+            st.stop()
+    except ImportError:
+        st.error("ERRO CRÍTICO: Não foi possível importar a biblioteca 'streamlit_firebase_auth'. Verifique se ela está no requirements.txt.")
+        st.stop()
+
 
 def load_firebase_config():
     """Carrega as configurações do Firebase a partir dos Streamlit Secrets."""
@@ -26,22 +42,23 @@ def initialize_authenticator():
     """Inicializa e retorna o objeto de autenticação do Firebase."""
     try:
         firebase_config = load_firebase_config()
-        
+
         cookie_name = st.secrets["cookie_name"]
         cookie_key = st.secrets["cookie_key"]
         cookie_expiry_days_str = st.secrets.get("cookie_expiry_days", "30")
 
-        # Verificação de chaves de cookie fracas ou placeholders
         weak_or_placeholder_keys = [
             "sua_chave_secreta_super_forte_e_aleatoria_aqui",
             "COLOQUE_AQUI_UMA_SENHA_BEM_FORTE_E_ALEATORIA_QUE_VOCE_CRIOU",
             "ChaimTovim",
-            "Chaim5778ToViN5728erobmaloRU189154"
+            "Chaim5778ToViN5728erobmaloRU189154", # Sua chave atual
+            "W#z&8FpQ!s9g$X2vR7*kL@cN5bV1jM3"  # Minha sugestão anterior
         ]
         if not cookie_key or cookie_key in weak_or_placeholder_keys:
-             st.warning("ATENÇÃO: A 'cookie_key' nos seus segredos parece ser a padrão, um placeholder ou uma chave fraca. Por favor, defina uma chave secreta forte e única para segurança!")
+             st.warning("ATENÇÃO: A 'cookie_key' nos seus segredos parece ser um placeholder ou uma chave que já usamos em exemplos. Para produção, por favor, defina uma chave secreta ÚNICA, longa e forte no Streamlit Cloud Secrets!")
 
-        auth = streamlit_firebase_auth.Authenticator(
+        # Agora usamos a classe Authenticator que tentamos importar no início do arquivo
+        auth = Authenticator(
             config=firebase_config,
             cookie_name=cookie_name,
             cookie_key=cookie_key,
@@ -49,9 +66,10 @@ def initialize_authenticator():
         )
         return auth
 
-    except AttributeError:
-         st.error("ERRO: A biblioteca 'streamlit_firebase_auth' não parece ter o atributo 'Authenticator'. Verifique a instalação (requirements.txt) e se está usando a biblioteca correta (deve ser a de ThiagoOM).")
-         st.stop()
+    except NameError: 
+        # Isso aconteceria se a classe Authenticator não foi definida por nenhuma das tentativas de import
+        st.error("ERRO INTERNO: A classe Authenticator não foi carregada. Isso não deveria acontecer com as tentativas de import acima.")
+        st.stop()
     except KeyError as e:
         st.error(f"ERRO: Configuração de cookie '{e}' não encontrada nos Segredos.")
         st.info("Verifique 'cookie_name', 'cookie_key', e 'cookie_expiry_days'.")
@@ -82,13 +100,12 @@ def authentication_flow(auth_obj):
             'uid': username 
         }
         return True
-    elif authentication_status is False: # Falha no login/registro
-        st.session_state['user_authenticated'] = False
-        st.session_state['user_info'] = None
-        # A mensagem de erro é geralmente exibida pelo widget auth_obj.login()
-        return False
-    elif authentication_status is None: # Estado inicial, nenhum login tentado ainda
+    elif authentication_status is False:
         st.session_state['user_authenticated'] = False
         st.session_state['user_info'] = None
         return False
-    return False # Default case
+    elif authentication_status is None: 
+        st.session_state['user_authenticated'] = False
+        st.session_state['user_info'] = None
+        return False
+    return False
