@@ -3,5 +3,5 @@ google-generativeai
 langchain
 langchain-google-genai
 pillow
-# PyMuPDF (descomente se/quando formos usar para ler PDF
-streamlit-firebase-auth
+# PyMuPDF (descomente se/quando formos usar para ler PDF)
+streamlit-firebase-auth @ git+https://github.com/ThiagoOM/streamlit-firebase-auth.git
