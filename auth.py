@@ -1,8 +1,12 @@
-# auth.py (para streamlit-authenticator - Definitivo para TypeError)
+# auth.py (para streamlit-authenticator - CORRIGIDO para TypeError)
 import streamlit as st
 import streamlit_authenticator as stauth
 
 def initialize_authenticator():
+    """
+    Inicializa o objeto Authenticate do streamlit-authenticator
+    usando as credenciais e configurações de cookie dos Streamlit Secrets.
+    """
     try:
         credentials_config = st.secrets.get("credentials")
         cookie_config = st.secrets.get("cookie")
@@ -11,6 +15,7 @@ def initialize_authenticator():
             st.error("ERRO: Configuração de 'credentials.usernames' não encontrada, vazia ou malformada nos Segredos.")
             st.stop()
         
+        # Converte para dict se for SectionProxy (comportamento do st.secrets)
         credentials_dict = credentials_config.to_dict() if hasattr(credentials_config, 'to_dict') else dict(credentials_config)
         if not credentials_dict.get("usernames"):
              st.error("ERRO: 'usernames' não encontrado dentro de 'credentials' após conversão para dict.")
@@ -34,15 +39,6 @@ def initialize_authenticator():
             st.error(f"ERRO: 'cookie.expiry_days' ('{cookie_expiry_days_str}') não é um número inteiro válido.")
             st.stop()
 
-        # Este aviso será movido para streamlit_app.py para aparecer na sidebar se logado.
-        # placeholder_cookie_keys = [
-        #     "some_signature_key", "NovaChaveSecretaSuperForteParaAuthenticatorV2", 
-        #     "COLOQUE_AQUI_SUA_NOVA_CHAVE_SECRETA_FORTE_E_UNICA",
-        #     "Chaim5778ToViN5728erobmaloRU189154", "wR#sVn8gP!zY2qXmK7@cJ3*bL1$fH9" 
-        # ]
-        # if cookie_key in placeholder_cookie_keys:
-        #     st.warning("ATENÇÃO: A 'cookie.key' parece ser um placeholder...")
-
         authenticator = stauth.Authenticate(
             credentials_dict, 
             cookie_name,
@@ -58,27 +54,33 @@ def initialize_authenticator():
         st.info("Verifique a estrutura dos Segredos (TOML) e o arquivo requirements.txt.")
         st.stop()
 
-def authentication_flow_stauth(authenticator_obj):
+def authentication_flow_stauth(authenticator_obj): # Nome da função como streamlit_app.py espera
+    """
+    Renderiza o widget de login e atualiza o estado da autenticação no session_state.
+    """
     if authenticator_obj is None:
         st.error("Falha na inicialização do autenticador (objeto é None). O app não pode prosseguir.")
         st.session_state['authentication_status'] = False
         st.session_state['name'] = None
         st.session_state['username'] = None
-        return # Não há mais nada a fazer aqui
+        return
 
     # O método login() renderiza o formulário e retorna (name, authentication_status, username)
     # ou None se o formulário está apenas sendo exibido (antes da primeira interação).
     login_result = authenticator_obj.login(location='main') 
     
-    name_val, auth_status_val, username_val = (None, None, None) 
+    name_val, auth_status_val, username_val = (None, None, None) # Valores padrão
 
     if login_result is not None:
+        # Se login_result não for None, esperamos que seja uma tupla/lista com 3 elementos
         try:
             name_val, auth_status_val, username_val = login_result
         except ValueError:
-            st.error(f"Erro ao desempacotar resultado do login. Resultado: {login_result}")
-            auth_status_val = False 
+            # Isso aconteceria se login_result não for None, mas não tiver 3 elementos para desempacotar
+            st.error(f"Erro ao desempacotar resultado do login. Resultado recebido: {login_result}")
+            auth_status_val = False # Define como falha para segurança
     
+    # Atualiza o session_state com os resultados
     st.session_state['name'] = name_val
     st.session_state['authentication_status'] = auth_status_val
     st.session_state['username'] = username_val
