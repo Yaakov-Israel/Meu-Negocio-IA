@@ -1,6 +1,6 @@
 # auth.py
 import streamlit as st
-import streamlit_firebase_auth # Importa a biblioteca
+import streamlit_firebase_auth
 
 def load_firebase_config():
     """Carrega as configurações do Firebase a partir dos Streamlit Secrets."""
@@ -22,29 +22,19 @@ def load_firebase_config():
         st.error(f"ERRO ao carregar configuração do Firebase: {e}")
         st.stop()
 
-def initialize_auth_object():
+def initialize_authenticator(): # <--- NOME CORRIGIDO AQUI
     """Inicializa e retorna o objeto de autenticação do Firebase."""
     try:
         firebase_config = load_firebase_config()
-
-        # Tenta obter o objeto de autenticação da forma padrão da biblioteca
-        # A biblioteca pode inicializar o objeto internamente ao ser importada
-        # ou pode ter uma função específica para isso.
-        # Se a biblioteca for a de "thiagomartins", ela usa um construtor
-        # que é um pouco diferente e requer as credenciais do cookie no construtor.
-
-        # Vamos usar a forma como a biblioteca de "thiagomartins" funciona,
-        # pois é a que usa "Authenticator" (que estava no erro anterior)
-        # e é comum para Streamlit.
 
         cookie_name = st.secrets["cookie_name"]
         cookie_key = st.secrets["cookie_key"]
         cookie_expiry_days_str = st.secrets.get("cookie_expiry_days", "30")
 
-        if not cookie_key or cookie_key in ["sua_chave_secreta_super_forte_e_aleatoria_aqui", "COLOQUE_AQUI_UMA_SENHA_BEM_FORTE_E_ALEATORIA_QUE_VOCE_CRIOU", "ChaimTovim", "Chaim5778ToViN5728erobmaloRU189154"]: # Adicionadas as suas chaves de exemplo para o aviso
+        if not cookie_key or cookie_key in ["sua_chave_secreta_super_forte_e_aleatoria_aqui", "COLOQUE_AQUI_UMA_SENHA_BEM_FORTE_E_ALEATORIA_QUE_VOCE_CRIOU", "ChaimTovim", "Chaim5778ToViN5728erobmaloRU189154"]:
              st.warning("ATENÇÃO: A 'cookie_key' nos seus segredos parece ser a padrão, um placeholder ou uma chave fraca. Por favor, defina uma chave secreta forte e única para segurança!")
 
-        auth = streamlit_firebase_auth.Authenticator( # Acessando Authenticator diretamente do módulo
+        auth = streamlit_firebase_auth.Authenticator(
             config=firebase_config,
             cookie_name=cookie_name,
             cookie_key=cookie_key,
@@ -66,7 +56,7 @@ def initialize_auth_object():
         st.error(f"ERRO CRÍTICO ao inicializar autenticação Firebase: {e}")
         st.stop()
 
-def handle_auth_flow(auth_obj):
+def authentication_flow(auth_obj): # <--- NOME CORRIGIDO AQUI
     """
     Gerencia o fluxo de login, registro e logout.
     Retorna True se o usuário estiver autenticado, False caso contrário.
@@ -88,10 +78,8 @@ def handle_auth_flow(auth_obj):
     elif authentication_status is False:
         st.session_state['user_authenticated'] = False
         st.session_state['user_info'] = None
-        # A mensagem de erro já é exibida pelo componente 'login'
-        # st.error(f"Falha na autenticação. Mensagem: {username}") 
         return False
-    elif authentication_status is None: # Nenhum evento de login ainda
+    elif authentication_status is None: 
         st.session_state['user_authenticated'] = False
         st.session_state['user_info'] = None
         return False
