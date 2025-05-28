@@ -1,79 +1,92 @@
-# auth.py (Diagnóstico Final Simplificado)
+# auth.py (Diagnóstico Final - Versão Focada em Mostrar Informações na Tela)
 import streamlit as st
 
-st.subheader("Iniciando Diagnóstico de 'streamlit_firebase_auth'")
+# Este bloco tenta imprimir informações de diagnóstico na tela do app
+# Essas mensagens podem não aparecer no arquivo de log baixado.
+# É importante observar a tela do aplicativo diretamente.
+
+st.title("Página de Diagnóstico - auth.py")
+st.markdown("---")
+st.subheader("Iniciando Diagnóstico do módulo 'streamlit_firebase_auth'")
+st.markdown("Por favor, copie TODAS as mensagens desta página e envie.")
+st.markdown("---")
 
 try:
     import streamlit_firebase_auth
-    st.success("Biblioteca 'streamlit_firebase_auth' importada com SUCESSO!")
+    st.success("SUCESSO NA IMPORTAÇÃO: A biblioteca 'streamlit_firebase_auth' foi importada!")
+    
+    st.subheader("Conteúdo de `streamlit_firebase_auth`:")
+    try:
+        st.text("Atributos disponíveis (saída de dir()):")
+        st.json(dir(streamlit_firebase_auth)) # ESSA É A INFORMAÇÃO MAIS IMPORTANTE!
+    except Exception as e_dir:
+        st.error(f"Erro ao tentar listar atributos com dir(): {e_dir}")
 
-    st.text("Atributos disponíveis DIRETAMENTE em 'streamlit_firebase_auth':")
-    st.json(dir(streamlit_firebase_auth)) # Lista tudo dentro do módulo principal
+    st.markdown("---")
+    st.subheader("Verificando por 'Authenticator' e 'core':")
 
-    # Vamos verificar se o submódulo 'core' existe e listar seu conteúdo também
-    if hasattr(streamlit_firebase_auth, 'core'):
-        st.text("Atributos disponíveis em 'streamlit_firebase_auth.core':")
-        st.json(dir(streamlit_firebase_auth.core))
-        if hasattr(streamlit_firebase_auth.core, 'Authenticator'):
-             st.info("BOA NOTÍCIA: 'Authenticator' ENCONTRADO em 'streamlit_firebase_auth.core'!")
-        else:
-             st.warning("AVISO: 'Authenticator' NÃO encontrado em 'streamlit_firebase_auth.core'.")
-    else:
-        st.warning("AVISO: Submódulo 'core' NÃO encontrado em 'streamlit_firebase_auth'.")
-
-    # Verificação final se Authenticator está no nível superior, como esperado originalmente
     if hasattr(streamlit_firebase_auth, 'Authenticator'):
-        st.info("BOA NOTÍCIA: 'Authenticator' ENCONTRADO diretamente em 'streamlit_firebase_auth'!")
+        st.info("INFO: 'Authenticator' FOI ENCONTRADO diretamente em 'streamlit_firebase_auth'.")
+        Authenticator_class_ref = streamlit_firebase_auth.Authenticator
     else:
-        st.warning("AVISO: 'Authenticator' NÃO encontrado diretamente em 'streamlit_firebase_auth'.")
+        st.warning("AVISO: 'Authenticator' NÃO FOI ENCONTRADO diretamente em 'streamlit_firebase_auth'.")
+        Authenticator_class_ref = None
+
+    if hasattr(streamlit_firebase_auth, 'core'):
+        st.info("INFO: Submódulo 'core' FOI ENCONTRADO em 'streamlit_firebase_auth'.")
+        try:
+            st.text("Atributos disponíveis em 'streamlit_firebase_auth.core':")
+            st.json(dir(streamlit_firebase_auth.core))
+            if hasattr(streamlit_firebase_auth.core, 'Authenticator'):
+                st.info("INFO: 'Authenticator' FOI ENCONTRADO em 'streamlit_firebase_auth.core'.")
+                if Authenticator_class_ref is None: # Usa este se não encontrou no nível superior
+                     Authenticator_class_ref = streamlit_firebase_auth.core.Authenticator
+            else:
+                st.warning("AVISO: 'Authenticator' NÃO FOI ENCONTRADO em 'streamlit_firebase_auth.core'.")
+        except Exception as e_core_dir:
+            st.error(f"Erro ao tentar listar atributos de '.core': {e_core_dir}")
+    else:
+        st.warning("AVISO: Submódulo 'core' NÃO FOI ENCONTRADO em 'streamlit_firebase_auth'.")
+    
+    st.markdown("---")
+    if Authenticator_class_ref is not None:
+        st.success("CONCLUSÃO DO DIAGNÓSTICO: A classe 'Authenticator' parece ter sido encontrada e carregada!")
+    else:
+        st.error("CONCLUSÃO DO DIAGNÓSTICO: A classe 'Authenticator' NÃO FOI encontrada. A autenticação falhará.")
+        st.warning("Verifique a saída de 'dir(streamlit_firebase_auth)' acima para entender o que está disponível.")
+        st.stop() # Interrompe aqui se Authenticator não foi encontrado, para focar no diagnóstico.
 
 except ImportError:
-    st.error("ERRO CRÍTICO NA IMPORTAÇÃO: Não foi possível importar a biblioteca 'streamlit_firebase_auth'. Verifique o 'requirements.txt'.")
-except Exception as e:
-    st.error(f"ERRO GERAL DURANTE O DIAGNÓSTICO: {e}")
+    st.error("ERRO CRÍTICO NA IMPORTAÇÃO: Não foi possível importar a biblioteca 'streamlit_firebase_auth'.")
+    st.info("Verifique se 'streamlit-firebase-auth==1.0.6' está no seu arquivo 'requirements.txt' e se o app foi reiniciado após a mudança.")
+    st.stop()
+except Exception as e_geral:
+    st.error(f"ERRO GERAL INESPERADO durante o diagnóstico: {e_geral}")
+    st.stop()
 
-st.info("Fim do script de diagnóstico 'auth.py'. O aplicativo principal (streamlit_app.py) tentará prosseguir, mas pode falhar se 'Authenticator' não foi encontrado.")
-# Não vamos dar st.stop() aqui para garantir que todas as mensagens de diagnóstico sejam exibidas
-# e para ver o erro subsequente no streamlit_app.py se Authenticator não for definido.
-
-# Tentativa de definir Authenticator para o streamlit_app.py poder tentar usá-lo
-# Esta parte pode falhar se as verificações acima não encontrarem Authenticator,
-# mas o objetivo é deixar o streamlit_app.py tentar e falhar se necessário,
-# depois de termos visto as mensagens de diagnóstico.
-Authenticator = None 
-try:
-    if hasattr(streamlit_firebase_auth, 'Authenticator'):
-        Authenticator = streamlit_firebase_auth.Authenticator
-    elif hasattr(streamlit_firebase_auth, 'core') and hasattr(streamlit_firebase_auth.core, 'Authenticator'):
-        Authenticator = streamlit_firebase_auth.core.Authenticator
-except NameError: # Caso streamlit_firebase_auth não tenha sido importado
-    pass # Authenticator permanecerá None
-except Exception: # Outros erros inesperados ao tentar acessar atributos
-    pass # Authenticator permanecerá None
-
-# As funções abaixo não serão chamadas se o script parar antes ou se Authenticator for None
-# e initialize_authenticator falhar.
+# As funções abaixo só serão definidas se o script não parar antes
 def load_firebase_config():
-    # Esta função só será usada se o initialize_authenticator for chamado
-    return st.secrets # Simplificado, já que as chaves são acessadas diretamente
-
-def initialize_authenticator():
-    if Authenticator is None:
-        # Esta mensagem de erro é a que você viu da última vez.
-        # As mensagens de diagnóstico acima DELA são as mais importantes agora.
-        st.error("ERRO EM initialize_authenticator: Classe Authenticator não está disponível (permaneceu None após diagnóstico).")
+    try:
+        return {
+            "apiKey": st.secrets["firebase_apiKey"],
+            "authDomain": st.secrets["firebase_authDomain"],
+            "projectId": st.secrets["firebase_projectId"],
+            "storageBucket": st.secrets["firebase_storageBucket"],
+            "messagingSenderId": st.secrets["firebase_messagingSenderId"],
+            "appId": st.secrets["firebase_appId"],
+            "databaseURL": st.secrets["firebase_databaseURL"],
+        }
+    except KeyError as e:
+        st.error(f"ERRO ao carregar config do Firebase (Secrets): Chave '{e}' não encontrada.")
         st.stop()
 
-    firebase_config = {
-        "apiKey": st.secrets["firebase_apiKey"],
-        "authDomain": st.secrets["firebase_authDomain"],
-        "projectId": st.secrets["firebase_projectId"],
-        "storageBucket": st.secrets["firebase_storageBucket"],
-        "messagingSenderId": st.secrets["firebase_messagingSenderId"],
-        "appId": st.secrets["firebase_appId"],
-        "databaseURL": st.secrets["firebase_databaseURL"],
-    }
-    auth = Authenticator(
+def initialize_authenticator():
+    if Authenticator_class_ref is None: # Verifica a referência que tentamos carregar
+        st.error("ERRO FATAL em initialize_authenticator: Referência para Authenticator é None.")
+        st.stop()
+    
+    firebase_config = load_firebase_config()
+    auth = Authenticator_class_ref(
         config=firebase_config,
         cookie_name=st.secrets["cookie_name"],
         cookie_key=st.secrets["cookie_key"],
