@@ -8,7 +8,25 @@ from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
 from PIL import Image
 import streamlit_firebase_auth as st_auth
+import streamlit as st
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
+import google.generativeai as genai
+from PIL import Image
+import streamlit_firebase_auth as st_auth
 
+# LINHAS DE TESTE PARA DIAGNÓSTICO:
+st.write("Conteúdo do módulo st_auth:")
+st.write(dir(st_auth))
+st.stop() # Interrompe o script aqui para vermos o output do dir()
+
+# O restante do seu código continua abaixo, mas não será executado por causa do st.stop()
+# st.set_page_config(
+# ... (etc.)
 st.set_page_config(
     page_title="Assistente PME Pro",
     layout="wide",
