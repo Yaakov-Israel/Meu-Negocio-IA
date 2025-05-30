@@ -1,3 +1,8 @@
 streamlit
+google-generativeai
+langchain
+langchain-google-genai
+pillow
 streamlit-firebase-auth==1.0.5
+firebase-admin  
 python-dateutil
