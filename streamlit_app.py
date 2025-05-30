@@ -1,60 +1,88 @@
 import streamlit as st
-import sys
-import importlib
+import streamlit_authenticator as stauth # Nova biblioteca
+import yaml # streamlit-authenticator usa YAML para carregar config, mas aqui vamos direto dos segredos
+from yaml.loader import SafeLoader # Para carregar o YAML de forma segura
 
-st.write("--- Início do Teste Detalhado de Importação v2 ---")
-st.write(f"Versão do Python: {sys.version}")
+st.set_page_config(page_title="Teste de Autenticação - PME Pro", layout="wide")
 
-sfa_module = None
+# Carregar configurações dos segredos do Streamlit
+# streamlit-authenticator espera que 'credentials' seja um dict
+# e 'cookie' também seja um dict.
+
 try:
-    import streamlit_firebase_auth as sfa
-    sfa_module = sfa # Atribui se a importação for bem-sucedida
-    st.success("SUCESSO! Módulo 'streamlit_firebase_auth' importado como 'sfa'.")
-    st.write(f"Localização: {sfa.__file__ if hasattr(sfa, '__file__') else 'N/A'}")
-    st.write("Conteúdo de dir(sfa):")
-    st.json(dir(sfa))
+    # Verifica se as chaves essenciais para o authenticator existem nos segredos
+    if 'credentials' not in st.secrets or \
+       'cookie' not in st.secrets or \
+       'usernames' not in st.secrets['credentials']:
+        st.error("🚨 ERRO DE CONFIGURAÇÃO: Seções/chaves essenciais para 'streamlit-authenticator' ([credentials] com 'usernames', [cookie]) não encontradas nos Segredos.")
+        st.info("Verifique se os segredos estão formatados corretamente para 'streamlit-authenticator'.")
+        st.stop()
 
-    # Tentativa de acesso via sfa.components.Komponenten
-    if hasattr(sfa, 'components') and hasattr(sfa.components, 'Komponenten'):
-        st.write("--- Tentando acessar via sfa.components.Komponenten ---")
-        try:
-            # A classe Komponenten é instanciada dentro do __init__.py da lib,
-            # e seus métodos login_button/logout_button são expostos.
-            # Se a exposição direta falhou, mas 'components' e 'Komponenten' existem,
-            # algo está quebrado na re-exportação da biblioteca.
-            # No entanto, as funções login_button/logout_button no __init__.py da lib
-            # são atribuídas a partir de uma instância de Komponenten.
-            # Vamos verificar se podemos chamar as funções que deveriam estar no módulo 'sfa' diretamente,
-            # pois é assim que a biblioteca foi projetada para ser usada.
+    credentials_config = st.secrets['credentials'].to_dict() # Converte para dict se for TomlFileProvider
+    cookie_config = st.secrets['cookie'].to_dict()
+    
+    # Validação interna mais detalhada (opcional, mas bom para depurar)
+    if not isinstance(credentials_config.get('usernames'), dict):
+        st.error("🚨 ERRO DE CONFIGURAÇÃO: 'credentials.usernames' não é um dicionário válido nos segredos.")
+        st.stop()
+    if not all(isinstance(v, dict) and 'password' in v and 'name' in v and 'email' in v for v in credentials_config['usernames'].values()):
+        st.error("🚨 ERRO DE CONFIGURAÇÃO: Estrutura interna de 'credentials.usernames' inválida. Cada usuário deve ter 'email', 'name', e 'password'.")
+        st.stop()
+    if not all(k in cookie_config for k in ['name', 'key', 'expiry_days']):
+        st.error("🚨 ERRO DE CONFIGURAÇÃO: Faltam chaves em '[cookie]' (name, key, expiry_days).")
+        st.stop()
 
-            if hasattr(sfa, 'login_button'):
-                st.success("SUCESSO! 'sfa.login_button' encontrado diretamente!")
-                # Para realmente testar, precisamos de segredos configurados, o que não é o foco deste script mínimo.
-                # Apenas a existência do atributo é suficiente por agora.
-            else:
-                st.error("ERRO: 'sfa.login_button' NÃO encontrado diretamente. Isso é inesperado.")
+except Exception as e_secrets_load:
+    st.error(f"🚨 ERRO AO CARREGAR OU VALIDAR SEGREDOS PARA streamlit-authenticator: {type(e_secrets_load).__name__} - {e_secrets_load}")
+    st.exception(e_secrets_load)
+    st.stop()
 
-            if hasattr(sfa, 'logout_button'):
-                st.success("SUCESSO! 'sfa.logout_button' encontrado diretamente!")
-            else:
-                st.error("ERRO: 'sfa.logout_button' NÃO encontrado diretamente. Isso é inesperado.")
 
-            # Se o acesso direto acima falhou, isso indica um problema na biblioteca
-            # ou no ambiente que impede o __init__.py da biblioteca de funcionar 100%.
-            # Acessar sfa.components.Komponenten().login_button() seria um paliativo
-            # para uma biblioteca que não está se comportando como documentado.
+# Inicializar o autenticador
+try:
+    authenticator = stauth.Authenticate(
+        credentials_config,                   # dict de credenciais (do st.secrets)
+        cookie_config['name'],                # nome do cookie (do st.secrets)
+        cookie_config['key'],                 # chave secreta para assinar o cookie (do st.secrets)
+        cookie_config['expiry_days'],         # validade do cookie em dias (do st.secrets)
+        # preauthorized_emails=[]             # Opcional: lista de emails pré-autorizados
+    )
+except Exception as e_auth_init:
+    st.error(f"🚨 ERRO AO INICIALIZAR o Authenticator: {type(e_auth_init).__name__} - {e_auth_init}")
+    st.exception(e_auth_init)
+    st.stop()
 
-        except Exception as e_komp_access:
-            st.error(f"ERRO ao tentar acessar atributos via sfa.components: {type(e_komp_access).__name__} - {e_komp_access}")
-            st.exception(e_komp_access)
-    else:
-        st.warning("Submódulo 'sfa.components' ou classe 'sfa.components.Komponenten' não encontrados.")
+st.title("Teste de Login com `streamlit-authenticator`")
 
-except ImportError as e_imp:
-    st.error(f"🚨 FALHA NA IMPORTAÇÃO de 'streamlit_firebase_auth as sfa': {e_imp}")
-    st.info("Verifique os logs de build no Streamlit Cloud para 'streamlit-firebase-auth==1.0.5' e 'firebase-admin'.")
-except Exception as e_gen:
-    st.error(f"🚨 ERRO INESPERADO: {type(e_gen).__name__} - {e_gen}")
-    st.exception(e_gen)
+# Renderizar o widget de login
+# O método login() retorna: name, authentication_status, username
+# name: Nome completo do usuário
+# authentication_status: True se logado, False se falhou, None se ainda não tentou
+# username: Nome de usuário
+try:
+    name_of_user, authentication_status, username = authenticator.login() # Removido 'main' para testar no corpo principal
 
-st.write("--- Fim do Teste Detalhado de Importação v2 ---")
+    if authentication_status:
+        st.sidebar.success(f"Bem-vindo, *{name_of_user}*!")
+        st.sidebar.write(f"Username: `{username}`")
+        authenticator.logout("Logout", "sidebar", key='logout_button_v10_stauth') # Chave única
+        
+        st.header("🎉 Login Bem-Sucedido!")
+        st.write("Se você está vendo esta mensagem, o `streamlit-authenticator` está funcionando.")
+        st.write("Agora podemos prosseguir para integrar isso com sua lógica de app e validação Firebase.")
+        
+        # Aqui você pode adicionar a lógica do seu app que só aparece após o login
+        # Por exemplo, carregar o LLM, a classe AssistentePMEPro, etc.
+        # Mas para este teste, vamos manter simples.
+
+    elif authentication_status == False:
+        st.error("Nome de usuário/senha incorreto.")
+    elif authentication_status == None:
+        st.warning("Por favor, insira seu nome de usuário e senha.")
+
+except Exception as e_login_widget:
+    st.error(f"🚨 ERRO AO RENDERIZAR O WIDGET DE LOGIN: {type(e_login_widget).__name__} - {e_login_widget}")
+    st.exception(e_login_widget)
+
+st.markdown("---")
+st.caption("Fim do teste minimalista com streamlit-authenticator.")
