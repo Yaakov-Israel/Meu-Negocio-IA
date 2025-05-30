@@ -5,5 +5,3 @@ langchain-google-genai
 pillow
 streamlit-authenticator==0.3.2
 pyjwt
-# firebase-admin
-# python-dateutil
