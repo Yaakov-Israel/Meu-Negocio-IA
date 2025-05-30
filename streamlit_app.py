@@ -1,93 +1,144 @@
 import streamlit as st
-import streamlit_authenticator as stauth
+import streamlit_authenticator as stauth # Importa mesmo que a inicialização possa falhar depois
 
-st.set_page_config(page_title="Teste Autenticação v3 - PME Pro", layout="wide")
+st.set_page_config(page_title="Teste Autenticação v4 - Diagnóstico de Segredos", layout="wide")
+st.title("Diagnóstico Detalhado dos Segredos para `streamlit-authenticator`")
 
-# --- Carregar Configurações dos Segredos ---
-credentials_config = None
-cookie_config = None
-try:
-    if 'credentials' not in st.secrets or \
-       'cookie' not in st.secrets or \
-       'usernames' not in st.secrets['credentials'] or \
-       not isinstance(st.secrets['credentials'].get('usernames'), dict): # Checa se usernames é um dict
-        st.error("🚨 ERRO DE CONFIGURAÇÃO: Segredos para 'streamlit-authenticator' ([credentials] com 'usernames' como dict, [cookie]) ausentes ou malformatados.")
-        st.stop()
+st.subheader("Conteúdo Bruto de `st.secrets` (chaves de nível superior):")
+st.write(f"Chaves em st.secrets: `{list(st.secrets.keys())}`") # Mostra todas as seções principais
 
-    credentials_config = st.secrets['credentials'].to_dict() 
-    cookie_config = st.secrets['cookie'].to_dict()
-    
-    # Validação mais robusta (opcional, mas útil)
-    if not all(isinstance(v, dict) and 'password' in v and 'name' in v and 'email' in v for v in credentials_config.get('usernames', {}).values()):
-        st.error("🚨 ERRO: Estrutura interna de 'credentials.usernames' inválida. Cada usuário deve ter 'email', 'name', e 'password'.")
-        st.stop()
-    if not all(k_cookie in cookie_config for k_cookie in ['name', 'key', 'expiry_days']):
-        st.error("🚨 ERRO: Faltam chaves em '[cookie]' (name, key, expiry_days).")
-        st.stop()
-
-except Exception as e_secrets:
-    st.error(f"🚨 ERRO AO CARREGAR/VALIDAR SEGREDOS: {type(e_secrets).__name__} - {e_secrets}")
-    st.exception(e_secrets)
-    st.stop()
-
-# --- Inicializar o Autenticador ---
-authenticator = None
-try:
-    authenticator = stauth.Authenticate(
-        credentials_config, # Passando o dict diretamente
-        cookie_config['name'],
-        cookie_config['key'],
-        cookie_config['expiry_days'],
-    )
-except Exception as e_auth_init:
-    st.error(f"🚨 ERRO AO INICIALIZAR Authenticator: {type(e_auth_init).__name__} - {e_auth_init}")
-    st.exception(e_auth_init)
-    st.stop()
-
-if not authenticator: # Checagem de segurança
-    st.error("Falha crítica: Objeto Authenticator não foi inicializado.")
-    st.stop()
-
-st.title("Teste de Login v3 com `streamlit-authenticator`")
-
-# --- Processo de Login ---
-# O formulário é renderizado no corpo principal por padrão.
-name_of_user, authentication_status, username = authenticator.login()
+credentials_section_debug = None
+cookie_section_debug = None
+validation_error_message_debug = "Nenhum erro de validação dos segredos detectado ainda."
+initial_checks_passed = False
 
 st.markdown("---")
-st.subheader("Diagnóstico do Retorno de `authenticator.login()`:")
-st.write(f"**Nome do Usuário (retornado):** `{name_of_user}`")
-st.write(f"**Status da Autenticação (retornado):** `{authentication_status}`")
-st.write(f"**Username (retornado):** `{username}`")
+st.subheader("Analisando `st.secrets['credentials']`:")
+if "credentials" in st.secrets:
+    st.success("✅ Seção [credentials] ENCONTRADA em st.secrets!")
+    credentials_section_debug = st.secrets["credentials"]
+    st.write(f"Tipo de `st.secrets['credentials']`: `{type(credentials_section_debug)}`")
+    
+    try:
+        # Acessar st.secrets.credentials diretamente como um dict pode funcionar
+        # ou st.secrets.credentials.to_dict() se for um TomlFileProvider
+        credentials_dict_debug = {}
+        if hasattr(credentials_section_debug, 'to_dict'):
+            credentials_dict_debug = credentials_section_debug.to_dict()
+            st.write("`st.secrets['credentials']` convertido para dict via `.to_dict()`")
+        elif isinstance(credentials_section_debug, dict):
+            credentials_dict_debug = credentials_section_debug
+            st.write("`st.secrets['credentials']` já é um dict.")
+        else:
+            st.warning("`st.secrets['credentials']` não é um dict e não tem `.to_dict()`.")
+            # Tenta iterar como se fosse um dict-like object (SecretsSection)
+            credentials_dict_debug = {k: credentials_section_debug[k] for k in credentials_section_debug}
+
+
+        st.write("Conteúdo de `credentials` (após tentativa de conversão para dict):")
+        st.json(credentials_dict_debug) 
+        
+        if "usernames" in credentials_dict_debug:
+            st.success("Chave 'usernames' ENCONTRADA dentro de `credentials`!")
+            usernames_val_debug = credentials_dict_debug["usernames"]
+            st.write(f"Tipo de `credentials['usernames']`: `{type(usernames_val_debug)}`")
+            st.write("Conteúdo de `credentials['usernames']`:")
+            st.json(usernames_val_debug) 
+            
+            if isinstance(usernames_val_debug, dict):
+                st.success("✅ `credentials['usernames']` É um dicionário (dict)!")
+                initial_checks_passed = True # Pelo menos a parte de credentials.usernames está OK
+            else:
+                st.error("❌ `credentials['usernames']` NÃO é um dicionário (dict). Este é o problema!")
+                validation_error_message_debug = "O valor de 'credentials.usernames' não é um dicionário."
+        else:
+            st.error("❌ Chave 'usernames' NÃO encontrada dentro de `credentials`.")
+            validation_error_message_debug = "A chave 'usernames' está faltando na seção [credentials]."
+            
+    except Exception as e_creds_debug:
+        st.error(f"Erro ao inspecionar `st.secrets['credentials']` ou 'usernames': {type(e_creds_debug).__name__} - {e_creds_debug}")
+        validation_error_message_debug = f"Exceção ao acessar credentials: {e_creds_debug}"
+else:
+    st.error("❌ Seção [credentials] NÃO encontrada em st.secrets!")
+    validation_error_message_debug = "A seção [credentials] está faltando nos segredos."
+
+st.markdown("---")
+st.subheader("Analisando `st.secrets['cookie']`:")
+if "cookie" in st.secrets:
+    st.success("✅ Seção [cookie] ENCONTRADA em st.secrets!")
+    cookie_section_debug = st.secrets["cookie"]
+    st.write(f"Tipo de `st.secrets['cookie']`: `{type(cookie_section_debug)}`")
+    try:
+        cookie_dict_debug = {}
+        if hasattr(cookie_section_debug, 'to_dict'):
+            cookie_dict_debug = cookie_section_debug.to_dict()
+        elif isinstance(cookie_section_debug, dict):
+            cookie_dict_debug = cookie_section_debug
+        else:
+            cookie_dict_debug = {k: cookie_section_debug[k] for k in cookie_section_debug}
+
+        st.write("Conteúdo de `cookie` (após tentativa de conversão para dict):")
+        st.json(cookie_dict_debug)
+        
+        if "name" in cookie_dict_debug and "key" in cookie_dict_debug and "expiry_days" in cookie_dict_debug:
+            st.success("✅ Chaves 'name', 'key', 'expiry_days' ENCONTRADAS em `cookie`!")
+            if initial_checks_passed: # Só considera o cookie OK se credentials também estiverem minimamente OK
+                 pass # Não muda o initial_checks_passed aqui
+            else: # Se credentials falhou, o check geral falha
+                 initial_checks_passed = False
+        else:
+            st.error("❌ Uma ou mais chaves ('name', 'key', 'expiry_days') NÃO encontradas em `cookie`.")
+            validation_error_message_debug = "Chaves faltando na seção [cookie]."
+            initial_checks_passed = False
+            
+    except Exception as e_cookie_debug:
+        st.error(f"Erro ao inspecionar `st.secrets['cookie']`: {e_cookie_debug}")
+        validation_error_message_debug = f"Exceção ao acessar cookie: {e_cookie_debug}"
+        initial_checks_passed = False
+else:
+    st.error("❌ Seção [cookie] NÃO encontrada em st.secrets!")
+    validation_error_message_debug = "A seção [cookie] está faltando nos segredos."
+    initial_checks_passed = False
+
 st.markdown("---")
 
-# Lógica de acordo com o status da autenticação
-if authentication_status: # True se logado com sucesso
-    st.sidebar.success(f"Bem-vindo, *{name_of_user}*!")
-    st.sidebar.write(f"Username Logado: `{username}`")
-    authenticator.logout("Logout", "sidebar", key='logout_button_v11_stauth') 
+# Validação final antes de tentar o Authenticator
+if initial_checks_passed:
+    st.success("🎉 VALIDAÇÃO INICIAL DOS SEGREDOS PASSOU! Tentando inicializar o Authenticator...")
     
-    st.header("🎉 Login Bem-Sucedido!")
-    st.write("Se você está vendo esta mensagem, o `streamlit-authenticator` PERMITIU O LOGIN.")
-    st.write("Agora podemos prosseguir para integrar isso com sua lógica de app completa e, se necessário, validação adicional com Firebase.")
-    
-    # TODO: Aqui entraria a lógica do seu aplicativo principal (agente, seções, etc.)
-    # Exemplo:
-    # if 'agente_pme_completo' not in st.session_state and llm_model_global: # Supondo que llm_model_global já foi carregado
-    # st.session_state.agente_pme_completo = AssistentePMEPro(llm_model_global)
-    # agente_app_instancia = st.session_state.agente_pme_completo
-    # # Chamar as funções do agente aqui...
-    st.info("Conteúdo principal do aplicativo apareceria aqui.")
+    # Tentativa de usar o Authenticator
+    authenticator_final_diag = None
+    try:
+        # Re-obtém os dicts para garantir que estamos usando a forma correta
+        final_credentials_config_dict = st.secrets['credentials'].to_dict() if hasattr(st.secrets['credentials'], 'to_dict') else dict(st.secrets['credentials'])
+        final_cookie_config_dict = st.secrets['cookie'].to_dict() if hasattr(st.secrets['cookie'], 'to_dict') else dict(st.secrets['cookie'])
 
+        authenticator_final_diag = stauth.Authenticate(
+            final_credentials_config_dict,
+            final_cookie_config_dict['name'],
+            final_cookie_config_dict['key'],
+            final_cookie_config_dict['expiry_days'],
+        )
+        st.success("✅ Authenticator INICIALIZADO com sucesso!")
+        
+        name_diag_final, status_diag_final, username_diag_final = authenticator_final_diag.login()
+        st.write(f"Resultado do login: Nome='{name_diag_final}', Status='{status_diag_final}', Username='{username_diag_final}'")
+        
+        if status_diag_final:
+            st.sidebar.success(f"Login OK: {name_diag_final}")
+            authenticator_final_diag.logout("Logout", "sidebar", key="logout_diag_v9_final")
+            st.header("🎉 Login Bem-Sucedido no Teste v4!")
+        elif status_diag_final == False:
+            st.error("Credenciais inválidas no formulário de login.")
+        elif status_diag_final == None:
+            st.info("Formulário de login renderizado. Por favor, tente logar.")
 
-elif authentication_status == False: # False se a tentativa de login falhou (ex: senha errada)
-    st.error("Nome de usuário ou senha incorreto. Tente novamente.")
-    # O formulário de login já foi renderizado acima pela chamada authenticator.login()
-    # e deve continuar visível para nova tentativa.
+    except Exception as e_auth_final_diag:
+        st.error(f"🚨 ERRO AO INICIALIZAR/USAR Authenticator (Diagnóstico v4): {type(e_auth_final_diag).__name__} - {e_auth_final_diag}")
+        st.exception(e_auth_final_diag)
+else:
+    st.error(f"Validação inicial dos segredos FALHOU. Mensagem final: {validation_error_message_debug}")
+    st.info("Verifique o output de diagnóstico acima para ver qual parte dos segredos não foi lida corretamente.")
 
-elif authentication_status == None: # None se o formulário foi renderizado mas o usuário ainda não submeteu
-    st.warning("Por favor, insira seu nome de usuário e senha e clique em Login.")
-    # O formulário de login já foi renderizado acima.
-    
 st.markdown("---")
-st.caption("Fim do teste minimalista v3 com streamlit-authenticator.")
+st.caption("Fim do teste de diagnóstico de segredos v4.")
