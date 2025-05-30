@@ -1,74 +1,60 @@
 import streamlit as st
 import sys
-import importlib # Para tentar importar de forma mais programática
+import importlib
 
-st.write("--- Início do Teste Detalhado de Importação ---")
+st.write("--- Início do Teste Detalhado de Importação v2 ---")
 st.write(f"Versão do Python: {sys.version}")
-st.write("Caminhos do Sistema (sys.path):")
-st.json(sys.path) # Mostra onde o Python procura por módulos
 
-st.write("--- Tentativa de Importação Direta ---")
-try:
-    from streamlit_firebase_auth import login_button
-    st.success("SUCESSO ao importar 'login_button' de 'streamlit_firebase_auth'!")
-    st.write(f"Localização do módulo 'streamlit_firebase_auth' (se encontrado): {login_button.__module__ if hasattr(login_button, '__module__') else 'Não aplicável'}")
-except ImportError as e_imp_direct:
-    st.error(f"🚨 FALHA na importação direta: {e_imp_direct}")
-except Exception as e_direct:
-    st.error(f"🚨 ERRO INESPERADO na importação direta: {type(e_direct).__name__} - {e_direct}")
-
-st.write("--- Tentativa de Importação do Módulo Inteiro ---")
 sfa_module = None
 try:
-    import streamlit_firebase_auth as sfa_test_module
-    sfa_module = sfa_test_module # Atribui se a importação for bem-sucedida
-    st.success("SUCESSO! Módulo 'streamlit_firebase_auth' importado como 'sfa_test_module'.")
-    st.write(f"Tipo de sfa_test_module: {type(sfa_test_module)}")
-    st.write(f"Localização do arquivo do módulo: {sfa_test_module.__file__ if hasattr(sfa_test_module, '__file__') else 'Não disponível'}")
-    st.write("Atributos disponíveis em 'sfa_test_module':")
-    st.json(dir(sfa_test_module)) # Usar st.json para melhor formatação de listas grandes
+    import streamlit_firebase_auth as sfa
+    sfa_module = sfa # Atribui se a importação for bem-sucedida
+    st.success("SUCESSO! Módulo 'streamlit_firebase_auth' importado como 'sfa'.")
+    st.write(f"Localização: {sfa.__file__ if hasattr(sfa, '__file__') else 'N/A'}")
+    st.write("Conteúdo de dir(sfa):")
+    st.json(dir(sfa))
 
-    # Verifica atributos específicos novamente
-    if hasattr(sfa_test_module, 'login_button'):
-        st.write("-> Atributo 'login_button' ENCONTRADO em sfa_test_module.")
+    # Tentativa de acesso via sfa.components.Komponenten
+    if hasattr(sfa, 'components') and hasattr(sfa.components, 'Komponenten'):
+        st.write("--- Tentando acessar via sfa.components.Komponenten ---")
+        try:
+            # A classe Komponenten é instanciada dentro do __init__.py da lib,
+            # e seus métodos login_button/logout_button são expostos.
+            # Se a exposição direta falhou, mas 'components' e 'Komponenten' existem,
+            # algo está quebrado na re-exportação da biblioteca.
+            # No entanto, as funções login_button/logout_button no __init__.py da lib
+            # são atribuídas a partir de uma instância de Komponenten.
+            # Vamos verificar se podemos chamar as funções que deveriam estar no módulo 'sfa' diretamente,
+            # pois é assim que a biblioteca foi projetada para ser usada.
+
+            if hasattr(sfa, 'login_button'):
+                st.success("SUCESSO! 'sfa.login_button' encontrado diretamente!")
+                # Para realmente testar, precisamos de segredos configurados, o que não é o foco deste script mínimo.
+                # Apenas a existência do atributo é suficiente por agora.
+            else:
+                st.error("ERRO: 'sfa.login_button' NÃO encontrado diretamente. Isso é inesperado.")
+
+            if hasattr(sfa, 'logout_button'):
+                st.success("SUCESSO! 'sfa.logout_button' encontrado diretamente!")
+            else:
+                st.error("ERRO: 'sfa.logout_button' NÃO encontrado diretamente. Isso é inesperado.")
+
+            # Se o acesso direto acima falhou, isso indica um problema na biblioteca
+            # ou no ambiente que impede o __init__.py da biblioteca de funcionar 100%.
+            # Acessar sfa.components.Komponenten().login_button() seria um paliativo
+            # para uma biblioteca que não está se comportando como documentado.
+
+        except Exception as e_komp_access:
+            st.error(f"ERRO ao tentar acessar atributos via sfa.components: {type(e_komp_access).__name__} - {e_komp_access}")
+            st.exception(e_komp_access)
     else:
-        st.warning("-> Atributo 'login_button' NÃO encontrado em sfa_test_module.")
-    
-    if hasattr(sfa_test_module, 'FirebaseAuth'):
-        st.write("-> Atributo 'FirebaseAuth' ENCONTRADO em sfa_test_module.")
-    else:
-        st.warning("-> Atributo 'FirebaseAuth' NÃO encontrado em sfa_test_module.")
+        st.warning("Submódulo 'sfa.components' ou classe 'sfa.components.Komponenten' não encontrados.")
 
-except ImportError as e_imp_module:
-    st.error(f"🚨 FALHA ao importar 'streamlit_firebase_auth as sfa_test_module': {e_imp_module}")
-except Exception as e_module:
-    st.error(f"🚨 ERRO INESPERADO ao importar módulo inteiro: {type(e_module).__name__} - {e_module}")
+except ImportError as e_imp:
+    st.error(f"🚨 FALHA NA IMPORTAÇÃO de 'streamlit_firebase_auth as sfa': {e_imp}")
+    st.info("Verifique os logs de build no Streamlit Cloud para 'streamlit-firebase-auth==1.0.5' e 'firebase-admin'.")
+except Exception as e_gen:
+    st.error(f"🚨 ERRO INESPERADO: {type(e_gen).__name__} - {e_gen}")
+    st.exception(e_gen)
 
-st.write("--- Tentativa de Importação com importlib ---")
-try:
-    spec = importlib.util.find_spec("streamlit_firebase_auth")
-    if spec is None:
-        st.error("🚨 importlib.util.find_spec NÃO encontrou 'streamlit_firebase_auth'.")
-    else:
-        st.success("importlib.util.find_spec ENCONTROU 'streamlit_firebase_auth'.")
-        st.write(f"Localização do spec: {spec.origin}")
-        # Tenta carregar o módulo usando o spec
-        # module_via_importlib = importlib.util.module_from_spec(spec)
-        # spec.loader.exec_module(module_via_importlib)
-        # st.success("Módulo carregado via importlib!")
-        # st.write(dir(module_via_importlib))
-except Exception as e_importlib:
-    st.error(f"🚨 ERRO com importlib: {type(e_importlib).__name__} - {e_importlib}")
-
-
-st.write("--- Testando importação de um pacote padrão diferente (dateutil) ---")
-try:
-    import dateutil.parser
-    st.success("SUCESSO ao importar 'dateutil.parser'!")
-    st.write(f"Exemplo de uso: {dateutil.parser.parse('2025-05-30')}")
-except ImportError:
-    st.error("🚨 FALHA ao importar 'dateutil.parser'. Isso pode indicar um problema geral com a instalação de QUALQUER novo pacote.")
-    st.info("Adicione 'python-dateutil' ao seu requirements.txt se este erro ocorrer.")
-
-
-st.write("--- Fim do Teste Detalhado de Importação ---")
+st.write("--- Fim do Teste Detalhado de Importação v2 ---")
