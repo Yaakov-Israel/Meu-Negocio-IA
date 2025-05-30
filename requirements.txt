@@ -1,2 +1,3 @@
 streamlit
 streamlit-firebase-auth==1.0.5
+python-dateutil
