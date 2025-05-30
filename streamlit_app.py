@@ -1,56 +1,42 @@
 import streamlit as st
-import streamlit_authenticator as stauth
+import streamlit_authenticator as stauth # Requer streamlit-authenticator instalado
 
-st.set_page_config(page_title="Teste Autenticação v6 - Ajuste Final", layout="wide")
-st.title("Teste Super Mínimo v6 com `streamlit-authenticator`")
+st.set_page_config(page_title="Gerador de Hash PME Pro", layout="centered")
+st.title("🔑 Gerador de Hash para `streamlit-authenticator`")
+st.caption("Use este utilitário para gerar o hash da senha desejada.")
+st.info("Este app é temporário, apenas para gerar o hash. Depois, volte seu app principal.")
 
-# Carrega as credenciais e configurações do cookie diretamente dos segredos
-try:
-    # Verifica se as seções e chaves existem para evitar KeyErrors antes de to_dict()
-    if 'credentials' not in st.secrets or 'usernames' not in st.secrets['credentials']:
-        st.error("🚨 ERRO DE CONFIGURAÇÃO: Seção '[credentials]' ou subchave 'usernames' ausente nos segredos.")
-        st.stop()
-    if 'cookie' not in st.secrets or not all(k in st.secrets['cookie'] for k in ['name', 'key', 'expiry_days']):
-        st.error("🚨 ERRO DE CONFIGURAÇÃO: Seção '[cookie]' ou chaves ('name', 'key', 'expiry_days') ausentes/incompletas.")
-        st.stop()
+password_input = st.text_input("Digite a senha para a qual você quer gerar o hash:", 
+                             type="password", 
+                             value="mazaltovazimovcaradepauzovi", # Sugestão, você pode mudar para testar
+                             key="pwd_to_hash_input_v9_cloud_gen")
 
-    # CONVERSÃO PARA DICIONÁRIO PURO ANTES DE PASSAR PARA O AUTHENTICATOR
-    credentials_for_auth = st.secrets["credentials"].to_dict() 
-    cookie_for_auth_dict = st.secrets["cookie"].to_dict() 
-    
-    authenticator = stauth.Authenticate(
-        credentials_for_auth,        # Agora é um dict Python puro
-        cookie_for_auth_dict['name'],
-        cookie_for_auth_dict['key'],
-        cookie_for_auth_dict['expiry_days']
-    )
+if st.button("Gerar Hash Seguro!", key="btn_generate_hash_v9_cloud_gen"):
+    if password_input:
+        try:
+            # A classe Hasher espera uma LISTA de senhas
+            hashed_passwords_list = stauth.Hasher([password_input]).generate()
 
-    name_of_user, authentication_status, username = authenticator.login()
+            if hashed_passwords_list and isinstance(hashed_passwords_list, list) and len(hashed_passwords_list) > 0:
+                generated_hash_value = hashed_passwords_list[0]
+                st.success("Hash gerado com sucesso!")
+                st.write("Copie o hash abaixo e cole no campo 'password' do seu usuário na seção '[credentials.usernames.SEU_USUARIO]' dos seus Segredos no Streamlit Cloud:")
+                st.code(generated_hash_value, language=None) # language=None para texto simples
+                st.warning("Lembre-se de NUNCA armazenar a senha original em texto plano nos segredos em produção. Use este hash gerado.")
+            else:
+                st.error("A geração do hash não retornou um resultado esperado (lista vazia ou formato incorreto).")
+                st.write(f"Retorno de generate(): {hashed_passwords_list}")
 
-    st.subheader("Resultado da Tentativa de Login:")
-    st.write(f"Nome Retornado: `{name_of_user}`")
-    st.write(f"Status da Autenticação: `{authentication_status}`")
-    st.write(f"Username Retornado: `{username}`")
+        except AttributeError as e_attr:
+            st.error(f"🚨 ERRO: Parece que 'streamlit_authenticator.Hasher' não está disponível ou a biblioteca não foi carregada corretamente.")
+            st.error(f"Detalhe: {type(e_attr).__name__} - {e_attr}")
+            st.info("Verifique se 'streamlit-authenticator==0.3.2' está no requirements.txt e se foi instalado sem erros nos logs de build.")
+            st.exception(e_attr)
+        except Exception as e_hash_gen_cloud:
+            st.error(f"🚨 ERRO AO GERAR HASH: {type(e_hash_gen_cloud).__name__} - {e_hash_gen_cloud}")
+            st.exception(e_hash_gen_cloud)
+    else:
+        st.warning("Por favor, digite uma senha para gerar o hash.")
 
-    if authentication_status:
-        st.success(f"🎉 Login BEM-SUCEDIDO como {name_of_user} ({username})!")
-        authenticator.logout('Logout', 'sidebar', key='logout_v6_super_min')
-        st.write("Pode prosseguir para o app completo!")
-    elif authentication_status == False:
-        st.error("Usuário ou senha inválido. Verifique as credenciais e o hash da senha nos segredos.")
-    elif authentication_status == None:
-        st.info("Formulário de login acima. Por favor, insira suas credenciais.")
-
-except KeyError as e_key_final: # Captura KeyErrors específicos dos segredos ANTES do to_dict
-    st.error(f"🚨 ERRO DE CONFIGURAÇÃO DE SEGREDOS (KeyError): Chave não encontrada: {e_key_final}")
-    st.info("Verifique se as seções '[credentials]' (com sub-dicionário 'usernames') e '[cookie]' (com 'name', 'key', 'expiry_days') existem e estão corretas nos seus Segredos do Streamlit Cloud.")
-    st.exception(e_key_final)
-except AttributeError as e_attr_final: # Captura AttributeError se .to_dict() não existir (improvável para st.secrets)
-    st.error(f"🚨 ERRO AO ACESSAR SEGREDOS (AttributeError): {e_attr_final}")
-    st.info("Pode ser um problema com a estrutura do objeto de segredos.")
-    st.exception(e_attr_final)
-except Exception as e_main_final: # Captura todos os outros erros
-    st.error(f"🚨 ERRO INESPERADO NO APP DE TESTE v6: {type(e_main_final).__name__} - {e_main_final}")
-    st.exception(e_main_final)
-
-st.caption("Fim do teste v6.")
+st.markdown("---")
+st.info("Após copiar o hash, você precisará: 1. Colocar este hash nos seus segredos no Streamlit Cloud. 2. Restaurar seu arquivo `streamlit_app.py` principal no GitHub. 3. Dar 'Reboot' no app no Streamlit Cloud.")
