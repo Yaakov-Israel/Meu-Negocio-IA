@@ -3,5 +3,6 @@ google-generativeai
 langchain
 langchain-google-genai
 pillow
-streamlit-authenticator==0.3.2
-pyjwt
+streamlit-firebase-auth
+# streamlit-authenticator==0.3.2
+# pyjwt # Pode ser que streamlit-firebase-auth
