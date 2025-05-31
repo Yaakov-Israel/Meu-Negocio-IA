@@ -1,11 +1,15 @@
 import streamlit as st
 import os
+import json # Importar json
 from langchain_google_genai import ChatGoogleGenerativeAI
-# ... (suas outras importações de langchain, genai, PIL) ...
-import streamlit_firebase_auth as sfa # Vamos usar sfa como alias comum para esta lib
-import json # Para converter o dict dos segredos para JSON, se necessário
+from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
+import google.generativeai as genai
+from PIL import Image
+import streamlit_firebase_auth as sfa
 
-# --- Configuração da Página Streamlit ---
 st.set_page_config(
     page_title="Assistente PME Pro",
     layout="wide",
@@ -16,25 +20,11 @@ st.set_page_config(
 auth_manager = None
 user_is_authenticated = False
 
-# --- INÍCIO DA SEÇÃO DE AUTENTICAÇÃO FIREBASE (API joelfilho/streamlit-firebase-auth) ---
 try:
-    # A biblioteca de Joel Filho espera um objeto de configuração.
-    # Pode ser diretamente o dicionário dos segredos, ou uma string JSON.
-    # Vamos tentar com o dicionário primeiro.
-    firebase_creds_dict = st.secrets["firebase_config"]
-
-    # A função load_auth pode esperar uma string JSON das credenciais.
-    # Se firebase_creds_dict for um dicionário, converta para JSON string.
-    # No entanto, alguns forks mais recentes podem aceitar o dicionário diretamente.
-    # Vamos tentar com o dicionário e, se falhar, com JSON.
-    
-    # Tentativa 1: Passar o dicionário diretamente (se a versão permitir)
-    # auth_manager = sfa.load_auth(config=firebase_creds_dict)
-
-    # Tentativa 2: Passar como string JSON (mais comum nos exemplos da lib original dele)
-    # Para isso, a chave nos segredos deveria ser um objeto que pode ser "dumpado" como JSON.
-    # Se st.secrets["firebase_config"] já é um dicionário Python bem formado, isso deve funcionar.
-    firebase_creds_json_str = json.dumps(firebase_creds_dict)
+    firebase_creds_attrdict = st.secrets["firebase_config"]
+    # Converter AttrDict para dict padrão para serialização JSON
+    plain_firebase_config_dict = {k: v for k, v in firebase_creds_attrdict.items()}
+    firebase_creds_json_str = json.dumps(plain_firebase_config_dict)
     auth_manager = sfa.load_auth(firebase_creds_json_str)
 
 except KeyError:
@@ -43,19 +33,15 @@ except KeyError:
     st.stop()
 except Exception as e:
     st.error(f"🚨 ERRO ao inicializar o auth_manager do Firebase (sfa.load_auth): {e}")
-    st.info("Verifique se 'streamlit-firebase-auth==1.0.6' está no requirements.txt e se 'firebase_config' nos segredos está correta e no formato esperado (dicionário ou JSON).")
+    st.info("Verifique 'streamlit-firebase-auth==1.0.6' no requirements.txt e 'firebase_config' nos segredos.")
     st.stop()
 
-# --- FLUXO DE LOGIN ---
-# A biblioteca joelfilho/streamlit-firebase-auth usa is_logged_in() e widgets de botão.
-
 if not auth_manager.is_logged_in():
-    st.sidebar.subheader("Login / Registro Assistente PME Pro")
-    
-    choice = st.sidebar.radio("Selecione uma ação:", ("Login", "Registrar Novo Usuário"))
+    st.sidebar.subheader("Login / Registro")
+    choice = st.sidebar.radio("Selecione uma ação:", ("Login", "Registrar Novo Usuário"), key="auth_choice")
 
     if choice == "Login":
-        with st.sidebar.form("login_form_sfa"):
+        with st.sidebar.form("login_form_sfa_main"):
             email = st.text_input("Email")
             password = st.text_input("Senha", type="password")
             submit_login = st.form_submit_button("Login")
@@ -63,11 +49,9 @@ if not auth_manager.is_logged_in():
             if submit_login:
                 if email and password:
                     try:
-                        # O método para login com email e senha
                         user_record = auth_manager.sign_in_with_email_and_password(email, password)
                         if user_record:
-                            st.session_state['authentication_status'] = True # Flag nossa
-                            # A biblioteca armazena user_info em st.session_state automaticamente
+                            st.session_state['authentication_status_sfa'] = True 
                             st.experimental_rerun()
                         else:
                             st.sidebar.error("Login falhou. Verifique suas credenciais.")
@@ -77,20 +61,17 @@ if not auth_manager.is_logged_in():
                     st.sidebar.warning("Por favor, preencha email e senha.")
     
     elif choice == "Registrar Novo Usuário":
-        with st.sidebar.form("register_form_sfa"):
+        with st.sidebar.form("register_form_sfa_main"):
             reg_email = st.text_input("Email para registro")
             reg_password = st.text_input("Senha para registro", type="password")
-            reg_display_name = st.text_input("Seu nome (opcional)") # Exemplo, se quiser coletar
+            reg_display_name = st.text_input("Seu nome (opcional)")
             submit_register = st.form_submit_button("Registrar")
 
             if submit_register:
                 if reg_email and reg_password:
                     try:
-                        # O método para criar usuário
                         user_record = auth_manager.create_user_with_email_and_password(reg_email, reg_password, display_name=reg_display_name if reg_display_name else None)
-                        st.sidebar.success(f"Usuário {reg_email} registrado com sucesso! Por favor, faça login.")
-                        # Você pode querer enviar um email de verificação aqui se configurado no Firebase
-                        # auth_manager.send_email_verification() # Requer que o usuário esteja logado ou ter o idToken
+                        st.sidebar.success(f"Usuário {reg_email} registrado! Faça login.")
                     except Exception as e:
                         st.sidebar.error(f"Erro no registro: {e}")
                 else:
@@ -99,33 +80,18 @@ if not auth_manager.is_logged_in():
     st.info("Por favor, faça login ou registre-se para acessar o Assistente PME Pro.")
     st.stop()
 
-# --- SE AUTENTICADO, MOSTRA CONTEÚDO DO APP ---
-user_is_authenticated = True # Se chegou aqui, está logado
-user_session_info = auth_manager.get_user_info() # Pega info da sessão da biblioteca
+user_is_authenticated = True
+user_session_info = auth_manager.get_user_info()
 
 display_name = user_session_info.get('displayName') or user_session_info.get('email', "Usuário")
 st.sidebar.write(f"Bem-vindo, {display_name}!")
+auth_manager.logout_button("Logout", key="sfa_logout_button_main", location="sidebar")
 
-# Botão de Logout (a biblioteca fornece um)
-# O logout_button da biblioteca já lida com o st.experimental_rerun() internamente.
-auth_manager.logout_button("Logout", key="sfa_logout_button", on_click=None, args=None, kwargs=None, type="primary", use_container_width=False, location="sidebar")
-
-
-# O restante do seu código (GOOGLE_API_KEY, llm_model_instance, classe AssistentePMEPro, etc.)
-# permanece o mesmo, mas deve estar DENTRO do if user_is_authenticated:
 if user_is_authenticated:
     GOOGLE_API_KEY = None
     llm_model_instance = None
     try:
         GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-    # ... (resto do seu código a partir daqui) ...
-    # COPIE E COLE O RESTANTE DO SEU CÓDIGO ORIGINAL AQUI,
-    # A PARTIR DA LINHA:
-    # except KeyError:
-    # E CERTIFIQUE-SE QUE TUDO ESTEJA CORRETAMENTE INDENTADO DENTRO DESTE if user_is_authenticated:
-    # E também dentro do if llm_model_instance: quando apropriado.
-
-# ----- INÍCIO DO CÓDIGO QUE VOCÊ DEVE COLAR AQUI ------
     except KeyError:
         st.error("🚨 ERRO: Chave API 'GOOGLE_API_KEY' não encontrada nos Segredos.")
         st.stop()
@@ -146,7 +112,6 @@ if user_is_authenticated:
             st.stop()
 
     if llm_model_instance:
-        # --- FUNÇÕES AUXILIARES PARA MARKETING DIGITAL (Objetivos e Output) ---
         def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
             st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
             details = {}
@@ -791,13 +756,6 @@ if user_is_authenticated:
     else: # Se llm_model_instance não foi inicializado (e user_is_authenticated é True)
         st.error("🚨 O Assistente PME Pro está autenticado, mas não pôde inicializar o modelo de linguagem.")
         st.info("Verifique a API Key do Google e as configurações do modelo LLM nos segredos.")
-# ----- FIM DO CÓDIGO QUE VOCÊ DEVE COLAR AQUI ------
-
-else: # Se não estiver autenticado (user_is_authenticated é False)
-    # A lógica de login/parada já tratou isso acima.
-    # Este 'else' corresponde ao 'if user_is_authenticated:' principal.
-    # Se chegou aqui, significa que o st.stop() na seção de login foi executado.
-    pass 
 
 st.sidebar.markdown("---")
 st.sidebar.info("Desenvolvido por Yaakov Israel com Gemini Pro")
