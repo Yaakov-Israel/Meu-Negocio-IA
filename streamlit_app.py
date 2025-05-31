@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import json # Importar json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
