@@ -1,2 +1,9 @@
 streamlit
 Pyrebase4
+PyJWT
+firebase-admin
+setuptools
+google-generativeai
+langchain
+langchain-google-genai
+pillow
