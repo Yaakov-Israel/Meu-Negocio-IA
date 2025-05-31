@@ -1,8 +1,2 @@
 streamlit
-google-generativeai
-langchain
-langchain-google-genai
-pillow
 Pyrebase4
-PyJWT
-firebase-admin
