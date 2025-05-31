@@ -3,6 +3,6 @@ google-generativeai
 langchain
 langchain-google-genai
 pillow
-streamlit-firebase-auth==1.0.6 
-pyjwt
+Pyrebase4
+PyJWT
 firebase-admin
