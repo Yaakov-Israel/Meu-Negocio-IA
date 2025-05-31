@@ -4,5 +4,4 @@ langchain
 langchain-google-genai
 pillow
 streamlit-firebase-auth
-# streamlit-authenticator==0.3.2
-# pyjwt # Pode ser que streamlit-firebase-auth
+pyjwt
