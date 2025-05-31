@@ -5,7 +5,3 @@ langchain-google-genai
 pillow
 streamlit-firebase-auth==0.2.0 
 pyjwt
-# firebase-admin não é uma dependência direta da nbraun/streamlit-firebase-auth, 
-# mas Pyrebase4 (que é uma dependência dela) pode precisar de partes dele para verificar tokens.
-# Por segurança, podemos manter firebase-admin ou remover e ver se Pyrebase4 o puxa.
-# A nbraun/streamlit-firebase-auth usa Pyrebase4 para o login, e PyJWT para tokens.
