@@ -18,7 +18,6 @@ st.set_page_config(
     page_icon="🚀" 
 )
 # O st.title() será definido dentro das seções para ser dinâmico.
-
 # --- Inicialização do Firebase ---
 firebase_app = None
 pb_auth_client = None
@@ -121,11 +120,11 @@ if user_is_authenticated:
 
     if not GOOGLE_API_KEY or not GOOGLE_API_KEY.strip():
         st.error("🚨 ERRO: Chave API 'GOOGLE_API_KEY' não encontrada ou vazia nos Segredos do Streamlit.")
-        st.stop() 
+        # Mudança: Não usar st.stop() aqui para permitir que o logout ainda funcione se o LLM falhar
     else:
         try:
             genai.configure(api_key=GOOGLE_API_KEY)
-            llm_model_instance = ChatGoogleGenerativeAI(model="gemini-1.5-flash", 
+            llm_model_instance = ChatGoogleGenerativeAI(model="gemini-1.5-flash",
                                                        temperature=0.75,
                                                        google_api_key=GOOGLE_API_KEY,
                                                        convert_system_message_to_human=True)
@@ -136,6 +135,8 @@ if user_is_authenticated:
             llm_init_exception = e_llm 
             st.error(f"😥 ERRO AO INICIALIZAR O MODELO LLM DO GOOGLE: {e_llm}")
             
+    # --- SEU CÓDIGO DO APLICATIVO ASSISTENTE PME PRO ---
+    # A verificação if llm_model_instance agora protege todo o código do seu app
     if llm_model_instance:
         # --- FUNÇÕES AUXILIARES PARA MARKETING DIGITAL (Objetivos e Output) ---
         def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
@@ -211,46 +212,9 @@ if user_is_authenticated:
                 st.expander("🔍 Debug: Ver Prompt da Campanha Enviado para IA").write(final_prompt)
                 # ***** FIM DA LINHA DE DEBUG *****
                 
-                # Dentro da função _marketing_handle_criar_campanha:
-# ... (todo o código que monta a lista `prompt_parts` vem antes daqui) ...
-            
-            if uploaded_files_info: 
-                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
-            
-            final_prompt = "\n\n".join(prompt_parts) # Esta linha monta o prompt original
-            
-            # Sua linha de debug original (MANTENHA para ver o prompt original que seria enviado)
-            st.expander("🔍 Debug: Ver Prompt ORIGINAL da Campanha Enviado para IA").write(final_prompt) 
-            
-            # ---- INÍCIO DO BLOCO DE TESTE SIMPLES DE PROMPT ----
-            # (Este bloco substitui as linhas originais de 'llm.invoke' e 'st.session_state' para a campanha)
-            
-            test_prompt_content = "Por favor, escreva uma frase curta sobre marketing para pequenas empresas no Brasil."
-            
-            # Adicionando um novo expander para o prompt de teste, para não confundir com o original
-            st.expander("🧪 Debug: Ver Prompt DE TESTE Sendo Enviado").write(f"USANDO PROMPT DE TESTE: {test_prompt_content}") 
-            
-            try:
-                ai_response_test = llm.invoke(HumanMessage(content=test_prompt_content)) # Usando o prompt de teste
-                # Se o teste funcionar, vamos guardar a resposta em uma chave de session_state diferente
-                st.session_state[f'generated_campaign_content_TEST{APP_KEY_SUFFIX}'] = ai_response_test.content
-                st.success("🎉 Teste de prompt simples FUNCIONOU! A IA respondeu.") 
-                st.write("Resposta do teste:")
-                st.write(ai_response_test.content) # Mostra a resposta do teste
-            except ValueError as e_val_test: # Captura especificamente ValueError
-                st.error(f"😥 ERRO (ValueError) no teste de prompt simples: {e_val_test}")
-                # Tenta mostrar a mensagem completa do ValueError
-                st.text_area("Detalhe do ValueError (para copiar):", str(e_val_test), height=150)
-            except Exception as e_test_invoke: # Captura outras exceções
-                st.error(f"😥 ERRO GERAL no teste de prompt simples: {e_test_invoke}")
-                st.text_area("Detalhe do Erro Geral (para copiar):", str(e_test_invoke), height=150)
-            # ---- FIM DO BLOCO DE TESTE SIMPLES DE PROMPT ----
+                ai_response = llm.invoke(HumanMessage(content=final_prompt))
+                st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
 
-        # Aqui termina a função _marketing_handle_criar_campanha
-
-# A próxima definição de função deve começar aqui, por exemplo:
-# def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
-#    # ...
         def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
             if not lp_details["purpose"] or not lp_details["main_offer"] or not lp_details["cta"]: st.warning("Por favor, preencha objetivo, oferta e CTA."); return
             with st.spinner("🎨 A IA está desenhando a estrutura da sua landing page..."): # Spinner correto
@@ -268,11 +232,13 @@ if user_is_authenticated:
                 ai_response = llm.invoke(HumanMessage(content=final_prompt)) 
                 st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
 
+        # ... (Restante das suas funções _marketing_handle_... como no seu arquivo de 950 linhas) ...
+        # Vou colar o restante para garantir que não falte nada desta vez.
         def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
             if not site_details["business_type"] or not site_details["main_purpose"]: st.warning("Informe tipo de negócio e objetivo do site."); return
             with st.spinner("🛠️ A IA está arquitetando a estrutura do seu site..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um arquiteto de informação e web designer experiente, focado em criar sites eficazes para PMEs no Brasil...", # seu prompt completo
+                    "**Instrução para IA:** Você é um arquiteto de informação e web designer experiente, focado em criar sites eficazes para PMEs no Brasil. Desenvolva uma proposta de estrutura de site (mapa do site com principais páginas e seções dentro de cada página) e sugestões de conteúdo chave para cada seção. Considere as informações de suporte, se fornecidas.",
                     f"**Tipo de Negócio/Empresa:** {site_details['business_type']}",
                     f"**Principal Objetivo do Site:** {site_details['main_purpose']}",
                     f"**Público-Alvo Principal:** {site_details['target_audience']}",
@@ -290,7 +256,7 @@ if user_is_authenticated:
             if not client_details["product_campaign"]: st.warning("Descreva o produto/serviço ou campanha."); return
             with st.spinner("🕵️ A IA está investigando seu público-alvo..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um 'Agente Detetive de Clientes', especialista em marketing e pesquisa de mercado para PMEs no Brasil...", # seu prompt completo
+                    "**Instrução para IA:** Você é um 'Agente Detetive de Clientes', especialista em marketing e pesquisa de mercado para PMEs no Brasil. Sua tarefa é realizar uma análise completa do público-alvo com base nas informações fornecidas e gerar um relatório detalhado com os seguintes itens: 1. Persona Detalhada (Nome fictício, Idade, Profissão, Dores, Necessidades, Sonhos, Onde busca informação). 2. Sugestões de Canais de Marketing mais eficazes para alcançar essa persona. 3. Sugestões de Mensagens Chave e Ângulos de Comunicação que ressoem com essa persona. 4. Se 'Deep Research' estiver ativado, inclua insights adicionais sobre comportamento online, tendências e micro-segmentos. Considere as informações de suporte, se fornecidas.",
                     f"**Produto/Serviço ou Campanha para Análise:** {client_details['product_campaign']}",
                     f"**Localização Geográfica (Cidade(s), Região):** {client_details['location']}",
                     f"**Verba Aproximada para Ação/Campanha (se aplicável):** {client_details['budget']}",
@@ -308,7 +274,7 @@ if user_is_authenticated:
             if not competitor_details["your_business"] or not competitor_details["competitors_list"]: st.warning("Descreva seu negócio e liste concorrentes."); return
             with st.spinner("🔬 A IA está analisando a concorrência..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva', especialista em análise de mercado para PMEs no Brasil...", # seu prompt completo
+                    "**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva', especialista em análise de mercado para PMEs no Brasil. Com base nas informações do negócio do usuário e da lista de concorrentes, elabore um relatório breve e útil. Para cada concorrente listado (ou os principais, se a lista for longa), analise os 'Aspectos para Análise' selecionados. Destaque os pontos fortes e fracos de cada um em relação a esses aspectos e, ao final, sugira 2-3 oportunidades ou diferenciais que o negócio do usuário pode explorar. Considere as informações de suporte, se fornecidas.",
                     f"**Negócio do Usuário (para comparação):** {competitor_details['your_business']}",
                     f"**Concorrentes (nomes, sites, redes sociais, se possível):** {competitor_details['competitors_list']}",
                     f"**Aspectos para Análise:** {', '.join(competitor_details['aspects_to_analyze'])}"
@@ -351,9 +317,13 @@ if user_is_authenticated:
                 st.markdown("---")
 
                 marketing_files_info_for_prompt_local = [] 
-                # Lógica do File Uploader da Sidebar para Marketing (do seu código)
+                # A lógica do File Uploader da Sidebar para Marketing (do seu código)
+                # Considerando que esta função é chamada no corpo principal, o st.sidebar aqui pode ser um pouco incomum,
+                # mas vou manter como no seu código original.
                 with st.sidebar: 
-                    sidebar_marketing_expander = st.sidebar.expander("📎 Suporte para Marketing (Upload Geral)")
+                    # Para evitar que o expander seja recriado dentro de um loop ou de forma aninhada,
+                    # vou usar uma chave única para ele também, embora ele já esteja na sidebar.
+                    sidebar_marketing_expander = st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}")
                     with sidebar_marketing_expander:
                         uploaded_marketing_files_sidebar = st.file_uploader(
                             "Upload de arquivos de CONTEXTO para Marketing (opcional):", 
@@ -366,7 +336,8 @@ if user_is_authenticated:
                             if temp_marketing_files_info:
                                 marketing_files_info_for_prompt_local = temp_marketing_files_info 
                                 st.success(f"{len(uploaded_marketing_files_sidebar)} arquivo(s) de contexto carregado(s)!")
-                                with st.expander("Ver arquivos de contexto"):
+                                # Usando uma chave única para o expander interno também
+                                with st.expander("Ver arquivos de contexto", key=f"mkt_view_files_exp{APP_KEY_SUFFIX}"):
                                     for finfo in marketing_files_info_for_prompt_local: st.write(f"- {finfo['name']} ({finfo['type']})")
                 
                 main_action_key = f"main_marketing_action_choice{APP_KEY_SUFFIX}"
@@ -383,13 +354,23 @@ if user_is_authenticated:
                 radio_index_key_mkt = f"{main_action_key}_index"
                 if radio_index_key_mkt not in st.session_state: st.session_state[radio_index_key_mkt] = 0
                 
-                current_main_action_value_mkt = st.session_state.get(main_action_key, opcoes_radio_marketing[0])
+                # Lógica do radio button (como no seu código, sem on_change explícito aqui)
+                main_action = st.radio(
+                    "Olá! O que você quer fazer agora em marketing digital?",
+                    opcoes_radio_marketing,
+                    index=st.session_state.get(radio_index_key_mkt, 0), # Garante que o índice é lido do estado
+                    key=main_action_key
+                )
+                # Atualiza o índice no estado se o valor do radio mudar
                 try:
-                    current_main_action_index_mkt = opcoes_radio_marketing.index(current_main_action_value_mkt)
-                    if st.session_state.get(radio_index_key_mkt) != current_main_action_index_mkt : st.session_state[radio_index_key_mkt] = current_main_action_index_mkt
-                except ValueError: st.session_state[radio_index_key_mkt] = 0
-                
-                main_action = st.radio("Olá! O que você quer fazer agora em marketing digital?", opcoes_radio_marketing, index=st.session_state[radio_index_key_mkt], key=main_action_key)
+                    new_index = opcoes_radio_marketing.index(main_action)
+                    if st.session_state[radio_index_key_mkt] != new_index:
+                        st.session_state[radio_index_key_mkt] = new_index
+                        # Não precisa de st.rerun() aqui, o Streamlit lida com o fluxo do radio
+                except ValueError: # Caso raro de valor inválido
+                    st.session_state[radio_index_key_mkt] = 0
+
+
                 st.markdown("---")
                 platforms_config_options = { "Instagram": "insta", "Facebook": "fb", "X (Twitter)": "x", "WhatsApp": "wpp", "TikTok": "tt", "Kwai": "kwai", "YouTube (descrição/roteiro)": "yt", "E-mail Marketing (lista própria)": "email_own", "E-mail Marketing (Campanha Google Ads)": "email_google" }
                 platform_names_available_list = list(platforms_config_options.keys())
@@ -404,18 +385,18 @@ if user_is_authenticated:
                         cols_post = st.columns(2); selected_platforms_post_keys_map = {}
                         for i, (pn, ps) in enumerate(platforms_config_options.items()):
                             pk = f"post_platform_{ps}{APP_KEY_SUFFIX}"; selected_platforms_post_keys_map[pn] = pk
-                            with cols_post[i%2]: st.checkbox(pn, key=pk, value=(select_all_post_checked if st.session_state.get(key_select_all_post) else st.session_state.get(pk, False) ))
-                        post_details = _marketing_get_objective_details(f"post_creator_details{APP_KEY_SUFFIX}", "post")
+                            with cols_post[i%2]: st.checkbox(pn, key=pk, value=(select_all_post_checked if st.session_state.get(key_select_all_post) else st.session_state.get(pk, False)))
+                        post_details = _marketing_get_objective_details(f"post_details_mkt{APP_KEY_SUFFIX}", "post") # Chave section_key única
                         submit_post = st.form_submit_button("💡 Gerar Post!")
                     if submit_post:
                         sel_plats = platform_names_available_list if st.session_state.get(key_select_all_post, False) else [pfn for pfn, pfk in selected_platforms_post_keys_map.items() if st.session_state.get(pfk, False)]
                         _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, sel_plats, self.llm)
-                    if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_disp{APP_KEY_SUFFIX}", "post_ia")
+                    if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_disp_mkt{APP_KEY_SUFFIX}", "post_ia") # Chave section_key única
 
                 elif main_action == "2 - Criar campanha de marketing completa":
                     st.subheader("🌍 Planejador de Campanhas de Marketing com IA")
                     with st.form(f"campaign_creator_form{APP_KEY_SUFFIX}"):
-                        campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_ui{APP_KEY_SUFFIX}")
+                        campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_form{APP_KEY_SUFFIX}") # Chave form única
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_camp = f"campaign_select_all{APP_KEY_SUFFIX}"
                         select_all_camp_checked_val = st.session_state.get(key_select_all_camp, False)
@@ -424,23 +405,22 @@ if user_is_authenticated:
                         for i, (pn_c, ps_c) in enumerate(platforms_config_options.items()):
                             pk_c = f"campaign_platform_{ps_c}{APP_KEY_SUFFIX}"; selected_platforms_camp_keys_map[pn_c] = pk_c
                             with cols_camp[i%2]: st.checkbox(pn_c, key=pk_c, value=(select_all_camp_checked if st.session_state.get(key_select_all_camp) else st.session_state.get(pk_c, False)))
-                        campaign_details_obj = _marketing_get_objective_details(f"campaign_creator_details{APP_KEY_SUFFIX}", "campanha")
-                        campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_ui{APP_KEY_SUFFIX}")
-                        campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_ui{APP_KEY_SUFFIX}")
-                        specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_ui{APP_KEY_SUFFIX}")
+                        campaign_details_obj = _marketing_get_objective_details(f"campaign_details_mkt{APP_KEY_SUFFIX}", "campanha") # Chave section_key única
+                        campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_form{APP_KEY_SUFFIX}") # Chave form única
+                        campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_form{APP_KEY_SUFFIX}") # Chave form única
+                        specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_form{APP_KEY_SUFFIX}") # Chave form única
                         submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha!")
                     if submit_button_pressed_camp:
                         actual_selected_platforms_camp = []
                         if st.session_state.get(key_select_all_camp, False):
                             actual_selected_platforms_camp = platform_names_available_list
                         else:
-                            for p_name, p_key in selected_platforms_camp_keys_map.items():
-                                if st.session_state.get(p_key, False):
+                            for p_name, p_key_form in selected_platforms_camp_keys_map.items(): # Renomeada variável p_key
+                                if st.session_state.get(p_key_form, False):
                                     actual_selected_platforms_camp.append(p_name)
                         campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
-                        # A chamada para _marketing_handle_criar_campanha está aqui
                         _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, actual_selected_platforms_camp, self.llm)
-                    if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_disp{APP_KEY_SUFFIX}", "campanha_ia")
+                    if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_disp_mkt{APP_KEY_SUFFIX}", "campanha_ia") # Chave section_key única
                 
                 elif main_action == "3 - Criar estrutura e conteúdo para landing page":
                     st.subheader("📄 Gerador de Estrutura para Landing Pages com IA")
@@ -515,20 +495,22 @@ if user_is_authenticated:
 
                 elif main_action == "Selecione uma opção...":
                     st.info("👋 Bem-vindo à seção interativa de Marketing Digital com IA! Escolha uma das opções acima para começar.")
-                    LOGO_PATH_MKT_WELCOME_APP = "images/logo-pme-ia.png"
-                    FALLBACK_LOGO_MKT_WELCOME_APP = "https://i.imgur.com/7IIYxq1.png"
+                    LOGO_PATH_MKT_WELCOME_APP_S = "images/logo-pme-ia.png" # Chave 'S' para diferenciar
+                    FALLBACK_LOGO_MKT_WELCOME_APP_S = "https://i.imgur.com/7IIYxq1.png"
                     try:
-                        st.image(LOGO_PATH_MKT_WELCOME_APP, caption="Assistente PME Pro", width=200)
+                        st.image(LOGO_PATH_MKT_WELCOME_APP_S, caption="Assistente PME Pro", width=200)
                     except Exception:
-                        st.image(FALLBACK_LOGO_MKT_WELCOME_APP, caption="Assistente PME Pro (Fallback)", width=200)
+                        st.image(FALLBACK_LOGO_MKT_WELCOME_APP_S, caption="Assistente PME Pro (Fallback)", width=200)
             
             def conversar_plano_de_negocios(self, input_usuario):
-                system_message_plano = "Você é o \"Assistente PME Pro\", um consultor de negócios experiente especializado em auxiliar Pequenas e Médias Empresas (PMEs) no Brasil a desenvolverem planos de negócios robustos e estratégicos..." # Mantendo o prompt completo do seu código
+                # (Mantido como no seu código de 950 linhas)
+                system_message_plano = "Você é o \"Assistente PME Pro\", um consultor de negócios experiente especializado em auxiliar Pequenas e Médias Empresas (PMEs) no Brasil a desenvolverem planos de negócios robustos e estratégicos..." 
                 cadeia = self._criar_cadeia_conversacional(system_message_plano, self.memoria_plano_negocios, memory_key_placeholder_base=f"historico_chat_plano{APP_KEY_SUFFIX}")
                 resposta_ai_obj = cadeia.invoke({"input_usuario": input_usuario})
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
             def calcular_precos_interativo(self, input_usuario, descricao_imagem_contexto=None):
+                # (Mantido como no seu código de 950 linhas)
                 prompt_content_calc = f"O usuário está buscando ajuda para precificar um produto/serviço e forneceu a seguinte informação inicial: '{input_usuario}'."
                 if descricao_imagem_contexto: prompt_content_calc = f"{descricao_imagem_contexto}\n\n{prompt_content_calc}"
                 system_message_precos = f"""Você é o "Assistente PME Pro", um especialista em estratégias de precificação para PMEs no Brasil. {prompt_content_calc} Comece fazendo perguntas claras e objetivas para entender os custos (fixos e variáveis), o valor percebido pelo cliente, os preços da concorrência e os objetivos de margem de lucro do usuário. Guie-o passo a passo no processo de cálculo, sugerindo métodos como markup, margem de contribuição ou precificação baseada em valor, conforme apropriado."""
@@ -537,6 +519,7 @@ if user_is_authenticated:
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
             def gerar_ideias_para_negocios(self, input_usuario, contexto_arquivos=None):
+                # (Mantido como no seu código de 950 linhas)
                 prompt_content_ideias = f"O usuário busca ideias criativas e viáveis para seu negócio (ou um novo negócio) e descreve seu desafio ou ponto de partida como: '{input_usuario}'."
                 if contexto_arquivos: prompt_content_ideias = f"Adicionalmente, o usuário forneceu o seguinte contexto a partir de arquivos:\n{contexto_arquivos}\n\n{prompt_content_ideias}"
                 system_message_ideias = f"""Você é o "Assistente PME Pro", um consultor de negócios altamente criativo e com visão de mercado, focado em PMEs no Brasil. {prompt_content_ideias} Faça perguntas exploratórias para entender melhor as paixões, habilidades, recursos disponíveis e o mercado de interesse do usuário. Com base nisso, gere 3-5 ideias de negócios ou inovações distintas e acionáveis, cada uma com uma breve justificativa e potenciais primeiros passos. Priorize ideias com potencial de crescimento e alinhadas com tendências atuais."""
@@ -544,7 +527,8 @@ if user_is_authenticated:
                 resposta_ai_obj = cadeia.invoke({"input_usuario": "Com base no que descrevi e nos arquivos (se houver), quais ideias inovadoras você sugere?"})
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
-        # --- Funções Utilitárias de Chat (do seu código, adaptando chaves para APP_KEY_SUFFIX) ---
+        # --- Funções Utilitárias de Chat ---
+        # (Mantidas como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
         def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
             chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
             st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
@@ -555,7 +539,6 @@ if user_is_authenticated:
                     memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
                 elif hasattr(memoria_agente_instancia.chat_memory, 'add_ai_message'):
                      memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
-            
             if area_chave == "calculo_precos": 
                 st.session_state.pop(f'last_uploaded_image_info_calculo_precos{APP_KEY_SUFFIX}', None)
                 st.session_state.pop(f'processed_image_id_calculo_precos{APP_KEY_SUFFIX}', None)
@@ -669,7 +652,7 @@ if user_is_authenticated:
             st.session_state.pop('firebase_app_instance', None) 
             st.session_state.pop('llm_init_success_sidebar_shown_main_app', None)
             keys_to_clear_logout = ['agente_pme', 'area_selecionada']
-            for key in list(st.session_state.keys()):
+            for key in list(st.session_state.keys()): # Itera sobre uma cópia para permitir pop
                 if APP_KEY_SUFFIX in key or key.startswith('memoria_') or \
                    key.startswith('chat_display_') or key.startswith('generated_') or \
                    key.startswith('post_') or key.startswith('campaign_') or \
@@ -682,12 +665,12 @@ if user_is_authenticated:
             st.rerun()
 
         # Logo da Sidebar (Corrigido para usar try-except)
-        LOGO_PATH_SIDEBAR_AUTH = "images/logo-pme-ia.png"
-        FALLBACK_LOGO_URL_SIDEBAR_AUTH = "https://i.imgur.com/7IIYxq1.png"
+        LOGO_PATH_SIDEBAR_APP = "images/logo-pme-ia.png"
+        FALLBACK_LOGO_URL_SIDEBAR_APP = "https://i.imgur.com/7IIYxq1.png" # Seu fallback URL do seu código
         try:
-            st.sidebar.image(LOGO_PATH_SIDEBAR_AUTH, width=150)
+            st.sidebar.image(LOGO_PATH_SIDEBAR_APP, width=150) # Largura ajustada para 150
         except Exception:
-            st.sidebar.image(FALLBACK_LOGO_URL_SIDEBAR_AUTH, width=150, caption="Logo (Fallback)")
+            st.sidebar.image(FALLBACK_LOGO_URL_SIDEBAR_APP, width=150, caption="Logo (Fallback)") # Largura ajustada
 
         st.sidebar.title("Assistente PME Pro")
         st.sidebar.markdown("IA para seu Negócio Decolar!")
@@ -709,6 +692,8 @@ if user_is_authenticated:
             current_nav_radio_index_val = 0
             st.session_state.area_selecionada = list(opcoes_menu.keys())[0]
         
+        # Removendo on_change do radio principal da sidebar para alinhar com seu código original
+        # A lógica de atualização de 'area_selecionada' já acontece no bloco if area_selecionada_label != st.session_state.area_selecionada
         area_selecionada_label = st.sidebar.radio(
             "Como posso te ajudar hoje?", 
             options=list(opcoes_menu.keys()), 
@@ -722,8 +707,8 @@ if user_is_authenticated:
                 keys_to_clear_mkt_nav_app_on_change = [
                     k for k in st.session_state if 
                     (k.startswith("generated_") and k.endswith(f"_new{APP_KEY_SUFFIX}")) or 
-                    (f"post{APP_KEY_SUFFIX}" in k and not k.startswith("post_creator_details")) or # Evitar limpar os detalhes do form ativo
-                    (f"campaign{APP_KEY_SUFFIX}" in k and not k.startswith("campaign_creator_details")) or # Evitar limpar os detalhes do form ativo
+                    (f"post{APP_KEY_SUFFIX}" in k and not k.startswith(f"post_creator_details{APP_KEY_SUFFIX}")) or 
+                    (f"campaign{APP_KEY_SUFFIX}" in k and not k.startswith(f"campaign_creator_details{APP_KEY_SUFFIX}")) or 
                     k == f"main_marketing_action_choice{APP_KEY_SUFFIX}_index"
                 ]
                 for key_clear_mkt_on_change in keys_to_clear_mkt_nav_app_on_change:
@@ -764,15 +749,16 @@ if user_is_authenticated:
                     if chave_secao_btn_pg != "pagina_inicial":
                         col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_cols_render]
                         button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" (Guia)")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" para Negócios","")
-                        # Usando uma chave única para os botões da página inicial
                         button_key_pg_inicial = f"btn_goto_{chave_secao_btn_pg}{APP_KEY_SUFFIX}_pg_inicial"
                         if col_para_botao_pg.button(button_label_pg, key=button_key_pg_inicial, use_container_width=True, help=f"Ir para {nome_menu_btn_pg}"):
                             st.session_state.area_selecionada = nome_menu_btn_pg
                             try: 
-                                st.session_state[f'{radio_key_sidebar_main_nav_app}_index'] = list(opcoes_menu.keys()).index(nome_menu_btn_pg)
+                                radio_key_for_nav_update = f'sidebar_nav_main_app{APP_KEY_SUFFIX}' # Usando a chave correta do radio
+                                st.session_state[f'{radio_key_for_nav_update}_index'] = list(opcoes_menu.keys()).index(nome_menu_btn_pg)
                             except ValueError: pass
                             st.rerun()
                         btn_idx_pg_inicial +=1
+                # st.balloons() # Removido ou comentado se não for essencial
         
         elif current_section_key == "marketing_guiado": agente.marketing_digital_guiado()
         elif current_section_key == "plano_negocios": 
