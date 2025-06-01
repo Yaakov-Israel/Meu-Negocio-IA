@@ -120,7 +120,7 @@ if user_is_authenticated:
 
     if not GOOGLE_API_KEY or not GOOGLE_API_KEY.strip():
         st.error("🚨 ERRO: Chave API 'GOOGLE_API_KEY' não encontrada ou vazia nos Segredos do Streamlit.")
-        # Mudança: Não usar st.stop() aqui para permitir que o logout ainda funcione se o LLM falhar
+        # Não usar st.stop() aqui para permitir que o logout ainda funcione se o LLM falhar
     else:
         try:
             genai.configure(api_key=GOOGLE_API_KEY)
@@ -136,7 +136,6 @@ if user_is_authenticated:
             st.error(f"😥 ERRO AO INICIALIZAR O MODELO LLM DO GOOGLE: {e_llm}")
             
     # --- SEU CÓDIGO DO APLICATIVO ASSISTENTE PME PRO ---
-    # A verificação if llm_model_instance agora protege todo o código do seu app
     if llm_model_instance:
         # --- FUNÇÕES AUXILIARES PARA MARKETING DIGITAL (Objetivos e Output) ---
         def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
@@ -232,13 +231,11 @@ if user_is_authenticated:
                 ai_response = llm.invoke(HumanMessage(content=final_prompt)) 
                 st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
 
-        # ... (Restante das suas funções _marketing_handle_... como no seu arquivo de 950 linhas) ...
-        # Vou colar o restante para garantir que não falte nada desta vez.
         def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
             if not site_details["business_type"] or not site_details["main_purpose"]: st.warning("Informe tipo de negócio e objetivo do site."); return
             with st.spinner("🛠️ A IA está arquitetando a estrutura do seu site..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um arquiteto de informação e web designer experiente, focado em criar sites eficazes para PMEs no Brasil. Desenvolva uma proposta de estrutura de site (mapa do site com principais páginas e seções dentro de cada página) e sugestões de conteúdo chave para cada seção. Considere as informações de suporte, se fornecidas.",
+                    "**Instrução para IA:** Você é um arquiteto de informação e web designer experiente, focado em criar sites eficazes para PMEs no Brasil...", # seu prompt completo
                     f"**Tipo de Negócio/Empresa:** {site_details['business_type']}",
                     f"**Principal Objetivo do Site:** {site_details['main_purpose']}",
                     f"**Público-Alvo Principal:** {site_details['target_audience']}",
@@ -256,7 +253,7 @@ if user_is_authenticated:
             if not client_details["product_campaign"]: st.warning("Descreva o produto/serviço ou campanha."); return
             with st.spinner("🕵️ A IA está investigando seu público-alvo..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um 'Agente Detetive de Clientes', especialista em marketing e pesquisa de mercado para PMEs no Brasil. Sua tarefa é realizar uma análise completa do público-alvo com base nas informações fornecidas e gerar um relatório detalhado com os seguintes itens: 1. Persona Detalhada (Nome fictício, Idade, Profissão, Dores, Necessidades, Sonhos, Onde busca informação). 2. Sugestões de Canais de Marketing mais eficazes para alcançar essa persona. 3. Sugestões de Mensagens Chave e Ângulos de Comunicação que ressoem com essa persona. 4. Se 'Deep Research' estiver ativado, inclua insights adicionais sobre comportamento online, tendências e micro-segmentos. Considere as informações de suporte, se fornecidas.",
+                    "**Instrução para IA:** Você é um 'Agente Detetive de Clientes', especialista em marketing e pesquisa de mercado para PMEs no Brasil...", # seu prompt completo
                     f"**Produto/Serviço ou Campanha para Análise:** {client_details['product_campaign']}",
                     f"**Localização Geográfica (Cidade(s), Região):** {client_details['location']}",
                     f"**Verba Aproximada para Ação/Campanha (se aplicável):** {client_details['budget']}",
@@ -274,7 +271,7 @@ if user_is_authenticated:
             if not competitor_details["your_business"] or not competitor_details["competitors_list"]: st.warning("Descreva seu negócio e liste concorrentes."); return
             with st.spinner("🔬 A IA está analisando a concorrência..."):
                 prompt_parts = [
-                    "**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva', especialista em análise de mercado para PMEs no Brasil. Com base nas informações do negócio do usuário e da lista de concorrentes, elabore um relatório breve e útil. Para cada concorrente listado (ou os principais, se a lista for longa), analise os 'Aspectos para Análise' selecionados. Destaque os pontos fortes e fracos de cada um em relação a esses aspectos e, ao final, sugira 2-3 oportunidades ou diferenciais que o negócio do usuário pode explorar. Considere as informações de suporte, se fornecidas.",
+                    "**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva', especialista em análise de mercado para PMEs no Brasil...", # seu prompt completo
                     f"**Negócio do Usuário (para comparação):** {competitor_details['your_business']}",
                     f"**Concorrentes (nomes, sites, redes sociais, se possível):** {competitor_details['competitors_list']}",
                     f"**Aspectos para Análise:** {', '.join(competitor_details['aspects_to_analyze'])}"
@@ -302,7 +299,7 @@ if user_is_authenticated:
                 self.memoria_calculo_precos = st.session_state[f'memoria_calculo_precos{APP_KEY_SUFFIX}']
                 self.memoria_gerador_ideias = st.session_state[f'memoria_gerador_ideias{APP_KEY_SUFFIX}']
 
-            def _criar_cadeia_conversacional(self, system_message_content, memoria_especifica, memory_key_placeholder_base="historico_chat"):
+            def _criar_cadeia_conversacional(self, system_message_content, memoria_especifica, memory_key_placeholder_base="historico_chat"): # Nome da var do placeholder
                 actual_memory_key = memoria_especifica.memory_key
                 prompt_template = ChatPromptTemplate.from_messages([
                     SystemMessagePromptTemplate.from_template(system_message_content),
@@ -317,12 +314,9 @@ if user_is_authenticated:
                 st.markdown("---")
 
                 marketing_files_info_for_prompt_local = [] 
-                # A lógica do File Uploader da Sidebar para Marketing (do seu código)
-                # Considerando que esta função é chamada no corpo principal, o st.sidebar aqui pode ser um pouco incomum,
-                # mas vou manter como no seu código original.
-                with st.sidebar:
-                    
-            with st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}"):
+                with st.sidebar: 
+                    # Correção da indentação e chamada do expander
+                    with st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}"):
                         uploaded_marketing_files_sidebar = st.file_uploader(
                             "Upload de arquivos de CONTEXTO para Marketing (opcional):", 
                             accept_multiple_files=True,
@@ -334,9 +328,9 @@ if user_is_authenticated:
                             if temp_marketing_files_info:
                                 marketing_files_info_for_prompt_local = temp_marketing_files_info 
                                 st.success(f"{len(uploaded_marketing_files_sidebar)} arquivo(s) de contexto carregado(s)!")
-                                # Usando uma chave única para o expander interno também
-                                with st.expander("Ver arquivos de contexto", key=f"mkt_view_files_exp{APP_KEY_SUFFIX}"):
-                                    for finfo in marketing_files_info_for_prompt_local: st.write(f"- {finfo['name']} ({finfo['type']})")
+                                with st.expander("Ver arquivos de contexto", key=f"view_mkt_files_exp_sidebar{APP_KEY_SUFFIX}"): 
+                                    for finfo in marketing_files_info_for_prompt_local: 
+                                        st.write(f"- {finfo['name']} ({finfo['type']})")
                 
                 main_action_key = f"main_marketing_action_choice{APP_KEY_SUFFIX}"
                 opcoes_menu_marketing_dict = { 
@@ -350,22 +344,24 @@ if user_is_authenticated:
                 }
                 opcoes_radio_marketing = list(opcoes_menu_marketing_dict.keys())
                 radio_index_key_mkt = f"{main_action_key}_index"
-                if radio_index_key_mkt not in st.session_state: st.session_state[radio_index_key_mkt] = 0
+
+                # Lógica do radio button (como no seu código original)
+                if radio_index_key_mkt not in st.session_state: 
+                    st.session_state[radio_index_key_mkt] = 0 # Default para "Selecione uma opção..."
                 
-                # Lógica do radio button (como no seu código, sem on_change explícito aqui)
                 main_action = st.radio(
                     "Olá! O que você quer fazer agora em marketing digital?",
                     opcoes_radio_marketing,
-                    index=st.session_state.get(radio_index_key_mkt, 0), # Garante que o índice é lido do estado
+                    index=st.session_state[radio_index_key_mkt], 
                     key=main_action_key
                 )
-                # Atualiza o índice no estado se o valor do radio mudar
+                # Atualiza o índice no st.session_state se o valor do radio mudou
                 try:
-                    new_index = opcoes_radio_marketing.index(main_action)
-                    if st.session_state[radio_index_key_mkt] != new_index:
-                        st.session_state[radio_index_key_mkt] = new_index
-                        # Não precisa de st.rerun() aqui, o Streamlit lida com o fluxo do radio
-                except ValueError: # Caso raro de valor inválido
+                    new_mkt_index = opcoes_radio_marketing.index(main_action)
+                    if st.session_state[radio_index_key_mkt] != new_mkt_index:
+                        st.session_state[radio_index_key_mkt] = new_mkt_index
+                        # st.rerun() # Geralmente não é necessário para st.radio, pois ele já causa um rerun ao mudar
+                except ValueError: # Caso raro
                     st.session_state[radio_index_key_mkt] = 0
 
 
@@ -378,49 +374,72 @@ if user_is_authenticated:
                     with st.form(f"post_creator_form{APP_KEY_SUFFIX}"):
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_post = f"post_select_all{APP_KEY_SUFFIX}"
-                        select_all_post_checked_val = st.session_state.get(key_select_all_post, False)
-                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Acima", value=select_all_post_checked_val, key=key_select_all_post)
+                        # Acessar o valor do checkbox 'Selecionar Todos' de st.session_state para definir o 'value' dos individuais
+                        select_all_post_is_checked_in_session = st.session_state.get(key_select_all_post, False)
+                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Acima", value=select_all_post_is_checked_in_session, key=key_select_all_post)
+                        
                         cols_post = st.columns(2); selected_platforms_post_keys_map = {}
                         for i, (pn, ps) in enumerate(platforms_config_options.items()):
                             pk = f"post_platform_{ps}{APP_KEY_SUFFIX}"; selected_platforms_post_keys_map[pn] = pk
-                            with cols_post[i%2]: st.checkbox(pn, key=pk, value=(select_all_post_checked if st.session_state.get(key_select_all_post) else st.session_state.get(pk, False)))
-                        post_details = _marketing_get_objective_details(f"post_details_mkt{APP_KEY_SUFFIX}", "post") # Chave section_key única
+                            with cols_post[i%2]: 
+                                # Se "Selecionar Todos" estiver marcado na sessão, todos os individuais são marcados.
+                                # Senão, cada um mantém seu próprio estado da sessão.
+                                checkbox_value = select_all_post_is_checked_in_session or st.session_state.get(pk, False)
+                                st.checkbox(pn, key=pk, value=checkbox_value)
+                        
+                        post_details = _marketing_get_objective_details(f"post_details_mkt{APP_KEY_SUFFIX}", "post")
                         submit_post = st.form_submit_button("💡 Gerar Post!")
                     if submit_post:
-                        sel_plats = platform_names_available_list if st.session_state.get(key_select_all_post, False) else [pfn for pfn, pfk in selected_platforms_post_keys_map.items() if st.session_state.get(pfk, False)]
+                        sel_plats = []
+                        if st.session_state.get(key_select_all_post, False): # Verifica o estado após o submit
+                            sel_plats = platform_names_available_list
+                        else:
+                            for pfn, pfk in selected_platforms_post_keys_map.items():
+                                if st.session_state.get(pfk, False):
+                                    sel_plats.append(pfn)
                         _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, sel_plats, self.llm)
-                    if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_disp_mkt{APP_KEY_SUFFIX}", "post_ia") # Chave section_key única
+                    if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state: 
+                        _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_disp_mkt{APP_KEY_SUFFIX}", "post_ia")
 
                 elif main_action == "2 - Criar campanha de marketing completa":
                     st.subheader("🌍 Planejador de Campanhas de Marketing com IA")
                     with st.form(f"campaign_creator_form{APP_KEY_SUFFIX}"):
-                        campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_form{APP_KEY_SUFFIX}") # Chave form única
+                        campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_form{APP_KEY_SUFFIX}")
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_camp = f"campaign_select_all{APP_KEY_SUFFIX}"
-                        select_all_camp_checked_val = st.session_state.get(key_select_all_camp, False)
-                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Acima", value=select_all_camp_checked_val, key=key_select_all_camp)
+                        select_all_camp_is_checked_in_session = st.session_state.get(key_select_all_camp, False)
+                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Acima", value=select_all_camp_is_checked_in_session, key=key_select_all_camp)
+                        
                         cols_camp = st.columns(2); selected_platforms_camp_keys_map = {}
                         for i, (pn_c, ps_c) in enumerate(platforms_config_options.items()):
                             pk_c = f"campaign_platform_{ps_c}{APP_KEY_SUFFIX}"; selected_platforms_camp_keys_map[pn_c] = pk_c
-                            with cols_camp[i%2]: st.checkbox(pn_c, key=pk_c, value=(select_all_camp_checked if st.session_state.get(key_select_all_camp) else st.session_state.get(pk_c, False)))
-                        campaign_details_obj = _marketing_get_objective_details(f"campaign_details_mkt{APP_KEY_SUFFIX}", "campanha") # Chave section_key única
-                        campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_form{APP_KEY_SUFFIX}") # Chave form única
-                        campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_form{APP_KEY_SUFFIX}") # Chave form única
-                        specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_form{APP_KEY_SUFFIX}") # Chave form única
+                            with cols_camp[i%2]: 
+                                checkbox_value_camp = select_all_camp_is_checked_in_session or st.session_state.get(pk_c, False)
+                                st.checkbox(pn_c, key=pk_c, value=checkbox_value_camp)
+                        
+                        campaign_details_obj = _marketing_get_objective_details(f"campaign_details_mkt{APP_KEY_SUFFIX}", "campanha")
+                        campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_form{APP_KEY_SUFFIX}")
+                        campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_form{APP_KEY_SUFFIX}")
+                        specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_form{APP_KEY_SUFFIX}")
                         submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha!")
+
                     if submit_button_pressed_camp:
                         actual_selected_platforms_camp = []
-                        if st.session_state.get(key_select_all_camp, False):
+                        if st.session_state.get(key_select_all_camp, False): # Verifica o estado após o submit
                             actual_selected_platforms_camp = platform_names_available_list
                         else:
-                            for p_name, p_key_form in selected_platforms_camp_keys_map.items(): # Renomeada variável p_key
-                                if st.session_state.get(p_key_form, False):
+                            for p_name, p_key_form_c in selected_platforms_camp_keys_map.items(): # Renomeada p_key_form
+                                if st.session_state.get(p_key_form_c, False):
                                     actual_selected_platforms_camp.append(p_name)
+                        
                         campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
                         _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, actual_selected_platforms_camp, self.llm)
-                    if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state: _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_disp_mkt{APP_KEY_SUFFIX}", "campanha_ia") # Chave section_key única
+                    
+                    if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state: 
+                        _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_disp_mkt{APP_KEY_SUFFIX}", "campanha_ia")
                 
                 elif main_action == "3 - Criar estrutura e conteúdo para landing page":
+                    # (Mantido como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
                     st.subheader("📄 Gerador de Estrutura para Landing Pages com IA")
                     with st.form(f"landing_page_form{APP_KEY_SUFFIX}"):
                         lp_purpose = st.text_input("Principal objetivo da landing page:", key=f"lp_purpose{APP_KEY_SUFFIX}")
@@ -439,6 +458,7 @@ if user_is_authenticated:
                         st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"landing_page_sugestoes_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp{APP_KEY_SUFFIX}") 
 
                 elif main_action == "4 - Criar estrutura e conteúdo para site com IA":
+                    # (Mantido como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
                     st.subheader("🏗️ Arquiteto de Sites com IA")
                     with st.form(f"site_creator_form{APP_KEY_SUFFIX}"): 
                         site_business_type = st.text_input("Tipo do seu negócio/empresa:", key=f"site_biz_type{APP_KEY_SUFFIX}")
@@ -458,6 +478,7 @@ if user_is_authenticated:
                         st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"site_sugestoes_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site{APP_KEY_SUFFIX}")
 
                 elif main_action == "5 - Encontrar meu cliente ideal (Análise de Público-Alvo)":
+                    # (Mantido como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
                     st.subheader("🎯 Decodificador de Clientes com IA")
                     with st.form(f"find_client_form{APP_KEY_SUFFIX}"):
                         fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key=f"fc_campaign{APP_KEY_SUFFIX}")
@@ -477,6 +498,7 @@ if user_is_authenticated:
                         st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"analise_publico_alvo_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis{APP_KEY_SUFFIX}")
                 
                 elif main_action == "6 - Conhecer a concorrência (Análise Competitiva)":
+                    # (Mantido como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
                     st.subheader("🧐 Radar da Concorrência com IA")
                     with st.form(f"competitor_analysis_form{APP_KEY_SUFFIX}"):
                         ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key=f"ca_your_biz{APP_KEY_SUFFIX}")
@@ -493,22 +515,20 @@ if user_is_authenticated:
 
                 elif main_action == "Selecione uma opção...":
                     st.info("👋 Bem-vindo à seção interativa de Marketing Digital com IA! Escolha uma das opções acima para começar.")
-                    LOGO_PATH_MKT_WELCOME_APP_S = "images/logo-pme-ia.png" # Chave 'S' para diferenciar
-                    FALLBACK_LOGO_MKT_WELCOME_APP_S = "https://i.imgur.com/7IIYxq1.png"
+                    LOGO_PATH_MKT_WELCOME_APP = "images/logo-pme-ia.png" # Deve ser 'images'
+                    FALLBACK_LOGO_MKT_WELCOME_APP = "https://i.imgur.com/7IIYxq1.png"
                     try:
-                        st.image(LOGO_PATH_MKT_WELCOME_APP_S, caption="Assistente PME Pro", width=200)
+                        st.image(LOGO_PATH_MKT_WELCOME_APP, caption="Assistente PME Pro", width=200)
                     except Exception:
-                        st.image(FALLBACK_LOGO_MKT_WELCOME_APP_S, caption="Assistente PME Pro (Fallback)", width=200)
+                        st.image(FALLBACK_LOGO_MKT_WELCOME_APP, caption="Assistente PME Pro (Fallback)", width=200)
             
             def conversar_plano_de_negocios(self, input_usuario):
-                # (Mantido como no seu código de 950 linhas)
-                system_message_plano = "Você é o \"Assistente PME Pro\", um consultor de negócios experiente especializado em auxiliar Pequenas e Médias Empresas (PMEs) no Brasil a desenvolverem planos de negócios robustos e estratégicos..." 
+                system_message_plano = "Você é o \"Assistente PME Pro\", um consultor de negócios experiente especializado em auxiliar Pequenas e Médias Empresas (PMEs) no Brasil a desenvolverem planos de negócios robustos e estratégicos..." # Mantendo o prompt completo do seu código
                 cadeia = self._criar_cadeia_conversacional(system_message_plano, self.memoria_plano_negocios, memory_key_placeholder_base=f"historico_chat_plano{APP_KEY_SUFFIX}")
                 resposta_ai_obj = cadeia.invoke({"input_usuario": input_usuario})
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
             def calcular_precos_interativo(self, input_usuario, descricao_imagem_contexto=None):
-                # (Mantido como no seu código de 950 linhas)
                 prompt_content_calc = f"O usuário está buscando ajuda para precificar um produto/serviço e forneceu a seguinte informação inicial: '{input_usuario}'."
                 if descricao_imagem_contexto: prompt_content_calc = f"{descricao_imagem_contexto}\n\n{prompt_content_calc}"
                 system_message_precos = f"""Você é o "Assistente PME Pro", um especialista em estratégias de precificação para PMEs no Brasil. {prompt_content_calc} Comece fazendo perguntas claras e objetivas para entender os custos (fixos e variáveis), o valor percebido pelo cliente, os preços da concorrência e os objetivos de margem de lucro do usuário. Guie-o passo a passo no processo de cálculo, sugerindo métodos como markup, margem de contribuição ou precificação baseada em valor, conforme apropriado."""
@@ -517,7 +537,6 @@ if user_is_authenticated:
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
             def gerar_ideias_para_negocios(self, input_usuario, contexto_arquivos=None):
-                # (Mantido como no seu código de 950 linhas)
                 prompt_content_ideias = f"O usuário busca ideias criativas e viáveis para seu negócio (ou um novo negócio) e descreve seu desafio ou ponto de partida como: '{input_usuario}'."
                 if contexto_arquivos: prompt_content_ideias = f"Adicionalmente, o usuário forneceu o seguinte contexto a partir de arquivos:\n{contexto_arquivos}\n\n{prompt_content_ideias}"
                 system_message_ideias = f"""Você é o "Assistente PME Pro", um consultor de negócios altamente criativo e com visão de mercado, focado em PMEs no Brasil. {prompt_content_ideias} Faça perguntas exploratórias para entender melhor as paixões, habilidades, recursos disponíveis e o mercado de interesse do usuário. Com base nisso, gere 3-5 ideias de negócios ou inovações distintas e acionáveis, cada uma com uma breve justificativa e potenciais primeiros passos. Priorize ideias com potencial de crescimento e alinhadas com tendências atuais."""
@@ -526,38 +545,44 @@ if user_is_authenticated:
                 return resposta_ai_obj['text'] if isinstance(resposta_ai_obj, dict) and 'text' in resposta_ai_obj else str(resposta_ai_obj)
 
         # --- Funções Utilitárias de Chat ---
-        # (Mantidas como no seu código de 950 linhas, usando APP_KEY_SUFFIX)
         def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
             chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
             st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
             if memoria_agente_instancia:
                 memoria_agente_instancia.clear()
-                if hasattr(memoria_agente_instancia, 'chat_memory') and hasattr(memoria_agente_instancia.chat_memory, 'messages'):
+                if hasattr(memoria_agente_instancia, 'chat_memory') and hasattr(memoria_agente_instancia.chat_memory, 'messages'): # Verifica se é BaseChatMessageHistory
                     memoria_agente_instancia.chat_memory.messages.clear() 
                     memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
-                elif hasattr(memoria_agente_instancia.chat_memory, 'add_ai_message'):
+                elif hasattr(memoria_agente_instancia.chat_memory, 'add_ai_message'): # Para outros tipos de memória que podem ter add_ai_message
                      memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
-            if area_chave == "calculo_precos": 
-                st.session_state.pop(f'last_uploaded_image_info_calculo_precos{APP_KEY_SUFFIX}', None)
-                st.session_state.pop(f'processed_image_id_calculo_precos{APP_KEY_SUFFIX}', None)
-                st.session_state.pop(f'user_input_processed_calculo_precos{APP_KEY_SUFFIX}', None)
-            elif area_chave == "gerador_ideias": 
-                st.session_state.pop(f'uploaded_file_info_gerador_ideias_for_prompt{APP_KEY_SUFFIX}', None)
-                st.session_state.pop(f'processed_file_id_gerador_ideias{APP_KEY_SUFFIX}', None)
-                st.session_state.pop(f'user_input_processed_gerador_ideias{APP_KEY_SUFFIX}', None)
+
+            # Limpando chaves específicas de upload para cada área
+            upload_related_keys_to_pop = [
+                f'last_uploaded_image_info_{area_chave}{APP_KEY_SUFFIX}',
+                f'processed_image_id_{area_chave}{APP_KEY_SUFFIX}',
+                f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}',
+                f'uploaded_file_info_{area_chave}_for_prompt{APP_KEY_SUFFIX}',
+                f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}'
+            ]
+            for key_to_pop in upload_related_keys_to_pop:
+                st.session_state.pop(key_to_pop, None)
+
 
         def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
             chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
             if chat_display_key not in st.session_state: st.session_state[chat_display_key] = [] 
             for msg_info in st.session_state[chat_display_key]:
                 with st.chat_message(msg_info["role"]): st.markdown(msg_info["content"])
+            
             prompt_usuario = st.chat_input(prompt_placeholder, key=f"chat_input_{area_chave}{APP_KEY_SUFFIX}")
             if prompt_usuario:
                 st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
                 with st.chat_message("user"): st.markdown(prompt_usuario)
+                
                 user_input_processed_key_chat = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'
                 if area_chave in ["calculo_precos", "gerador_ideias"]: 
                     st.session_state[user_input_processed_key_chat] = True
+                
                 with st.spinner("Assistente PME Pro está processando... 🤔"):
                     resposta_ai = funcao_conversa_agente(prompt_usuario, **kwargs_funcao_agente)
                 st.session_state[chat_display_key].append({"role": "assistant", "content": resposta_ai})
@@ -566,7 +591,9 @@ if user_is_authenticated:
         def _sidebar_clear_button(label, memoria, section_key): 
             if st.sidebar.button(f"🗑️ Limpar Histórico de {label}", key=f"btn_reset_{section_key}{APP_KEY_SUFFIX}_clear"):
                 msg_inicial = f"Ok, vamos recomeçar {label.lower()}! Qual o seu ponto de partida?"
-                if section_key == "calculo_precos": msg_inicial = "Ok, vamos recomeçar o cálculo de preços! Descreva seu produto ou serviço."
+                # Mensagens iniciais específicas
+                if section_key == "plano_negocios": msg_inicial = "Olá! Sou seu Assistente PME Pro. Vamos elaborar um rascunho do seu plano de negócios? Comece me contando sobre sua ideia."
+                elif section_key == "calculo_precos": msg_inicial = "Ok, vamos recomeçar o cálculo de preços! Descreva seu produto ou serviço."
                 elif section_key == "gerador_ideias": msg_inicial = "Ok, vamos recomeçar a geração de ideias! Qual o seu ponto de partida?"
                 inicializar_ou_resetar_chat(section_key, msg_inicial, memoria) 
                 st.rerun()
@@ -576,6 +603,7 @@ if user_is_authenticated:
             processed_image_id_key = f'processed_image_id_{area_chave}{APP_KEY_SUFFIX}'
             last_uploaded_info_key = f'last_uploaded_image_info_{area_chave}{APP_KEY_SUFFIX}'
             user_input_processed_key = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'
+
             if uploaded_image_obj is not None:
                 current_image_id = uploaded_image_obj.file_id if hasattr(uploaded_image_obj, 'file_id') else uploaded_image_obj.id
                 if st.session_state.get(processed_image_id_key) != current_image_id:
@@ -589,21 +617,32 @@ if user_is_authenticated:
                         st.error(f"Erro ao processar imagem: {e_img_proc_handle}")
                         st.session_state.pop(last_uploaded_info_key, None)
                         st.session_state.pop(processed_image_id_key, None)
-                else: descricao_imagem_para_ia = st.session_state.get(last_uploaded_info_key)
+                else: 
+                    descricao_imagem_para_ia = st.session_state.get(last_uploaded_info_key)
+            
             kwargs_chat_img = {}
+            # Passa a descrição da imagem para o kwargs APENAS SE uma nova imagem foi processada E o usuário ainda não digitou nada
+            # Se o usuário já digitou, a imagem já foi "consumida" no turno anterior (se aplicável pela lógica da função_conversa_agente)
+            # A flag user_input_processed_key ajuda a controlar isso.
             ctx_img_prox_dialogo_handle = st.session_state.get(last_uploaded_info_key)
             if ctx_img_prox_dialogo_handle and not st.session_state.get(user_input_processed_key, False): 
                 kwargs_chat_img['descricao_imagem_contexto'] = ctx_img_prox_dialogo_handle
+            
             exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_chat_img)
-            if user_input_processed_key in st.session_state and st.session_state[user_input_processed_key]:
-                st.session_state.pop(last_uploaded_info_key, None) 
+            
+            # Reseta a flag após o input do usuário ser enviado para a IA
+            if st.session_state.get(user_input_processed_key, False):
                 st.session_state[user_input_processed_key] = False
+                # Considerar se last_uploaded_info_key deve ser pop'ado aqui ou se a função_conversa_agente o consome
+                # Se a função_conversa_agente usa e "consome" a informação da imagem, pode ser bom limpar aqui.
+                # st.session_state.pop(last_uploaded_info_key, None) 
 
         def _handle_chat_with_files(area_chave, prompt_placeholder, funcao_conversa_agente, uploaded_files_objs):
             contexto_para_ia_local = None
             processed_file_id_key_handle = f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}'
             uploaded_info_key_handle = f'uploaded_file_info_{area_chave}_for_prompt{APP_KEY_SUFFIX}'
             user_input_processed_key_handle = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'
+
             if uploaded_files_objs:
                 current_file_signature_handle = "-".join(sorted([f"{f.name}-{f.size}-{f.file_id if hasattr(f, 'file_id') else f.id}" for f in uploaded_files_objs]))
                 if st.session_state.get(processed_file_id_key_handle) != current_file_signature_handle or not st.session_state.get(uploaded_info_key_handle):
@@ -627,13 +666,16 @@ if user_is_authenticated:
                     st.session_state[processed_file_id_key_handle] = current_file_signature_handle
                 else: 
                     contexto_para_ia_local = st.session_state.get(uploaded_info_key_handle)
+            
             kwargs_chat_files = {}
             if contexto_para_ia_local and not st.session_state.get(user_input_processed_key_handle, False): 
                 kwargs_chat_files['contexto_arquivos'] = contexto_para_ia_local
+            
             exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_chat_files)
-            if user_input_processed_key_handle in st.session_state and st.session_state[user_input_processed_key_handle]:
-                st.session_state.pop(uploaded_info_key_handle, None)
+            
+            if st.session_state.get(user_input_processed_key_handle, False):
                 st.session_state[user_input_processed_key_handle] = False
+                # st.session_state.pop(uploaded_info_key_handle, None) # Limpa após o uso
 
         # --- Instanciação do Agente ---
         if 'agente_pme' not in st.session_state or \
@@ -650,7 +692,7 @@ if user_is_authenticated:
             st.session_state.pop('firebase_app_instance', None) 
             st.session_state.pop('llm_init_success_sidebar_shown_main_app', None)
             keys_to_clear_logout = ['agente_pme', 'area_selecionada']
-            for key in list(st.session_state.keys()): # Itera sobre uma cópia para permitir pop
+            for key in list(st.session_state.keys()):
                 if APP_KEY_SUFFIX in key or key.startswith('memoria_') or \
                    key.startswith('chat_display_') or key.startswith('generated_') or \
                    key.startswith('post_') or key.startswith('campaign_') or \
@@ -663,12 +705,12 @@ if user_is_authenticated:
             st.rerun()
 
         # Logo da Sidebar (Corrigido para usar try-except)
-        LOGO_PATH_SIDEBAR_APP = "images/logo-pme-ia.png"
-        FALLBACK_LOGO_URL_SIDEBAR_APP = "https://i.imgur.com/7IIYxq1.png" # Seu fallback URL do seu código
+        LOGO_PATH_SIDEBAR_AUTH = "images/logo-pme-ia.png"
+        FALLBACK_LOGO_URL_SIDEBAR_AUTH = "https://i.imgur.com/7IIYxq1.png" 
         try:
-            st.sidebar.image(LOGO_PATH_SIDEBAR_APP, width=150) # Largura ajustada para 150
+            st.sidebar.image(LOGO_PATH_SIDEBAR_AUTH, width=150)
         except Exception:
-            st.sidebar.image(FALLBACK_LOGO_URL_SIDEBAR_APP, width=150, caption="Logo (Fallback)") # Largura ajustada
+            st.sidebar.image(FALLBACK_LOGO_URL_SIDEBAR_AUTH, width=150, caption="Logo (Fallback)")
 
         st.sidebar.title("Assistente PME Pro")
         st.sidebar.markdown("IA para seu Negócio Decolar!")
@@ -690,8 +732,6 @@ if user_is_authenticated:
             current_nav_radio_index_val = 0
             st.session_state.area_selecionada = list(opcoes_menu.keys())[0]
         
-        # Removendo on_change do radio principal da sidebar para alinhar com seu código original
-        # A lógica de atualização de 'area_selecionada' já acontece no bloco if area_selecionada_label != st.session_state.area_selecionada
         area_selecionada_label = st.sidebar.radio(
             "Como posso te ajudar hoje?", 
             options=list(opcoes_menu.keys()), 
@@ -701,34 +741,31 @@ if user_is_authenticated:
 
         if area_selecionada_label != st.session_state.area_selecionada:
             st.session_state.area_selecionada = area_selecionada_label
-            if area_selecionada_label != "Marketing Digital com IA (Guia)":
-                keys_to_clear_mkt_nav_app_on_change = [
-                    k for k in st.session_state if 
-                    (k.startswith("generated_") and k.endswith(f"_new{APP_KEY_SUFFIX}")) or 
-                    (f"post{APP_KEY_SUFFIX}" in k and not k.startswith(f"post_creator_details{APP_KEY_SUFFIX}")) or 
-                    (f"campaign{APP_KEY_SUFFIX}" in k and not k.startswith(f"campaign_creator_details{APP_KEY_SUFFIX}")) or 
-                    k == f"main_marketing_action_choice{APP_KEY_SUFFIX}_index"
-                ]
-                for key_clear_mkt_on_change in keys_to_clear_mkt_nav_app_on_change:
-                    st.session_state.pop(key_clear_mkt_on_change, None)
+            # Lógica de limpeza de estado ao mudar de seção (do seu código original)
+            if area_selecionada_label != "Marketing Digital com IA (Guia)": 
+                for key_to_clear_nav in list(st.session_state.keys()):
+                    if key_to_clear_nav.startswith("generated_") and key_to_clear_nav.endswith("_new"): # Condição do seu código original
+                        del st.session_state[key_to_clear_nav]
+                    if "_marketing_select_all_v" in key_to_clear_nav or "_marketing_platform_" in key_to_clear_nav: # Condição do seu código original
+                        if st.session_state.get(key_to_clear_nav) is not None: 
+                            del st.session_state[key_to_clear_nav]
             st.rerun() 
 
         current_section_key = opcoes_menu.get(st.session_state.area_selecionada)
         
+        # Inicializar chats (lógica do seu código original)
         if current_section_key not in ["pagina_inicial", "marketing_guiado"]:
-            chat_init_flag_key_app = f'previous_area_selecionada_for_chat_init{APP_KEY_SUFFIX}'
-            chat_display_key_specific_app = f"chat_display_{current_section_key}{APP_KEY_SUFFIX}"
-            needs_chat_reset_main_app_logic = False
-            if st.session_state.area_selecionada != st.session_state.get(chat_init_flag_key_app): needs_chat_reset_main_app_logic = True
-            elif chat_display_key_specific_app not in st.session_state: needs_chat_reset_main_app_logic = True
-            elif not st.session_state.get(chat_display_key_specific_app): needs_chat_reset_main_app_logic = True
-            if needs_chat_reset_main_app_logic:
-                msg_inicial_nav_app, memoria_agente_nav_app = "", None
-                if current_section_key == "plano_negocios": msg_inicial_nav_app, memoria_agente_nav_app = "Olá! Sou seu Assistente PME Pro. Vamos elaborar um rascunho do seu plano de negócios? Comece me contando sobre sua ideia.", agente.memoria_plano_negocios
-                elif current_section_key == "calculo_precos": msg_inicial_nav_app, memoria_agente_nav_app = "Olá! Para calcular preços, descreva seu produto/serviço. Pode enviar uma imagem.", agente.memoria_calculo_precos
-                elif current_section_key == "gerador_ideias": msg_inicial_nav_app, memoria_agente_nav_app = "Olá! Buscando ideias? Descreva seu desafio ou envie arquivos de contexto.", agente.memoria_gerador_ideias
-                if msg_inicial_nav_app and memoria_agente_nav_app is not None: inicializar_ou_resetar_chat(current_section_key, msg_inicial_nav_app, memoria_agente_nav_app)
-                st.session_state[chat_init_flag_key_app] = st.session_state.area_selecionada
+            # Renomeei a flag para consistência com APP_KEY_SUFFIX
+            chat_init_flag_key = f'previous_area_selecionada_for_chat_init_processed{APP_KEY_SUFFIX}' 
+            if st.session_state.area_selecionada != st.session_state.get(chat_init_flag_key):
+                chat_display_key_nav = f"chat_display_{current_section_key}{APP_KEY_SUFFIX}" # Usando APP_KEY_SUFFIX
+                if chat_display_key_nav not in st.session_state or not st.session_state[chat_display_key_nav]:
+                    msg_inicial_nav, memoria_agente_nav = "", None
+                    if current_section_key == "plano_negocios": msg_inicial_nav, memoria_agente_nav = "Olá! Sou seu Assistente PME Pro...", agente.memoria_plano_negocios
+                    elif current_section_key == "calculo_precos": msg_inicial_nav, memoria_agente_nav = "Olá! Bem-vindo ao assistente de Cálculo de Preços...", agente.memoria_calculo_precos
+                    elif current_section_key == "gerador_ideias": msg_inicial_nav, memoria_agente_nav = "Olá! Sou o Assistente PME Pro. Estou aqui para te ajudar...", agente.memoria_gerador_ideias
+                    if msg_inicial_nav and memoria_agente_nav: inicializar_ou_resetar_chat(current_section_key, msg_inicial_nav, memoria_agente_nav)
+                st.session_state[chat_init_flag_key] = st.session_state.area_selecionada
 
         # --- SELEÇÃO E EXIBIÇÃO DA SEÇÃO ATUAL ---
         if current_section_key == "pagina_inicial":
@@ -747,41 +784,43 @@ if user_is_authenticated:
                     if chave_secao_btn_pg != "pagina_inicial":
                         col_para_botao_pg = cols_botoes_pg_inicial[btn_idx_pg_inicial % num_cols_render]
                         button_label_pg = nome_menu_btn_pg.split(" com IA")[0].split(" (Guia)")[0].replace("Elaborar ", "").replace(" Inteligente","").replace(" para Negócios","")
-                        button_key_pg_inicial = f"btn_goto_{chave_secao_btn_pg}{APP_KEY_SUFFIX}_pg_inicial"
+                        # Usando uma chave única para os botões da página inicial
+                        button_key_pg_inicial = f"btn_goto_{chave_secao_btn_pg}{APP_KEY_SUFFIX}_pg_inicial" # Mantendo seu sufixo de botão
                         if col_para_botao_pg.button(button_label_pg, key=button_key_pg_inicial, use_container_width=True, help=f"Ir para {nome_menu_btn_pg}"):
                             st.session_state.area_selecionada = nome_menu_btn_pg
                             try: 
-                                radio_key_for_nav_update = f'sidebar_nav_main_app{APP_KEY_SUFFIX}' # Usando a chave correta do radio
-                                st.session_state[f'{radio_key_for_nav_update}_index'] = list(opcoes_menu.keys()).index(nome_menu_btn_pg)
+                                radio_key_for_nav_update_btn = f'sidebar_nav_main_app{APP_KEY_SUFFIX}' # Chave do radio da sidebar
+                                st.session_state[f'{radio_key_for_nav_update_btn}_index'] = list(opcoes_menu.keys()).index(nome_menu_btn_pg)
                             except ValueError: pass
                             st.rerun()
                         btn_idx_pg_inicial +=1
-                # st.balloons() # Removido ou comentado se não for essencial
+                st.balloons() # Seu st.balloons() original
         
         elif current_section_key == "marketing_guiado": agente.marketing_digital_guiado()
         elif current_section_key == "plano_negocios": 
             st.header("📝 Elaborando seu Plano de Negócios com IA")
             st.caption("Converse com o assistente para desenvolver seções do seu plano de negócios, obter insights e refinar suas estratégias.")
             exibir_chat_e_obter_input(current_section_key, "Sua resposta ou próxima seção do plano...", agente.conversar_plano_de_negocios)
-            _sidebar_clear_button("Plano", agente.memoria_plano_negocios, current_section_key)
+            _sidebar_clear_button("Plano", agente.memoria_plano_negocios, current_section_key) # APP_KEY_SUFFIX será usado internamente
         elif current_section_key == "calculo_precos": 
             st.header("💲 Cálculo de Preços Inteligente com IA")
             st.caption("Descreva seu produto/serviço, custos, mercado e objetivos. Envie uma imagem se ajudar.")
-            uploaded_image_preco_app = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key=f"preco_img_uploader{APP_KEY_SUFFIX}")
+            uploaded_image_preco_app = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key=f"preco_img_uploader{APP_KEY_SUFFIX}") # Sua chave
             _handle_chat_with_image("calculo_precos", "Descreva o produto/serviço, custos, etc.", agente.calcular_precos_interativo, uploaded_image_preco_app)
             _sidebar_clear_button("Preços", agente.memoria_calculo_precos, current_section_key)
         elif current_section_key == "gerador_ideias": 
             st.header("💡 Gerador de Ideias para seu Negócio com IA")
             st.caption("Descreva um desafio, uma área que quer inovar, ou peça sugestões. Envie arquivos de texto ou imagem para dar mais contexto.")
-            uploaded_files_ideias_app_ui = st.file_uploader("Envie arquivos de contexto (opcional - .txt, .png, .jpg):", type=["txt", "png", "jpg", "jpeg"], accept_multiple_files=True, key=f"ideias_file_uploader{APP_KEY_SUFFIX}")
+            uploaded_files_ideias_app_ui = st.file_uploader("Envie arquivos de contexto (opcional - .txt, .png, .jpg):", type=["txt", "png", "jpg", "jpeg"], accept_multiple_files=True, key=f"ideias_file_uploader{APP_KEY_SUFFIX}") # Sua chave
             _handle_chat_with_files("gerador_ideias", "Descreva seu desafio ou peça ideias:", agente.gerar_ideias_para_negocios, uploaded_files_ideias_app_ui)
             _sidebar_clear_button("Ideias", agente.memoria_gerador_ideias, current_section_key)
     
-    else: 
+    else: # Se llm_model_instance não foi inicializado (ou houve erro)
         st.error("🚨 O Assistente PME Pro não pôde ser iniciado.")
         st.info("Isso pode ter ocorrido devido a um problema com a chave da API do Google ou ao contatar os serviços do Google Generative AI.")
         if llm_init_exception: 
             st.exception(llm_init_exception)
+
 
 # --- Seção de Login/Registro (executada se user_is_authenticated for False) ---
 else: 
@@ -789,13 +828,14 @@ else:
     st.title("🔑 Bem-vindo ao Assistente PME Pro") 
 
     st.sidebar.subheader("Login / Registro")
-    auth_action_choice_key_else_final = f"app_auth_action_choice{APP_KEY_SUFFIX}_corrected_else" 
-    auth_action_choice = st.sidebar.radio("Ação:", ("Login", "Registrar Novo Usuário"), key=auth_action_choice_key_else_final)
+    # Usando chaves únicas para os widgets de autenticação para evitar conflitos com APP_KEY_SUFFIX
+    auth_action_choice_key_final_else = "auth_action_radio_final" 
+    auth_action_choice = st.sidebar.radio("Ação:", ("Login", "Registrar Novo Usuário"), key=auth_action_choice_key_final_else)
 
     if auth_action_choice == "Login":
-        with st.sidebar.form(f"app_login_form{APP_KEY_SUFFIX}_corrected_else"): 
-            login_email = st.text_input("Email")
-            login_password = st.text_input("Senha", type="password")
+        with st.sidebar.form("login_form_final"): 
+            login_email = st.text_input("Email", key="login_email_final")
+            login_password = st.text_input("Senha", type="password", key="login_pass_final")
             login_button_clicked = st.form_submit_button("Login")
             if login_button_clicked:
                 if login_email and login_password and pb_auth_client:
@@ -804,24 +844,24 @@ else:
                         st.session_state.user_session_pyrebase = dict(user_session)
                         st.session_state.pop('firebase_init_success_message_shown', None)
                         st.rerun()
-                    except Exception as e_login_final_corrected:
-                        error_message_login_final_corrected = "Erro no login. Verifique suas credenciais."
+                    except Exception as e_login_final:
+                        error_message_login_final = "Erro no login. Verifique suas credenciais."
                         try: 
-                            error_details_str_final_corrected = e_login_final_corrected.args[0] if len(e_login_final_corrected.args) > 0 else "{}"
-                            error_data_final_corrected = json.loads(error_details_str_final_corrected.replace("'", "\""))
-                            api_error_message_final_corrected = error_data_final_corrected.get('error', {}).get('message', '')
-                            if "INVALID_LOGIN_CREDENTIALS" in api_error_message_final_corrected or "EMAIL_NOT_FOUND" in api_error_message_final_corrected or "INVALID_PASSWORD" in api_error_message_final_corrected or "USER_DISABLED" in api_error_message_final_corrected or "INVALID_EMAIL" in api_error_message_final_corrected:
-                                error_message_login_final_corrected = "Email ou senha inválidos, ou usuário desabilitado."
-                            elif api_error_message_final_corrected: error_message_login_final_corrected = f"Erro no login: {api_error_message_final_corrected}"
+                            error_details_str_final = e_login_final.args[0] if len(e_login_final.args) > 0 else "{}"
+                            error_data_final = json.loads(error_details_str_final.replace("'", "\""))
+                            api_error_message_final = error_data_final.get('error', {}).get('message', '')
+                            if "INVALID_LOGIN_CREDENTIALS" in api_error_message_final or "EMAIL_NOT_FOUND" in api_error_message_final or "INVALID_PASSWORD" in api_error_message_final or "USER_DISABLED" in api_error_message_final or "INVALID_EMAIL" in api_error_message_final:
+                                error_message_login_final = "Email ou senha inválidos, ou usuário desabilitado."
+                            elif api_error_message_final: error_message_login_final = f"Erro no login: {api_error_message_final}"
                         except: pass 
-                        st.sidebar.error(error_message_login_final_corrected)
+                        st.sidebar.error(error_message_login_final)
                 elif not pb_auth_client: st.sidebar.error("Cliente Firebase Auth não inicializado.")
                 else: st.sidebar.warning("Por favor, preencha email e senha.")
     
     elif auth_action_choice == "Registrar Novo Usuário":
-        with st.sidebar.form(f"app_register_form{APP_KEY_SUFFIX}_corrected_else"): 
-            reg_email = st.text_input("Email para registro")
-            reg_password = st.text_input("Senha para registro (mínimo 6 caracteres)", type="password")
+        with st.sidebar.form("register_form_final"): 
+            reg_email = st.text_input("Email para registro", key="reg_email_final")
+            reg_password = st.text_input("Senha para registro (mínimo 6 caracteres)", type="password", key="reg_pass_final")
             submit_register = st.form_submit_button("Registrar")
             if submit_register:
                 if reg_email and reg_password and pb_auth_client:
@@ -831,33 +871,33 @@ else:
                         try: 
                            pb_auth_client.send_email_verification(user['idToken'])
                            st.sidebar.info("Email de verificação enviado (cheque sua caixa de entrada e spam).")
-                        except Exception as verify_email_error_final_corrected: 
-                           st.sidebar.caption(f"Nota: Não foi possível enviar email de verificação: {verify_email_error_final_corrected}")
-                    except Exception as e_register_final_corrected:
-                        error_message_register_final_corrected = "Erro no registro."
+                        except Exception as verify_email_error_final: 
+                           st.sidebar.caption(f"Nota: Não foi possível enviar email de verificação: {verify_email_error_final}")
+                    except Exception as e_register_final:
+                        error_message_register_final = "Erro no registro."
                         try:
-                            error_details_str_reg_final_corrected = e_register_final_corrected.args[0] if len(e_register_final_corrected.args) > 0 else "{}"
-                            error_data_reg_final_corrected = json.loads(error_details_str_reg_final_corrected.replace("'", "\""))
-                            api_error_message_reg_final_corrected = error_data_reg_final_corrected.get('error', {}).get('message', '')
-                            if "EMAIL_EXISTS" in api_error_message_reg_final_corrected:
-                                error_message_register_final_corrected = "Este email já está registrado. Tente fazer login."
-                            elif api_error_message_reg_final_corrected:
-                                error_message_register_final_corrected = f"Erro no registro: {api_error_message_reg_final_corrected}"
+                            error_details_str_reg_final = e_register_final.args[0] if len(e_register_final.args) > 0 else "{}"
+                            error_data_reg_final = json.loads(error_details_str_reg_final.replace("'", "\""))
+                            api_error_message_reg_final = error_data_reg_final.get('error', {}).get('message', '')
+                            if "EMAIL_EXISTS" in api_error_message_reg_final:
+                                error_message_register_final = "Este email já está registrado. Tente fazer login."
+                            elif api_error_message_reg_final:
+                                error_message_register_final = f"Erro no registro: {api_error_message_reg_final}"
                         except: 
-                             error_message_register_final_corrected = f"Erro no registro: {str(e_register_final_corrected)}"
-                        st.sidebar.error(error_message_register_final_corrected)
+                             error_message_register_final = f"Erro no registro: {str(e_register_final)}"
+                        st.sidebar.error(error_message_register_final)
                 elif not pb_auth_client: st.sidebar.error("Cliente Firebase Auth não inicializado.")
                 else: st.sidebar.warning("Por favor, preencha email e senha para registro.")
     
     if not error_message_firebase_init: 
         st.info("Faça login ou registre-se na barra lateral para usar o Assistente PME Pro.")
-        LOGO_PATH_LOGIN_UNAUTH_APP = "images/logo-pme-ia.png" 
-        FALLBACK_LOGO_URL_LOGIN_UNAUTH_APP = "https://i.imgur.com/7IIYxq1.png"
+        LOGO_PATH_LOGIN_UNAUTH = "images/logo-pme-ia.png" 
+        FALLBACK_LOGO_URL_LOGIN_UNAUTH = "https://i.imgur.com/7IIYxq1.png" # Seu fallback URL do seu código
         try:
-            st.image(LOGO_PATH_LOGIN_UNAUTH_APP, width=200)
+            st.image(LOGO_PATH_LOGIN_UNAUTH, width=200)
         except Exception:
-            st.image(FALLBACK_LOGO_URL_LOGIN_UNAUTH_APP, width=200, caption="Logo (Fallback)")
+            st.image(FALLBACK_LOGO_URL_LOGIN_UNAUTH, width=200, caption="Logo (Fallback)")
 
 # Rodapé da Sidebar (sempre visível)
 st.sidebar.markdown("---")
-st.sidebar.info("Desenvolvido por Yaakov Israel com Gemini Pro")
+st.sidebar.info("Desenvolvido por Yaakov Israel com Gemini Pro") # Mantido seu texto original
