@@ -211,9 +211,46 @@ if user_is_authenticated:
                 st.expander("🔍 Debug: Ver Prompt da Campanha Enviado para IA").write(final_prompt)
                 # ***** FIM DA LINHA DE DEBUG *****
                 
-                ai_response = llm.invoke(HumanMessage(content=final_prompt))
-                st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+                # Dentro da função _marketing_handle_criar_campanha:
+# ... (todo o código que monta a lista `prompt_parts` vem antes daqui) ...
+            
+            if uploaded_files_info: 
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+            
+            final_prompt = "\n\n".join(prompt_parts) # Esta linha monta o prompt original
+            
+            # Sua linha de debug original (MANTENHA para ver o prompt original que seria enviado)
+            st.expander("🔍 Debug: Ver Prompt ORIGINAL da Campanha Enviado para IA").write(final_prompt) 
+            
+            # ---- INÍCIO DO BLOCO DE TESTE SIMPLES DE PROMPT ----
+            # (Este bloco substitui as linhas originais de 'llm.invoke' e 'st.session_state' para a campanha)
+            
+            test_prompt_content = "Por favor, escreva uma frase curta sobre marketing para pequenas empresas no Brasil."
+            
+            # Adicionando um novo expander para o prompt de teste, para não confundir com o original
+            st.expander("🧪 Debug: Ver Prompt DE TESTE Sendo Enviado").write(f"USANDO PROMPT DE TESTE: {test_prompt_content}") 
+            
+            try:
+                ai_response_test = llm.invoke(HumanMessage(content=test_prompt_content)) # Usando o prompt de teste
+                # Se o teste funcionar, vamos guardar a resposta em uma chave de session_state diferente
+                st.session_state[f'generated_campaign_content_TEST{APP_KEY_SUFFIX}'] = ai_response_test.content
+                st.success("🎉 Teste de prompt simples FUNCIONOU! A IA respondeu.") 
+                st.write("Resposta do teste:")
+                st.write(ai_response_test.content) # Mostra a resposta do teste
+            except ValueError as e_val_test: # Captura especificamente ValueError
+                st.error(f"😥 ERRO (ValueError) no teste de prompt simples: {e_val_test}")
+                # Tenta mostrar a mensagem completa do ValueError
+                st.text_area("Detalhe do ValueError (para copiar):", str(e_val_test), height=150)
+            except Exception as e_test_invoke: # Captura outras exceções
+                st.error(f"😥 ERRO GERAL no teste de prompt simples: {e_test_invoke}")
+                st.text_area("Detalhe do Erro Geral (para copiar):", str(e_test_invoke), height=150)
+            # ---- FIM DO BLOCO DE TESTE SIMPLES DE PROMPT ----
 
+        # Aqui termina a função _marketing_handle_criar_campanha
+
+# A próxima definição de função deve começar aqui, por exemplo:
+# def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
+#    # ...
         def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
             if not lp_details["purpose"] or not lp_details["main_offer"] or not lp_details["cta"]: st.warning("Por favor, preencha objetivo, oferta e CTA."); return
             with st.spinner("🎨 A IA está desenhando a estrutura da sua landing page..."): # Spinner correto
