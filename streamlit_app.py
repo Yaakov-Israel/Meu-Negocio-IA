@@ -321,10 +321,7 @@ if user_is_authenticated:
                 # Considerando que esta função é chamada no corpo principal, o st.sidebar aqui pode ser um pouco incomum,
                 # mas vou manter como no seu código original.
                 with st.sidebar: 
-                    # Para evitar que o expander seja recriado dentro de um loop ou de forma aninhada,
-                    # vou usar uma chave única para ele também, embora ele já esteja na sidebar.
-                    sidebar_marketing_expander = st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}")
-                    with sidebar_marketing_expander:
+            with st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}"):
                         uploaded_marketing_files_sidebar = st.file_uploader(
                             "Upload de arquivos de CONTEXTO para Marketing (opcional):", 
                             accept_multiple_files=True,
