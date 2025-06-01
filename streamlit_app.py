@@ -320,7 +320,8 @@ if user_is_authenticated:
                 # A lógica do File Uploader da Sidebar para Marketing (do seu código)
                 # Considerando que esta função é chamada no corpo principal, o st.sidebar aqui pode ser um pouco incomum,
                 # mas vou manter como no seu código original.
-                with st.sidebar: 
+                with st.sidebar:
+                    
             with st.expander("📎 Suporte para Marketing (Upload Geral)", key=f"sidebar_mkt_expander{APP_KEY_SUFFIX}"):
                         uploaded_marketing_files_sidebar = st.file_uploader(
                             "Upload de arquivos de CONTEXTO para Marketing (opcional):", 
