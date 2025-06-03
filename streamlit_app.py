@@ -9,19 +9,18 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
 from PIL import Image # Para o logo na sidebar
-import base64 # Movido para o topo para a função convert_image_to_base64
+import base64
 
 # --- Função Auxiliar para Imagem em Base64 ---
-# Movida para o início para garantir que esteja definida antes de ser chamada.
 def convert_image_to_base64(image_path):
     try:
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     except FileNotFoundError:
-        st.warning(f"Arquivo de imagem não encontrado: {image_path}") # Adicionado aviso
-        return None # Ou um placeholder base64 de uma imagem de erro
+        st.warning(f"Arquivo de imagem não encontrado: {image_path}")
+        return None
     except Exception as e:
-        st.error(f"Erro ao converter imagem {image_path}: {e}") # Adicionado aviso de erro genérico
+        st.error(f"Erro ao converter imagem {image_path}: {e}")
         return None
 
 # --- Configuração da Página Streamlit ---
@@ -129,7 +128,6 @@ session_rerun_key_check = 'running_rerun_after_auth_fail_v3'
 if session_rerun_key_check in st.session_state and st.session_state[session_rerun_key_check]:
     st.session_state.pop(session_rerun_key_check, None)
 
-
 # --- Interface do Usuário Condicional e Lógica Principal do App ---
 APP_KEY_SUFFIX = "_v20_final"
 
@@ -184,13 +182,16 @@ if user_is_authenticated:
                 st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
 
     def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
-        st.error("DEBUG: EXECUTANDO A VERSÃO CORRIGIDA DE _marketing_handle_criar_post v2") # Adicione esta linha
+        st.error("DEBUG: EXECUTANDO A VERSÃO CORRIGIDA DE _marketing_handle_criar_post v2") # Linha de Debug
 
         if not selected_platforms_list:
             st.warning("Por favor, selecione pelo menos uma plataforma.")
             st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
             return
-        # ... resto da função como corrigimos ...
+        if not details_dict.get("objective") or not details_dict["objective"].strip():
+            st.warning("Por favor, descreva o objetivo do post.")
+            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
+            return
 
         with st.spinner("🤖 Max IA está criando seu post... Aguarde!"):
             prompt_parts = [
@@ -201,7 +202,7 @@ if user_is_authenticated:
                 f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.",
                 f"**Produto/Serviço Principal:** {details_dict.get('product_service', '')}",
                 f"**Público-Alvo:** {details_dict.get('target_audience', '')}",
-                f"**Objetivo do Post:** {details_dict.get('objective', '')}", # Usar .get para segurança
+                f"**Objetivo do Post:** {details_dict.get('objective', '')}",
                 f"**Mensagem Chave:** {details_dict.get('key_message', '')}",
                 f"**Proposta Única de Valor (USP):** {details_dict.get('usp', '')}",
                 f"**Tom/Estilo:** {details_dict.get('style_tone', '')}",
@@ -218,8 +219,6 @@ if user_is_authenticated:
                 return
 
             try:
-                # ****** CORREÇÃO APLICADA AQUI ******
-                # Passando a string do prompt diretamente, conforme a mensagem de erro sugere.
                 ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
@@ -229,23 +228,22 @@ if user_is_authenticated:
                     st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
 
             except ValueError as ve:
-                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação: {ve}")
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para o post: {ve}")
                 st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
                 st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
                 st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
-                print(f"ValueError DETALHADO em llm.invoke: {ve}")
-                print(f"Prompt completo que causou o ValueError: {final_prompt}")
+                print(f"ValueError DETALHADO em llm.invoke para CRIAR POST: {ve}")
+                print(f"Prompt completo que causou o ValueError (CRIAR POST): {final_prompt}")
                 return
             except Exception as e_invoke:
-                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA: {e_invoke}")
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para o post: {e_invoke}")
                 st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
                 st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
-                print(f"Erro GERAL DETALHADO em llm.invoke: {e_invoke}")
-                print(f"Prompt completo que causou o Erro Geral: {final_prompt}")
+                print(f"Erro GERAL DETALHADO em llm.invoke para CRIAR POST: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (CRIAR POST): {final_prompt}")
                 return
 
-   def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
-        # Validações de entrada
+    def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
         if not selected_platforms_list:
             st.warning("Por favor, selecione pelo menos uma plataforma para a campanha.")
             st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
@@ -286,7 +284,7 @@ if user_is_authenticated:
                 return
 
             try:
-                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+                ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
@@ -311,7 +309,6 @@ if user_is_authenticated:
                 return
 
     def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
-        # Validações de entrada
         if not lp_details.get("purpose") or not lp_details["purpose"].strip():
             st.warning("Por favor, preencha o principal objetivo da landing page.")
             st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
@@ -346,7 +343,7 @@ if user_is_authenticated:
                 return
 
             try:
-                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+                ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
@@ -371,7 +368,6 @@ if user_is_authenticated:
                 return
 
     def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
-        # Validações de entrada
         if not site_details.get("business_type") or not site_details["business_type"].strip():
             st.warning("Por favor, informe o tipo do seu negócio/empresa para o site.")
             st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
@@ -403,7 +399,7 @@ if user_is_authenticated:
                 return
 
             try:
-                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+                ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = ai_response.content
@@ -428,7 +424,6 @@ if user_is_authenticated:
                 return
 
     def _marketing_handle_encontre_cliente(uploaded_files_info, client_details, llm):
-        # Validação de entrada
         if not client_details.get("product_campaign") or not client_details["product_campaign"].strip():
             st.warning("Por favor, descreva o produto/serviço ou campanha para o qual deseja encontrar o cliente ideal.")
             st.session_state.pop(f'generated_client_analysis_new{APP_KEY_SUFFIX}', None)
@@ -456,7 +451,7 @@ if user_is_authenticated:
                 return
 
             try:
-                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+                ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
@@ -480,8 +475,7 @@ if user_is_authenticated:
                 print(f"Prompt completo que causou o Erro Geral (ENCONTRAR CLIENTE): {final_prompt}")
                 return
 
-   def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
-        # Validações de entrada
+    def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
         if not competitor_details.get("your_business") or not competitor_details["your_business"].strip():
             st.warning("Por favor, descreva seu próprio negócio/produto para comparação com a concorrência.")
             st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
@@ -490,7 +484,7 @@ if user_is_authenticated:
             st.warning("Por favor, liste seus principais concorrentes para análise.")
             st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
             return
-        if not competitor_details.get("aspects_to_analyze"): # Verifica se a lista não está vazia
+        if not competitor_details.get("aspects_to_analyze"):
             st.warning("Por favor, selecione pelo menos um aspecto da concorrência para analisar.")
             st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
             return
@@ -514,7 +508,7 @@ if user_is_authenticated:
                 return
 
             try:
-                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+                ai_response = llm.invoke(final_prompt)
 
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
@@ -639,6 +633,7 @@ if user_is_authenticated:
                     post_details = _marketing_get_objective_details(f"post_max{APP_KEY_SUFFIX}", "post")
                     submit_button_pressed_post = st.form_submit_button("💡 Gerar Post com Max IA!")
                     if submit_button_pressed_post:
+                        # Passando self.llm que é o llm_model_instance da classe MaxAgente
                         _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, selected_platforms_post_ui, self.llm)
                     if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state:
                         _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_output_max{APP_KEY_SUFFIX}", "post_max_ia")
@@ -663,6 +658,7 @@ if user_is_authenticated:
                     submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha com Max IA!")
                     if submit_button_pressed_camp:
                         campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
+                        # Passando self.llm
                         _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, selected_platforms_camp_ui, self.llm)
                     if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state:
                         _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_output_max{APP_KEY_SUFFIX}", "campanha_max_ia")
@@ -678,6 +674,7 @@ if user_is_authenticated:
                     submitted_lp = st.form_submit_button("🛠️ Gerar Estrutura da LP com Max IA!")
                     if submitted_lp:
                         lp_details_dict = {"purpose": lp_purpose, "target_audience": lp_target_audience, "main_offer": lp_main_offer, "key_benefits": lp_key_benefits, "cta": lp_cta, "visual_prefs": lp_visual_prefs}
+                        # Passando self.llm
                         _marketing_handle_criar_landing_page(marketing_files_info_for_prompt_local, lp_details_dict, self.llm)
                     if f'generated_lp_content_new{APP_KEY_SUFFIX}' in st.session_state:
                         st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
@@ -696,6 +693,7 @@ if user_is_authenticated:
                     submitted_site = st.form_submit_button("🏛️ Gerar Estrutura do Site com Max IA!")
                     if submitted_site:
                         site_details_dict = {"business_type": site_business_type, "main_purpose": site_main_purpose, "target_audience": site_target_audience, "essential_pages": site_essential_pages, "key_features": site_key_features, "brand_personality": site_brand_personality, "visual_references": site_visual_references}
+                        # Passando self.llm
                         _marketing_handle_criar_site(marketing_files_info_for_prompt_local, site_details_dict, self.llm)
                     if f'generated_site_content_new{APP_KEY_SUFFIX}' in st.session_state:
                         st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
@@ -714,6 +712,7 @@ if user_is_authenticated:
                     submitted_fc = st.form_submit_button("🔍 Encontrar Meu Cliente com Max IA!")
                     if submitted_fc:
                         client_details_dict = {"product_campaign": fc_product_campaign, "location": fc_location, "budget": fc_budget, "age_gender": fc_age_gender, "interests": fc_interests, "current_channels": fc_current_channels, "deep_research": fc_deep_research}
+                        # Passando self.llm
                         _marketing_handle_encontre_cliente(marketing_files_info_for_prompt_local, client_details_dict, self.llm)
                     if f'generated_client_analysis_new{APP_KEY_SUFFIX}' in st.session_state:
                         st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
@@ -728,6 +727,7 @@ if user_is_authenticated:
                     submitted_ca = st.form_submit_button("📡 Analisar Concorrentes com Max IA!")
                     if submitted_ca:
                         competitor_details_dict = {"your_business": ca_your_business, "competitors_list": ca_competitors_list, "aspects_to_analyze": ca_aspects_to_analyze}
+                        # Passando self.llm
                         _marketing_handle_conheca_concorrencia(marketing_files_info_for_prompt_local, competitor_details_dict, self.llm)
                     if f'generated_competitor_analysis_new{APP_KEY_SUFFIX}' in st.session_state:
                         st.subheader("📊 Análise da Concorrência e Insights:")
@@ -821,6 +821,7 @@ if user_is_authenticated:
             """)
             st.balloons()
 
+    # --- Funções Utilitárias Globais (se não forem métodos de classe) ---
     def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
         chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
         st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
@@ -936,84 +937,94 @@ if user_is_authenticated:
                 st.session_state[uploaded_info_key] = None
             st.session_state[user_input_processed_key] = False
 
-    if 'max_agente_instancia' not in st.session_state or not isinstance(st.session_state.max_agente_instancia, MaxAgente) or st.session_state.max_agente_instancia.llm != llm_model_instance :
-        st.session_state.max_agente_instancia = MaxAgente(llm_passed_model=llm_model_instance)
-    agente = st.session_state.max_agente_instancia
+    # --- Instanciação do Agente ---
+    # As definições das funções _marketing_handle_... devem estar ANTES da definição da classe MaxAgente
+    # ou serem métodos da classe (o que não são atualmente) se a classe for precisar chamá-las como self._marketing_handle_...
+    # No momento, elas são chamadas como funções globais (dentro do escopo do if user_is_authenticated)
+    # a partir dos métodos da classe MaxAgente, como exibir_max_marketing_total. Isso está OK.
 
-    st.sidebar.write(f"Logado como: {display_email}")
-    if st.sidebar.button("Logout", key=f"main_app_logout_max{APP_KEY_SUFFIX}"):
-        st.session_state.user_session_pyrebase = None
-        keys_to_clear_on_logout = [k for k in st.session_state if APP_KEY_SUFFIX in k or k.startswith('memoria_') or k.startswith('chat_display_') or k.startswith('generated_') or k.startswith('post_') or k.startswith('campaign_')]
-        keys_to_clear_on_logout.extend(['max_agente_instancia', 'area_selecionada_max_ia',
-                                        'firebase_init_success_message_shown', 'firebase_app_instance',
-                                        'llm_init_success_sidebar_shown_main_app'])
-        for key_to_clear in keys_to_clear_on_logout:
-            st.session_state.pop(key_to_clear, None)
-        st.rerun()
+    if 'max_agente_instancia' not in st.session_state or not isinstance(st.session_state.max_agente_instancia, MaxAgente) or (hasattr(st.session_state.max_agente_instancia, 'llm') and st.session_state.max_agente_instancia.llm != llm_model_instance):
+        if llm_model_instance: # Só instancia o agente se o LLM foi carregado
+            st.session_state.max_agente_instancia = MaxAgente(llm_passed_model=llm_model_instance)
+        else:
+            st.session_state.max_agente_instancia = None # Define como None se o LLM falhou
 
-    LOGO_PATH_SIDEBAR_APP = "images/max-ia-logo.png"
-    try:
-        st.sidebar.image(LOGO_PATH_SIDEBAR_APP, width=150)
-    except Exception:
-        st.sidebar.image("https://i.imgur.com/7IIYxq1.png", width=150, caption="Max IA (Fallback)")
+    # Garante que 'agente' só é usado se a instância existir e o LLM estiver ok.
+    if st.session_state.get('max_agente_instancia') and llm_model_instance:
+        agente = st.session_state.max_agente_instancia
 
-    st.sidebar.title("Max IA")
-    st.sidebar.markdown("Seu Agente IA para Maximizar Resultados!")
-    st.sidebar.markdown("---")
+        st.sidebar.write(f"Logado como: {display_email}")
+        if st.sidebar.button("Logout", key=f"main_app_logout_max{APP_KEY_SUFFIX}"):
+            st.session_state.user_session_pyrebase = None
+            keys_to_clear_on_logout = [k for k in st.session_state if APP_KEY_SUFFIX in k or k.startswith('memoria_') or k.startswith('chat_display_') or k.startswith('generated_') or k.startswith('post_') or k.startswith('campaign_')]
+            keys_to_clear_on_logout.extend(['max_agente_instancia', 'area_selecionada_max_ia',
+                                            'firebase_init_success_message_shown', 'firebase_app_instance',
+                                            'llm_init_success_sidebar_shown_main_app'])
+            for key_to_clear in keys_to_clear_on_logout:
+                st.session_state.pop(key_to_clear, None)
+            st.rerun()
 
-    opcoes_menu_max_ia = {
-        "👋 Bem-vindo ao Max IA": "painel_max_ia",
-        "🚀 MaxMarketing Total": "max_marketing_total",
-        "💰 MaxFinanceiro": "max_financeiro",
-        "⚙️ MaxAdministrativo": "max_administrativo",
-        "📈 MaxPesquisa de Mercado": "max_pesquisa_mercado",
-        "🧭 MaxBússola Estratégica": "max_bussola",
-        "🎓 MaxTrainer IA": "max_trainer_ia"
-    }
-    radio_key_sidebar_main_max = f'sidebar_selection_max_ia{APP_KEY_SUFFIX}'
-
-    if 'area_selecionada_max_ia' not in st.session_state or st.session_state.area_selecionada_max_ia not in opcoes_menu_max_ia.keys(): # Correção: verificar se a chave está nos valores do dict
-        st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
-
-    radio_index_key_nav_max = f'{radio_key_sidebar_main_max}_index'
-    if radio_index_key_nav_max not in st.session_state:
+        LOGO_PATH_SIDEBAR_APP = "images/max-ia-logo.png"
         try:
-            st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state.area_selecionada_max_ia)
-        except ValueError:
-            st.session_state[radio_index_key_nav_max] = 0
+            st.sidebar.image(LOGO_PATH_SIDEBAR_APP, width=150)
+        except Exception:
+            st.sidebar.image("https://i.imgur.com/7IIYxq1.png", width=150, caption="Max IA (Fallback)")
+
+        st.sidebar.title("Max IA")
+        st.sidebar.markdown("Seu Agente IA para Maximizar Resultados!")
+        st.sidebar.markdown("---")
+
+        opcoes_menu_max_ia = {
+            "👋 Bem-vindo ao Max IA": "painel_max_ia",
+            "🚀 MaxMarketing Total": "max_marketing_total",
+            "💰 MaxFinanceiro": "max_financeiro",
+            "⚙️ MaxAdministrativo": "max_administrativo",
+            "📈 MaxPesquisa de Mercado": "max_pesquisa_mercado",
+            "🧭 MaxBússola Estratégica": "max_bussola",
+            "🎓 MaxTrainer IA": "max_trainer_ia"
+        }
+        radio_key_sidebar_main_max = f'sidebar_selection_max_ia{APP_KEY_SUFFIX}'
+
+        if 'area_selecionada_max_ia' not in st.session_state or st.session_state.area_selecionada_max_ia not in opcoes_menu_max_ia.keys():
             st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
 
-    def update_main_radio_index_on_change_max_ia():
-        st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state[radio_key_sidebar_main_max])
+        radio_index_key_nav_max = f'{radio_key_sidebar_main_max}_index'
+        if radio_index_key_nav_max not in st.session_state:
+            try:
+                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state.area_selecionada_max_ia)
+            except ValueError:
+                st.session_state[radio_index_key_nav_max] = 0
+                st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
 
-    area_selecionada_label_max_ia = st.sidebar.radio(
-        "Max Agentes IA:",
-        options=list(opcoes_menu_max_ia.keys()),
-        key=radio_key_sidebar_main_max,
-        index=st.session_state[radio_index_key_nav_max],
-        on_change=update_main_radio_index_on_change_max_ia
-    )
+        def update_main_radio_index_on_change_max_ia():
+            st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state[radio_key_sidebar_main_max])
 
-    if area_selecionada_label_max_ia != st.session_state.area_selecionada_max_ia:
-        st.session_state.area_selecionada_max_ia = area_selecionada_label_max_ia
-        if area_selecionada_label_max_ia != "🚀 MaxMarketing Total":
-            keys_to_clear_marketing_nav = [k for k in st.session_state if k.startswith(f"generated_") and APP_KEY_SUFFIX in k or k.startswith(f"post_max{APP_KEY_SUFFIX}") or k.startswith(f"campaign_max{APP_KEY_SUFFIX}")]
-            for key_clear_nav_mkt in keys_to_clear_marketing_nav:
-                st.session_state.pop(key_clear_nav_mkt, None)
-        st.rerun()
+        area_selecionada_label_max_ia = st.sidebar.radio(
+            "Max Agentes IA:",
+            options=list(opcoes_menu_max_ia.keys()),
+            key=radio_key_sidebar_main_max,
+            index=st.session_state[radio_index_key_nav_max],
+            on_change=update_main_radio_index_on_change_max_ia
+        )
 
-    current_section_key_max_ia = opcoes_menu_max_ia.get(st.session_state.area_selecionada_max_ia)
+        if area_selecionada_label_max_ia != st.session_state.area_selecionada_max_ia:
+            st.session_state.area_selecionada_max_ia = area_selecionada_label_max_ia
+            if area_selecionada_label_max_ia != "🚀 MaxMarketing Total":
+                keys_to_clear_marketing_nav = [k for k in st.session_state if k.startswith(f"generated_") and APP_KEY_SUFFIX in k or k.startswith(f"post_max{APP_KEY_SUFFIX}") or k.startswith(f"campaign_max{APP_KEY_SUFFIX}")]
+                for key_clear_nav_mkt in keys_to_clear_marketing_nav:
+                    st.session_state.pop(key_clear_nav_mkt, None)
+            st.rerun()
 
-    if llm_model_instance:
+        current_section_key_max_ia = opcoes_menu_max_ia.get(st.session_state.area_selecionada_max_ia)
+
+        # --- SELEÇÃO E EXIBIÇÃO DA SEÇÃO ATUAL ---
         if current_section_key_max_ia == "painel_max_ia":
             st.markdown("<div style='text-align: center;'><h1>👋 Bem-vindo ao Max IA!</h1></div>", unsafe_allow_html=True)
-            # Chamada para convert_image_to_base64
             logo_base64 = convert_image_to_base64('images/max-ia-logo.png')
             if logo_base64:
                 st.markdown(f"<div style='text-align: center;'><img src='data:image/png;base64,{logo_base64}' width='200'></div>", unsafe_allow_html=True)
             else:
                 st.markdown("<div style='text-align: center;'><p>(Logo não pôde ser carregado)</p></div>", unsafe_allow_html=True)
-
             st.markdown("<div style='text-align: center;'><p style='font-size: 1.2em;'>Olá! Eu sou o <strong>Max</strong>, seu conjunto de agentes de IA dedicados a impulsionar o sucesso da sua Pequena ou Média Empresa.</p></div>", unsafe_allow_html=True)
             st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para selecionar um agente especializado e começar a transformar seu negócio hoje mesmo.</p></div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -1066,11 +1077,13 @@ if user_is_authenticated:
             agente.exibir_max_bussola()
         elif current_section_key_max_ia == "max_trainer_ia":
             agente.exibir_max_trainer()
-    else:
-        st.error("🚨 O Max IA não pôde ser iniciado.")
+    else: # Se llm_model_instance ou max_agente_instancia não foram inicializados
+        st.error("🚨 O Max IA não pôde ser totalmente iniciado.")
         st.info("Isso pode ter ocorrido devido a um problema com a chave da API do Google ou ao contatar os serviços do Google Generative AI.")
         if llm_init_exception:
             st.exception(llm_init_exception)
+
+# --- Seção de Login/Registro (executada se user_is_authenticated for False) ---
 else:
     st.session_state.pop('auth_error_shown', None)
     st.title("🔑 Bem-vindo ao Max IA")
