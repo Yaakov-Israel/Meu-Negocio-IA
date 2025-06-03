@@ -184,14 +184,13 @@ if user_is_authenticated:
                 st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
 
     def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
+        st.error("DEBUG: EXECUTANDO A VERSÃO CORRIGIDA DE _marketing_handle_criar_post v2") # Adicione esta linha
+
         if not selected_platforms_list:
             st.warning("Por favor, selecione pelo menos uma plataforma.")
-            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None) # Limpa resultado anterior
+            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
             return
-        if not details_dict.get("objective") or not details_dict["objective"].strip(): # Verificação mais robusta
-            st.warning("Por favor, descreva o objetivo do post.")
-            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None) # Limpa resultado anterior
-            return
+        # ... resto da função como corrigimos ...
 
         with st.spinner("🤖 Max IA está criando seu post... Aguarde!"):
             prompt_parts = [
