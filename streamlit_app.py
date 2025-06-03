@@ -184,8 +184,15 @@ if user_is_authenticated:
                 st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
 
     def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
-        if not selected_platforms_list: st.warning("Por favor, selecione pelo menos uma plataforma."); return
-        if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo do post."); return
+        if not selected_platforms_list:
+            st.warning("Por favor, selecione pelo menos uma plataforma.")
+            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None) # Limpa resultado anterior
+            return
+        if not details_dict.get("objective") or not details_dict["objective"].strip(): # Verificação mais robusta
+            st.warning("Por favor, descreva o objetivo do post.")
+            st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None) # Limpa resultado anterior
+            return
+
         with st.spinner("🤖 Max IA está criando seu post... Aguarde!"):
             prompt_parts = [
                 "**Instrução para IA:** Você é um especialista em copywriting e marketing digital para pequenas e médias empresas no Brasil. Sua tarefa é criar um post otimizado e engajador para as seguintes plataformas e objetivos.",
@@ -193,109 +200,344 @@ if user_is_authenticated:
                 "Seja conciso e direto ao ponto, adaptando a linguagem para cada plataforma se necessário, mas mantendo a mensagem central.",
                 "Se multiplas plataformas forem selecionadas, gere uma versão base e sugira pequenas adaptações para cada uma se fizer sentido, ou indique que o post pode ser usado de forma similar.",
                 f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.",
-                f"**Produto/Serviço Principal:** {details_dict['product_service']}",
-                f"**Público-Alvo:** {details_dict['target_audience']}",
-                f"**Objetivo do Post:** {details_dict['objective']}",
-                f"**Mensagem Chave:** {details_dict['key_message']}",
-                f"**Proposta Única de Valor (USP):** {details_dict['usp']}",
-                f"**Tom/Estilo:** {details_dict['style_tone']}",
-                f"**Informações Adicionais/CTA:** {details_dict['extra_info']}"
+                f"**Produto/Serviço Principal:** {details_dict.get('product_service', '')}",
+                f"**Público-Alvo:** {details_dict.get('target_audience', '')}",
+                f"**Objetivo do Post:** {details_dict.get('objective', '')}", # Usar .get para segurança
+                f"**Mensagem Chave:** {details_dict.get('key_message', '')}",
+                f"**Proposta Única de Valor (USP):** {details_dict.get('usp', '')}",
+                f"**Tom/Estilo:** {details_dict.get('style_tone', '')}",
+                f"**Informações Adicionais/CTA:** {details_dict.get('extra_info', '')}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
-            final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
 
-    def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
-        if not selected_platforms_list: st.warning("Por favor, selecione pelo menos uma plataforma."); return
-        if not details_dict["objective"]: st.warning("Por favor, descreva o objetivo da campanha."); return
+            final_prompt = "\n\n".join(prompt_parts)
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a IA está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                # ****** CORREÇÃO APLICADA AQUI ******
+                # Passando a string do prompt diretamente, conforme a mensagem de erro sugere.
+                ai_response = llm.invoke(final_prompt)
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke: {ve}")
+                print(f"Prompt completo que causou o ValueError: {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral: {final_prompt}")
+                return
+
+   def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
+        # Validações de entrada
+        if not selected_platforms_list:
+            st.warning("Por favor, selecione pelo menos uma plataforma para a campanha.")
+            st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+            return
+        if not details_dict.get("objective") or not details_dict["objective"].strip():
+            st.warning("Por favor, descreva o objetivo principal da campanha.")
+            st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+            return
+        if not campaign_specifics.get("name") or not campaign_specifics["name"].strip():
+            st.warning("Por favor, dê um nome para a campanha.")
+            st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+            return
+
         with st.spinner("🧠 Max IA está elaborando seu plano de campanha..."):
             prompt_parts = [
                 "**Instrução para IA:** Você é um estrategista de marketing digital experiente, focado em PMEs no Brasil. Desenvolva um plano de campanha de marketing conciso e acionável com base nas informações fornecidas. O plano deve incluir: 1. Conceito da Campanha (Tema Central). 2. Sugestões de Conteúdo Chave para cada plataforma selecionada. 3. Um cronograma geral sugerido (Ex: Semana 1 - Teaser, Semana 2 - Lançamento, etc.). 4. Métricas chave para acompanhar o sucesso. Considere as informações de suporte, se fornecidas.",
-                f"**Nome da Campanha:** {campaign_specifics['name']}",
+                f"**Nome da Campanha:** {campaign_specifics.get('name', '')}",
                 f"**Plataformas Alvo:** {', '.join(selected_platforms_list)}.",
-                f"**Produto/Serviço Principal da Campanha:** {details_dict['product_service']}",
-                f"**Público-Alvo da Campanha:** {details_dict['target_audience']}",
-                f"**Objetivo Principal da Campanha:** {details_dict['objective']}",
-                f"**Mensagem Chave da Campanha:** {details_dict['key_message']}",
-                f"**USP do Produto/Serviço na Campanha:** {details_dict['usp']}",
-                f"**Tom/Estilo da Campanha:** {details_dict['style_tone']}",
-                f"**Duração Estimada:** {campaign_specifics['duration']}",
-                f"**Orçamento Aproximado (se informado):** {campaign_specifics['budget']}",
-                f"**KPIs mais importantes:** {campaign_specifics['kpis']}",
-                f"**Informações Adicionais/CTA da Campanha:** {details_dict['extra_info']}"
+                f"**Produto/Serviço Principal da Campanha:** {details_dict.get('product_service', '')}",
+                f"**Público-Alvo da Campanha:** {details_dict.get('target_audience', '')}",
+                f"**Objetivo Principal da Campanha:** {details_dict.get('objective', '')}",
+                f"**Mensagem Chave da Campanha:** {details_dict.get('key_message', '')}",
+                f"**USP do Produto/Serviço na Campanha:** {details_dict.get('usp', '')}",
+                f"**Tom/Estilo da Campanha:** {details_dict.get('style_tone', '')}",
+                f"**Duração Estimada:** {campaign_specifics.get('duration', 'Não especificada')}",
+                f"**Orçamento Aproximado (se informado):** {campaign_specifics.get('budget', 'Não informado')}",
+                f"**KPIs mais importantes:** {campaign_specifics.get('kpis', 'Não especificados')}",
+                f"**Informações Adicionais/CTA da Campanha:** {details_dict.get('extra_info', '')}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+
             final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a campanha está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a campanha: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke para CRIAR CAMPANHA: {ve}")
+                print(f"Prompt completo que causou o ValueError (CRIAR CAMPANHA): {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para a campanha: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke para CRIAR CAMPANHA: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (CRIAR CAMPANHA): {final_prompt}")
+                return
 
     def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
-        if not lp_details["purpose"] or not lp_details["main_offer"] or not lp_details["cta"]: st.warning("Por favor, preencha objetivo, oferta e CTA."); return
+        # Validações de entrada
+        if not lp_details.get("purpose") or not lp_details["purpose"].strip():
+            st.warning("Por favor, preencha o principal objetivo da landing page.")
+            st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+            return
+        if not lp_details.get("main_offer") or not lp_details["main_offer"].strip():
+            st.warning("Por favor, descreva a oferta principal da landing page.")
+            st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+            return
+        if not lp_details.get("cta") or not lp_details["cta"].strip():
+            st.warning("Por favor, defina a Chamada para Ação (CTA) principal da landing page.")
+            st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+            return
+
         with st.spinner("🎨 Max IA está desenhando a estrutura da sua landing page..."):
             prompt_parts = [
                 "**Instrução para IA:** Você é um especialista em UX/UI e copywriting para landing pages de alta conversão, com foco em PMEs no Brasil. Baseado nos detalhes fornecidos, crie uma estrutura detalhada e sugestões de texto (copy) para cada seção de uma landing page. Inclua seções como: Cabeçalho (Headline, Sub-headline), Problema/Dor, Apresentação da Solução/Produto, Benefícios Chave, Prova Social (Depoimentos), Oferta Irresistível, Chamada para Ação (CTA) clara e forte, Garantia (se aplicável), FAQ. Considere as informações de suporte, se fornecidas.",
-                f"**Objetivo da Landing Page:** {lp_details['purpose']}",
-                f"**Público-Alvo (Persona):** {lp_details['target_audience']}",
-                f"**Oferta Principal:** {lp_details['main_offer']}",
-                f"**Principais Benefícios/Transformações da Oferta:** {lp_details['key_benefits']}",
-                f"**Chamada para Ação (CTA) Principal:** {lp_details['cta']}",
-                f"**Preferências Visuais/Referências (se houver):** {lp_details['visual_prefs']}"
+                f"**Objetivo da Landing Page:** {lp_details.get('purpose', '')}",
+                f"**Público-Alvo (Persona):** {lp_details.get('target_audience', 'Não especificado')}",
+                f"**Oferta Principal:** {lp_details.get('main_offer', '')}",
+                f"**Principais Benefícios/Transformações da Oferta:** {lp_details.get('key_benefits', 'Não especificados')}",
+                f"**Chamada para Ação (CTA) Principal:** {lp_details.get('cta', '')}",
+                f"**Preferências Visuais/Referências (se houver):** {lp_details.get('visual_prefs', 'Nenhuma')}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+
             final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a landing page está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a landing page: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke para CRIAR LANDING PAGE: {ve}")
+                print(f"Prompt completo que causou o ValueError (CRIAR LANDING PAGE): {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para a landing page: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_lp_content_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke para CRIAR LANDING PAGE: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (CRIAR LANDING PAGE): {final_prompt}")
+                return
 
     def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
-        if not site_details["business_type"] or not site_details["main_purpose"]: st.warning("Informe tipo de negócio e objetivo do site."); return
+        # Validações de entrada
+        if not site_details.get("business_type") or not site_details["business_type"].strip():
+            st.warning("Por favor, informe o tipo do seu negócio/empresa para o site.")
+            st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
+            return
+        if not site_details.get("main_purpose") or not site_details["main_purpose"].strip():
+            st.warning("Por favor, descreva o principal objetivo do seu site.")
+            st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
+            return
+
         with st.spinner("🛠️ Max IA está arquitetando a estrutura do seu site..."):
             prompt_parts = [
                 "**Instrução para IA:** Você é um arquiteto de informação e web designer experiente, focado em criar sites eficazes para PMEs no Brasil. Desenvolva uma proposta de estrutura de site (mapa do site com principais páginas e seções dentro de cada página) e sugestões de conteúdo chave para cada seção. Considere as informações de suporte, se fornecidas.",
-                f"**Tipo de Negócio/Empresa:** {site_details['business_type']}",
-                f"**Principal Objetivo do Site:** {site_details['main_purpose']}",
-                f"**Público-Alvo Principal:** {site_details['target_audience']}",
-                f"**Páginas Essenciais Desejadas:** {site_details['essential_pages']}",
-                f"**Principais Produtos/Serviços/Diferenciais a serem destacados:** {site_details['key_features']}",
-                f"**Personalidade da Marca:** {site_details['brand_personality']}",
-                f"**Preferências Visuais/Referências (se houver):** {site_details['visual_references']}"
+                f"**Tipo de Negócio/Empresa:** {site_details.get('business_type', '')}",
+                f"**Principal Objetivo do Site:** {site_details.get('main_purpose', '')}",
+                f"**Público-Alvo Principal:** {site_details.get('target_audience', 'Não especificado')}",
+                f"**Páginas Essenciais Desejadas:** {site_details.get('essential_pages', 'Não especificadas')}",
+                f"**Principais Produtos/Serviços/Diferenciais a serem destacados:** {site_details.get('key_features', 'Não especificados')}",
+                f"**Personalidade da Marca:** {site_details.get('brand_personality', 'Não especificada')}",
+                f"**Preferências Visuais/Referências (se houver):** {site_details.get('visual_references', 'Nenhuma')}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+
             final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a estrutura do site está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a estrutura do site: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke para CRIAR SITE: {ve}")
+                print(f"Prompt completo que causou o ValueError (CRIAR SITE): {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para a estrutura do site: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_site_content_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke para CRIAR SITE: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (CRIAR SITE): {final_prompt}")
+                return
 
     def _marketing_handle_encontre_cliente(uploaded_files_info, client_details, llm):
-        if not client_details["product_campaign"]: st.warning("Descreva o produto/serviço ou campanha."); return
+        # Validação de entrada
+        if not client_details.get("product_campaign") or not client_details["product_campaign"].strip():
+            st.warning("Por favor, descreva o produto/serviço ou campanha para o qual deseja encontrar o cliente ideal.")
+            st.session_state.pop(f'generated_client_analysis_new{APP_KEY_SUFFIX}', None)
+            return
+
         with st.spinner("🕵️ Max IA está investigando seu público-alvo..."):
             prompt_parts = [
                 "**Instrução para IA:** Você é um 'Agente Detetive de Clientes', especialista em marketing e pesquisa de mercado para PMEs no Brasil. Sua tarefa é realizar uma análise completa do público-alvo com base nas informações fornecidas e gerar um relatório detalhado com os seguintes itens: 1. Persona Detalhada (Nome fictício, Idade, Profissão, Dores, Necessidades, Sonhos, Onde busca informação). 2. Sugestões de Canais de Marketing mais eficazes para alcançar essa persona. 3. Sugestões de Mensagens Chave e Ângulos de Comunicação que ressoem com essa persona. 4. Se 'Deep Research' estiver ativado, inclua insights adicionais sobre comportamento online, tendências e micro-segmentos. Considere as informações de suporte, se fornecidas.",
-                f"**Produto/Serviço ou Campanha para Análise:** {client_details['product_campaign']}",
-                f"**Localização Geográfica (Cidade(s), Região):** {client_details['location']}",
-                f"**Verba Aproximada para Ação/Campanha (se aplicável):** {client_details['budget']}",
-                f"**Faixa Etária e Gênero Predominante (se souber):** {client_details['age_gender']}",
-                f"**Principais Interesses, Hobbies, Dores, Necessidades do Público Desejado:** {client_details['interests']}",
-                f"**Canais de Marketing que já utiliza ou considera:** {client_details['current_channels']}",
-                f"**Nível de Pesquisa:** {'Deep Research Ativado (análise mais aprofundada)' if client_details['deep_research'] else 'Pesquisa Padrão'}"
+                f"**Produto/Serviço ou Campanha para Análise:** {client_details.get('product_campaign', '')}",
+                f"**Localização Geográfica (Cidade(s), Região):** {client_details.get('location', 'Não especificada')}",
+                f"**Verba Aproximada para Ação/Campanha (se aplicável):** {client_details.get('budget', 'Não informada')}",
+                f"**Faixa Etária e Gênero Predominante (se souber):** {client_details.get('age_gender', 'Não especificados')}",
+                f"**Principais Interesses, Hobbies, Dores, Necessidades do Público Desejado:** {client_details.get('interests', 'Não especificados')}",
+                f"**Canais de Marketing que já utiliza ou considera:** {client_details.get('current_channels', 'Não especificados')}",
+                f"**Nível de Pesquisa:** {'Deep Research Ativado (análise mais aprofundada)' if client_details.get('deep_research', False) else 'Pesquisa Padrão'}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
-            final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
 
-    def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
-        if not competitor_details["your_business"] or not competitor_details["competitors_list"]: st.warning("Descreva seu negócio e liste concorrentes."); return
+            final_prompt = "\n\n".join(prompt_parts)
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a análise de cliente está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_client_analysis_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para análise de cliente: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_client_analysis_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke para ENCONTRAR CLIENTE: {ve}")
+                print(f"Prompt completo que causou o ValueError (ENCONTRAR CLIENTE): {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para análise de cliente: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_client_analysis_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke para ENCONTRAR CLIENTE: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (ENCONTRAR CLIENTE): {final_prompt}")
+                return
+
+   def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
+        # Validações de entrada
+        if not competitor_details.get("your_business") or not competitor_details["your_business"].strip():
+            st.warning("Por favor, descreva seu próprio negócio/produto para comparação com a concorrência.")
+            st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+            return
+        if not competitor_details.get("competitors_list") or not competitor_details["competitors_list"].strip():
+            st.warning("Por favor, liste seus principais concorrentes para análise.")
+            st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+            return
+        if not competitor_details.get("aspects_to_analyze"): # Verifica se a lista não está vazia
+            st.warning("Por favor, selecione pelo menos um aspecto da concorrência para analisar.")
+            st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+            return
+
         with st.spinner("🔬 Max IA está analisando a concorrência..."):
+            aspects_str = ", ".join(competitor_details.get('aspects_to_analyze', []))
             prompt_parts = [
                 "**Instrução para IA:** Você é um 'Agente de Inteligência Competitiva', especialista em análise de mercado para PMEs no Brasil. Com base nas informações do negócio do usuário e da lista de concorrentes, elabore um relatório breve e útil. Para cada concorrente listado (ou os principais, se a lista for longa), analise os 'Aspectos para Análise' selecionados. Destaque os pontos fortes e fracos de cada um em relação a esses aspectos e, ao final, sugira 2-3 oportunidades ou diferenciais que o negócio do usuário pode explorar. Considere as informações de suporte, se fornecidas.",
-                f"**Negócio do Usuário (para comparação):** {competitor_details['your_business']}",
-                f"**Concorrentes (nomes, sites, redes sociais, se possível):** {competitor_details['competitors_list']}",
-                f"**Aspectos para Análise:** {', '.join(competitor_details['aspects_to_analyze'])}"
+                f"**Negócio do Usuário (para comparação):** {competitor_details.get('your_business', '')}",
+                f"**Concorrentes (nomes, sites, redes sociais, se possível):** {competitor_details.get('competitors_list', '')}",
+                f"**Aspectos para Análise:** {aspects_str if aspects_str else 'Não especificados'}"
             ]
-            if uploaded_files_info: prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+            if uploaded_files_info:
+                prompt_parts.append(f"**Informações de Arquivos de Suporte (considere o conteúdo relevante se aplicável):** {', '.join([f['name'] for f in uploaded_files_info])}.")
+
             final_prompt = "\n\n".join(prompt_parts)
-            ai_response = llm.invoke(HumanMessage(content=final_prompt))
-            st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
+
+            if not final_prompt or not final_prompt.strip():
+                st.error("🚧 Max IA detectou que o prompt final para a análise de concorrência está vazio. Por favor, preencha os campos necessários.")
+                st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+                return
+
+            try:
+                ai_response = llm.invoke(final_prompt) # Chamada corrigida
+
+                if hasattr(ai_response, 'content'):
+                    st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
+                else:
+                    st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = str(ai_response)
+
+            except ValueError as ve:
+                st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para análise de concorrência: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+                print(f"ValueError DETALHADO em llm.invoke para ANÁLISE DE CONCORRÊNCIA: {ve}")
+                print(f"Prompt completo que causou o ValueError (ANÁLISE DE CONCORRÊNCIA): {final_prompt}")
+                return
+            except Exception as e_invoke:
+                st.error(f"🚧 Max IA teve um problema ao se comunicar com o modelo de IA para análise de concorrência: {e_invoke}")
+                st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
+                st.session_state.pop(f'generated_competitor_analysis_new{APP_KEY_SUFFIX}', None)
+                print(f"Erro GERAL DETALHADO em llm.invoke para ANÁLISE DE CONCORRÊNCIA: {e_invoke}")
+                print(f"Prompt completo que causou o Erro Geral (ANÁLISE DE CONCORRÊNCIA): {final_prompt}")
+                return
 
     class MaxAgente:
         def __init__(self, llm_passed_model):
