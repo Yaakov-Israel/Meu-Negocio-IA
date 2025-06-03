@@ -244,7 +244,7 @@ if user_is_authenticated:
                 print(f"Prompt completo que causou o Erro Geral: {final_prompt}")
                 return
 
-   def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
+       def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
         # Validações de entrada
         if not selected_platforms_list:
             st.warning("Por favor, selecione pelo menos uma plataforma para a campanha.")
