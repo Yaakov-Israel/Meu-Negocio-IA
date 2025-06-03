@@ -12,34 +12,31 @@ from PIL import Image # Para o logo na sidebar
 
 # --- Configuração da Página Streamlit ---
 # IMAGEM DO AVATAR MAX IA PARA O ICONE DA PÁGINA
-PAGE_ICON_PATH = "images/carinha-agente-max-ia.png"
+PAGE_ICON_PATH = "images/carinha-agente-max-ia.png" # Seu arquivo de ícone
 try:
     page_icon_img = Image.open(PAGE_ICON_PATH)
 except FileNotFoundError:
     page_icon_img = "🤖" # Fallback emoji
 
 st.set_page_config(
-    page_title="Max IA",  # NOVO TÍTULO
+    page_title="Max IA",
     layout="wide",
     initial_sidebar_state="expanded",
-    page_icon=page_icon_img # NOVO ÍCONE
+    page_icon=page_icon_img
 )
 
-# --- Inicialização do Firebase ---
-# (O código de inicialização do Firebase permanece o mesmo - trechos 2 a 9 do original)
-# ... (código original omitido para brevidade, mas deve ser incluído aqui)
 # --- Inicialização do Firebase ---
 firebase_app = None
 pb_auth_client = None
 error_message_firebase_init = None
 firebase_initialized_successfully = False
-auth_exception_object = None # Para armazenar o objeto de exceção para st.exception
+auth_exception_object = None
 
 try:
     firebase_config_from_secrets = st.secrets.get("firebase_config")
     if not firebase_config_from_secrets:
         error_message_firebase_init = "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada ou está vazia nos Segredos."
-   else:
+    else: # Esta é a linha 42 ou próxima a ela. O marcador foi removido/comentado.
         plain_firebase_config_dict = {k: v for k, v in firebase_config_from_secrets.items()}
         required_keys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId"]
         missing_keys = [key for key in required_keys if key not in plain_firebase_config_dict]
@@ -47,7 +44,7 @@ try:
         if missing_keys:
             error_message_firebase_init = f"ERRO CRÍTICO: Chaves faltando em [firebase_config] nos segredos: {', '.join(missing_keys)}"
         else:
-            if 'firebase_app_instance' not in st.session_state: 
+            if 'firebase_app_instance' not in st.session_state:
                 st.session_state.firebase_app_instance = pyrebase.initialize_app(plain_firebase_config_dict)
 
             firebase_app = st.session_state.firebase_app_instance
@@ -59,11 +56,11 @@ try:
 
 except KeyError:
     error_message_firebase_init = "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada nos Segredos do Streamlit."
-auth_exception_object = Exception(error_message_firebase_init)
-except AttributeError as e_attr_fb: 
+    auth_exception_object = Exception(error_message_firebase_init) # Corrigido aqui também [cite: 4]
+except AttributeError as e_attr_fb:
     error_message_firebase_init = f"ERRO CRÍTICO ao acessar st.secrets['firebase_config']: {e_attr_fb}"
     auth_exception_object = e_attr_fb
-except Exception as e_general_fb: 
+except Exception as e_general_fb:
     error_message_firebase_init = f"ERRO GERAL ao inicializar Pyrebase4: {e_general_fb}"
     auth_exception_object = e_general_fb
 
@@ -76,6 +73,9 @@ if error_message_firebase_init:
 if not firebase_initialized_successfully or not pb_auth_client:
     st.error("Falha crítica na inicialização do Firebase. O app não pode continuar.")
     st.stop()
+
+# --- Lógica de Autenticação e Estado da Sessão ---
+# (O restante do código segue a partir daqui)
 
 # --- Lógica de Autenticação e Estado da Sessão ---
 if 'user_session_pyrebase' not in st.session_state:
