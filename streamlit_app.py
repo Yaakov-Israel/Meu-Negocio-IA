@@ -185,8 +185,6 @@ if user_is_authenticated:
             st.error(f"Erro ao tentar renderizar o botão de download: {e_download}")
             print(f"ERRO NO DOWNLOAD BUTTON ({section_key}): {e_download}")
         
-        # Outros botões de ação podem ser adicionados aqui, fora do try-except do download_button,
-        # ou com seus próprios try-except se necessário.
         # cols_actions = st.columns(2)
         # with cols_actions[0]:
         #     if st.button("🔗 Copiar para Compartilhar (Simulado)", key=f"{section_key}_share_btn{APP_KEY_SUFFIX}"):
@@ -547,9 +545,8 @@ if user_is_authenticated:
                 print(f"Prompt completo que causou o Erro Geral (ANÁLISE DE CONCORRÊNCIA): {final_prompt}")
                 return
 
-    # Nova função para detalhar campanha (placeholder, precisa ser completada)
-    def _marketing_handle_detalhar_campanha(uploaded_files_info, plano_campanha_gerado, llm):
-        st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) # Limpa detalhes anteriores
+    def _marketing_handle_detalhar_campanha(uploaded_files_info, plano_campanha_gerado, llm): # NOVA FUNÇÃO
+        st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) 
 
         if not plano_campanha_gerado or not plano_campanha_gerado.strip():
             st.error("Não há um plano de campanha para detalhar. Por favor, gere um plano primeiro.")
@@ -698,7 +695,7 @@ if user_is_authenticated:
                     with st.form(key=FORM_KEY_POST):
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_post = f"post_select_all_max{APP_KEY_SUFFIX}"
-                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_post) # CORRIGIDO
+                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_post) # Texto corrigido
                         cols_post = st.columns(2); selected_platforms_post_ui = []
                         for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                             col_index = i % 2
@@ -732,6 +729,7 @@ if user_is_authenticated:
                                            key=f"download_campaign_details_button{APP_KEY_SUFFIX}")
                     except Exception as e_dl_details:
                         st.error(f"Erro ao renderizar botão de download dos detalhes da campanha: {e_dl_details}")
+                    
                     if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_all_campaign_button{APP_KEY_SUFFIX}"):
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_DETAILS, None)
@@ -739,12 +737,12 @@ if user_is_authenticated:
                 
                 elif SESSION_KEY_CAMPAIGN_PLAN in st.session_state and st.session_state[SESSION_KEY_CAMPAIGN_PLAN]:
                     st.subheader("📋 Plano da Campanha Gerado:")
-                    _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_PLAN], f"campaign_output_max{APP_KEY_SUFFIX}", "plano_campanha_max_ia")
+                    _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_PLAN], f"campaign_plan_output_max{APP_KEY_SUFFIX}", "plano_campanha_max_ia") # Chave de output do display ajustada
                     st.markdown("---")
                     if st.button("✍️ Detalhar Conteúdo da Campanha com Max IA", key=f"detail_campaign_button{APP_KEY_SUFFIX}"):
                         plano_gerado = st.session_state[SESSION_KEY_CAMPAIGN_PLAN]
                         _marketing_handle_detalhar_campanha(marketing_files_info_for_prompt_local, plano_gerado, self.llm)
-                        st.rerun()
+                        st.rerun() 
                     if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_campaign_plan_button{APP_KEY_SUFFIX}"):
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_DETAILS, None)
@@ -754,7 +752,7 @@ if user_is_authenticated:
                         campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_max{APP_KEY_SUFFIX}")
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_camp = f"campaign_select_all_max{APP_KEY_SUFFIX}"
-                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_camp) # CORRIGIDO
+                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_camp) # Texto corrigido
                         cols_camp = st.columns(2); selected_platforms_camp_ui = []
                         for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                             col_index = i % 2
@@ -1159,10 +1157,18 @@ if user_is_authenticated:
 
         if area_selecionada_label_max_ia != st.session_state.area_selecionada_max_ia:
             st.session_state.area_selecionada_max_ia = area_selecionada_label_max_ia
-            if area_selecionada_label_max_ia != "🚀 MaxMarketing Total":
-                keys_to_clear_marketing_nav = [k for k in st.session_state if k.startswith(f"generated_") and APP_KEY_SUFFIX in k or k.startswith(f"post_max{APP_KEY_SUFFIX}") or k.startswith(f"campaign_max{APP_KEY_SUFFIX}")]
-                for key_clear_nav_mkt in keys_to_clear_marketing_nav:
-                    st.session_state.pop(key_clear_nav_mkt, None)
+            if area_selecionada_label_max_ia != "🚀 MaxMarketing Total": # Se sair da seção de marketing, limpa os gerados
+                keys_to_clear_on_nav = [
+                    f'generated_post_content_new{APP_KEY_SUFFIX}',
+                    f'generated_campaign_content_new{APP_KEY_SUFFIX}',
+                    f'generated_campaign_details_content{APP_KEY_SUFFIX}',
+                    f'generated_lp_content_new{APP_KEY_SUFFIX}',
+                    f'generated_site_content_new{APP_KEY_SUFFIX}',
+                    f'generated_client_analysis_new{APP_KEY_SUFFIX}',
+                    f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'
+                ]
+                for key_to_clear in keys_to_clear_on_nav:
+                    st.session_state.pop(key_to_clear, None)
             st.rerun()
 
         current_section_key_max_ia = opcoes_menu_max_ia.get(st.session_state.area_selecionada_max_ia)
@@ -1191,26 +1197,29 @@ if user_is_authenticated:
                 with cols_cards[i % 3]:
                     matching_key = None
                     for menu_title, section_key_val in opcoes_menu_max_ia.items():
-                        if title.startswith(menu_title.split(" ")[0]):
-                            if menu_title.startswith(title):
-                                matching_key = section_key_val
-                                break
-                            try:
-                                agent_name_in_title = title.split(" ")[1]
-                                if agent_name_in_title.lower() in section_key_val.lower():
-                                    matching_key = section_key_val
-                                    break
-                            except IndexError:
-                                pass
+                        # Tentativa de match mais robusta para os botões do painel
+                        normalized_title_card = title.split(" ")[0].lower() + title.split(" ")[1].lower() if len(title.split(" ")) > 1 else title.split(" ")[0].lower()
+                        normalized_title_menu = menu_title.split(" ")[0].lower().replace("👋","").replace("🚀","").replace("💰","").replace("⚙️","").replace("📈","").replace("🧭","").replace("🎓","").strip() + \
+                                                (menu_title.split(" ")[1].lower() if len(menu_title.split(" ")) > 1 else "")
+                        
+                        if normalized_title_card in normalized_title_menu and section_key_val.startswith(title.split(" ")[1].lower()[:3]): # Compara início
+                             matching_key = section_key_val
+                             break
+                        elif menu_title.startswith(title): # Fallback para match exato do início
+                            matching_key = section_key_val
+                            break
+                            
                     if matching_key:
                         if st.button(title, key=f"btn_goto_card_{matching_key}{APP_KEY_SUFFIX}", use_container_width=True, help=f"Ir para {title}"):
-                            st.session_state.area_selecionada_max_ia = [k for k, v in opcoes_menu_max_ia.items() if v == matching_key][0]
+                            # Encontra o label exato do menu para definir area_selecionada_max_ia
+                            correct_menu_label = [k for k, v in opcoes_menu_max_ia.items() if v == matching_key][0]
+                            st.session_state.area_selecionada_max_ia = correct_menu_label
                             try:
-                                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state.area_selecionada_max_ia)
+                                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(correct_menu_label)
                             except ValueError: pass
                             st.rerun()
                     else:
-                         st.markdown(f"**{title}**")
+                         st.markdown(f"**{title}**") # Se não achar key, só mostra o título
                     st.caption(caption)
                     st.markdown("<hr style='margin-top: 0.5rem; margin-bottom: 0.5rem;'>", unsafe_allow_html=True)
             st.balloons()
@@ -1227,8 +1236,8 @@ if user_is_authenticated:
         elif current_section_key_max_ia == "max_trainer_ia":
             agente.exibir_max_trainer()
     else: 
-        st.error("🚨 O Max IA não pôde ser totalmente iniciado ou o modelo LLM não está disponível.")
-        st.info("Verifique a inicialização do LLM e se a chave da API do Google está correta e funcional.")
+        st.error("🚨 O Max IA não pôde ser totalmente iniciado.")
+        st.info("Isso pode ter ocorrido devido a um problema com a chave da API do Google ou ao contatar os serviços do Google Generative AI, ou o agente não pôde ser instanciado.")
         if llm_init_exception:
             st.exception(llm_init_exception)
 
