@@ -128,6 +128,7 @@ session_rerun_key_check = 'running_rerun_after_auth_fail_v3'
 if session_rerun_key_check in st.session_state and st.session_state[session_rerun_key_check]:
     st.session_state.pop(session_rerun_key_check, None)
 
+
 # --- Interface do Usuário Condicional e Lógica Principal do App ---
 APP_KEY_SUFFIX = "_v20_final"
 
@@ -171,15 +172,29 @@ if user_is_authenticated:
     def _marketing_display_output_options(generated_content, section_key, file_name_prefix="conteudo_gerado"):
         st.subheader("🎉 Resultado da IA e Próximos Passos:")
         st.markdown(generated_content)
-        st.download_button(label="📥 Baixar Conteúdo Gerado", data=generated_content.encode('utf-8'), file_name=f"{file_name_prefix}_{section_key}{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_{section_key}{APP_KEY_SUFFIX}")
-        cols_actions = st.columns(2)
-        with cols_actions[0]:
-            if st.button("🔗 Copiar para Compartilhar (Simulado)", key=f"{section_key}_share_btn{APP_KEY_SUFFIX}"):
-                st.success("Conteúdo pronto para ser copiado e compartilhado nas suas redes ou e-mail!")
-                st.caption("Lembre-se de adaptar para cada plataforma, se necessário.")
-        with cols_actions[1]:
-            if st.button("🗓️ Simular Agendamento", key=f"{section_key}_schedule_btn{APP_KEY_SUFFIX}"):
-                st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
+        
+        # Botão de download (o principal suspeito do erro anterior)
+        try:
+            st.download_button(
+                label="📥 Baixar Conteúdo Gerado",
+                data=generated_content.encode('utf-8'),
+                file_name=f"{file_name_prefix}_{section_key}{APP_KEY_SUFFIX}.txt",
+                mime="text/plain",
+                key=f"download_{section_key}{APP_KEY_SUFFIX}"
+            )
+        except Exception as e_download: 
+            st.error(f"Erro ao tentar renderizar o botão de download: {e_download}")
+            print(f"ERRO NO DOWNLOAD BUTTON: {e_download}")
+
+        # Mantendo outros botões comentados para isolar o problema do download_button, se persistir
+        # cols_actions = st.columns(2)
+        # with cols_actions[0]:
+        #     if st.button("🔗 Copiar para Compartilhar (Simulado)", key=f"{section_key}_share_btn{APP_KEY_SUFFIX}"):
+        #         st.success("Conteúdo pronto para ser copiado e compartilhado nas suas redes ou e-mail!")
+        #         st.caption("Lembre-se de adaptar para cada plataforma, se necessário.")
+        # with cols_actions[1]:
+        #     if st.button("🗓️ Simular Agendamento", key=f"{section_key}_schedule_btn{APP_KEY_SUFFIX}"):
+        #         st.info("Agendamento simulado. Para agendamento real, use ferramentas como Meta Business Suite, Hootsuite, mLabs, ou a função de programação do seu serviço de e-mail marketing.")
 
     def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
         st.error("DEBUG: EXECUTANDO A VERSÃO CORRIGIDA DE _marketing_handle_criar_post v2") # Linha de Debug
@@ -615,124 +630,181 @@ if user_is_authenticated:
                 "E-mail Marketing (lista própria)": "email_own",
                 "E-mail Marketing (Campanha Google Ads)": "email_google"
             }
+
+            # Lógica para "Criar post"
             if main_action == "1 - Criar post para redes sociais ou e-mail":
                 st.subheader("✨ Criador de Posts com Max IA")
-                with st.form(f"post_creator_form_max{APP_KEY_SUFFIX}"):
-                    st.subheader(" Plataformas Desejadas:")
-                    key_select_all_post = f"post_select_all_max{APP_KEY_SUFFIX}"
-                    select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Acima", key=key_select_all_post)
-                    cols_post = st.columns(2); selected_platforms_post_ui = []
-                    for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
-                        col_index = i % 2
-                        platform_key = f"post_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                        with cols_post[col_index]:
-                            if st.checkbox(platform_name, key=platform_key, value=select_all_post_checked):
-                                selected_platforms_post_ui.append(platform_name)
-                            if "E-mail Marketing" in platform_name and st.session_state.get(platform_key):
-                                st.caption("💡 Para e-mail marketing, considere segmentar sua lista e personalizar a saudação.")
-                    post_details = _marketing_get_objective_details(f"post_max{APP_KEY_SUFFIX}", "post")
-                    submit_button_pressed_post = st.form_submit_button("💡 Gerar Post com Max IA!")
-                    if submit_button_pressed_post:
-                        # Passando self.llm que é o llm_model_instance da classe MaxAgente
-                        _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, selected_platforms_post_ui, self.llm)
-                    if f'generated_post_content_new{APP_KEY_SUFFIX}' in st.session_state:
-                        _marketing_display_output_options(st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'], f"post_output_max{APP_KEY_SUFFIX}", "post_max_ia")
+                # Usaremos uma chave para controlar a exibição do resultado e evitar o erro do download_button
+                SESSION_KEY_POST_CONTENT = f'generated_post_content_new{APP_KEY_SUFFIX}'
+                FORM_KEY_POST = f"post_creator_form_max{APP_KEY_SUFFIX}"
+
+                # Se o conteúdo já foi gerado, exibe direto
+                if SESSION_KEY_POST_CONTENT in st.session_state:
+                    _marketing_display_output_options(st.session_state[SESSION_KEY_POST_CONTENT], f"post_output_max{APP_KEY_SUFFIX}", "post_max_ia")
+                    if st.button("Criar Novo Post", key=f"clear_post_content_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_POST_CONTENT, None)
+                        st.rerun()
+                else: # Caso contrário, exibe o formulário
+                    with st.form(key=FORM_KEY_POST):
+                        st.subheader(" Plataformas Desejadas:")
+                        key_select_all_post = f"post_select_all_max{APP_KEY_SUFFIX}"
+                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Acima", key=key_select_all_post)
+                        cols_post = st.columns(2); selected_platforms_post_ui = []
+                        for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
+                            col_index = i % 2
+                            platform_key = f"post_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
+                            with cols_post[col_index]:
+                                if st.checkbox(platform_name, key=platform_key, value=select_all_post_checked):
+                                    selected_platforms_post_ui.append(platform_name)
+                                if "E-mail Marketing" in platform_name and st.session_state.get(platform_key):
+                                    st.caption("💡 Para e-mail marketing, considere segmentar sua lista e personalizar a saudação.")
+                        post_details = _marketing_get_objective_details(f"post_max{APP_KEY_SUFFIX}", "post")
+                        submit_button_pressed_post = st.form_submit_button("💡 Gerar Post com Max IA!")
+
+                        if submit_button_pressed_post:
+                            _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, selected_platforms_post_ui, self.llm)
+                            # _marketing_handle_criar_post agora define o session_state. Vamos dar rerun para exibir.
+                            st.rerun()
+            
+            # Lógica similar para "Criar campanha"
             elif main_action == "2 - Criar campanha de marketing completa":
                 st.subheader("🌍 Planejador de Campanhas de Marketing com Max IA")
-                with st.form(f"campaign_creator_form_max{APP_KEY_SUFFIX}"):
-                    campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_max{APP_KEY_SUFFIX}")
-                    st.subheader(" Plataformas Desejadas:")
-                    key_select_all_camp = f"campaign_select_all_max{APP_KEY_SUFFIX}"
-                    select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Acima", key=key_select_all_camp)
-                    cols_camp = st.columns(2); selected_platforms_camp_ui = []
-                    for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
-                        col_index = i % 2
-                        platform_key = f"campaign_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                        with cols_camp[col_index]:
-                            if st.checkbox(platform_name, key=platform_key, value=select_all_camp_checked):
-                                selected_platforms_camp_ui.append(platform_name)
-                    campaign_details_obj = _marketing_get_objective_details(f"campaign_max{APP_KEY_SUFFIX}", "campanha")
-                    campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_max{APP_KEY_SUFFIX}")
-                    campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_max{APP_KEY_SUFFIX}")
-                    specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_max{APP_KEY_SUFFIX}")
-                    submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha com Max IA!")
-                    if submit_button_pressed_camp:
-                        campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
-                        # Passando self.llm
-                        _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, selected_platforms_camp_ui, self.llm)
-                    if f'generated_campaign_content_new{APP_KEY_SUFFIX}' in st.session_state:
-                        _marketing_display_output_options(st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'], f"campaign_output_max{APP_KEY_SUFFIX}", "campanha_max_ia")
+                SESSION_KEY_CAMPAIGN_CONTENT = f'generated_campaign_content_new{APP_KEY_SUFFIX}'
+                FORM_KEY_CAMPAIGN = f"campaign_creator_form_max{APP_KEY_SUFFIX}"
+
+                if SESSION_KEY_CAMPAIGN_CONTENT in st.session_state:
+                    _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_CONTENT], f"campaign_output_max{APP_KEY_SUFFIX}", "campanha_max_ia")
+                    if st.button("Criar Nova Campanha", key=f"clear_campaign_content_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_CAMPAIGN_CONTENT, None)
+                        st.rerun()
+                else:
+                    with st.form(key=FORM_KEY_CAMPAIGN):
+                        campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_max{APP_KEY_SUFFIX}")
+                        st.subheader(" Plataformas Desejadas:")
+                        key_select_all_camp = f"campaign_select_all_max{APP_KEY_SUFFIX}"
+                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Acima", key=key_select_all_camp)
+                        cols_camp = st.columns(2); selected_platforms_camp_ui = []
+                        for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
+                            col_index = i % 2
+                            platform_key = f"campaign_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
+                            with cols_camp[col_index]:
+                                if st.checkbox(platform_name, key=platform_key, value=select_all_camp_checked):
+                                    selected_platforms_camp_ui.append(platform_name)
+                        campaign_details_obj = _marketing_get_objective_details(f"campaign_max{APP_KEY_SUFFIX}", "campanha")
+                        campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_max{APP_KEY_SUFFIX}")
+                        campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_max{APP_KEY_SUFFIX}")
+                        specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_max{APP_KEY_SUFFIX}")
+                        submit_button_pressed_camp = st.form_submit_button("🚀 Gerar Plano de Campanha com Max IA!")
+
+                        if submit_button_pressed_camp:
+                            campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
+                            _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, selected_platforms_camp_ui, self.llm)
+                            st.rerun()
+
+            # Lógica similar para "Criar landing page"
             elif main_action == "3 - Criar estrutura e conteúdo para landing page":
                 st.subheader("📄 Gerador de Estrutura para Landing Pages com Max IA")
-                with st.form(f"landing_page_form_max{APP_KEY_SUFFIX}"):
-                    lp_purpose = st.text_input("Principal objetivo da landing page:", key=f"lp_purpose_max{APP_KEY_SUFFIX}")
-                    lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key=f"lp_audience_max{APP_KEY_SUFFIX}")
-                    lp_main_offer = st.text_area("Oferta principal e irresistível:", key=f"lp_offer_max{APP_KEY_SUFFIX}")
-                    lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key=f"lp_benefits_max{APP_KEY_SUFFIX}")
-                    lp_cta = st.text_input("Chamada para ação (CTA) principal:", key=f"lp_cta_max{APP_KEY_SUFFIX}")
-                    lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key=f"lp_visual_max{APP_KEY_SUFFIX}")
-                    submitted_lp = st.form_submit_button("🛠️ Gerar Estrutura da LP com Max IA!")
-                    if submitted_lp:
-                        lp_details_dict = {"purpose": lp_purpose, "target_audience": lp_target_audience, "main_offer": lp_main_offer, "key_benefits": lp_key_benefits, "cta": lp_cta, "visual_prefs": lp_visual_prefs}
-                        # Passando self.llm
-                        _marketing_handle_criar_landing_page(marketing_files_info_for_prompt_local, lp_details_dict, self.llm)
-                    if f'generated_lp_content_new{APP_KEY_SUFFIX}' in st.session_state:
-                        st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
-                        st.markdown(st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'])
-                        st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max{APP_KEY_SUFFIX}")
+                SESSION_KEY_LP_CONTENT = f'generated_lp_content_new{APP_KEY_SUFFIX}'
+                FORM_KEY_LP = f"landing_page_form_max{APP_KEY_SUFFIX}"
+
+                if SESSION_KEY_LP_CONTENT in st.session_state:
+                    st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
+                    st.markdown(st.session_state[SESSION_KEY_LP_CONTENT])
+                    st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[SESSION_KEY_LP_CONTENT].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max_ தனி{APP_KEY_SUFFIX}") # Chave única
+                    if st.button("Criar Nova Estrutura de LP", key=f"clear_lp_content_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_LP_CONTENT, None)
+                        st.rerun()
+                else:
+                    with st.form(key=FORM_KEY_LP):
+                        lp_purpose = st.text_input("Principal objetivo da landing page:", key=f"lp_purpose_max{APP_KEY_SUFFIX}")
+                        lp_target_audience = st.text_input("Para quem é esta landing page? (Persona)", key=f"lp_audience_max{APP_KEY_SUFFIX}")
+                        lp_main_offer = st.text_area("Oferta principal e irresistível:", key=f"lp_offer_max{APP_KEY_SUFFIX}")
+                        lp_key_benefits = st.text_area("3-5 principais benefícios/transformações:", key=f"lp_benefits_max{APP_KEY_SUFFIX}")
+                        lp_cta = st.text_input("Chamada para ação (CTA) principal:", key=f"lp_cta_max{APP_KEY_SUFFIX}")
+                        lp_visual_prefs = st.text_input("Preferência de cores, estilo visual ou sites de referência? (Opcional)", key=f"lp_visual_max{APP_KEY_SUFFIX}")
+                        submitted_lp = st.form_submit_button("🛠️ Gerar Estrutura da LP com Max IA!")
+                        if submitted_lp:
+                            lp_details_dict = {"purpose": lp_purpose, "target_audience": lp_target_audience, "main_offer": lp_main_offer, "key_benefits": lp_key_benefits, "cta": lp_cta, "visual_prefs": lp_visual_prefs}
+                            _marketing_handle_criar_landing_page(marketing_files_info_for_prompt_local, lp_details_dict, self.llm)
+                            st.rerun()
+            
+            # Lógica similar para "Criar site"
             elif main_action == "4 - Criar estrutura e conteúdo para site com IA":
                 st.subheader("🏗️ Arquiteto de Sites com Max IA")
-                with st.form(f"site_creator_form_max{APP_KEY_SUFFIX}"):
-                    site_business_type = st.text_input("Tipo do seu negócio/empresa:", key=f"site_biz_type_max{APP_KEY_SUFFIX}")
-                    site_main_purpose = st.text_area("Principal objetivo do seu site:", key=f"site_purpose_max{APP_KEY_SUFFIX}")
-                    site_target_audience = st.text_input("Público principal do site:", key=f"site_audience_max{APP_KEY_SUFFIX}")
-                    site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key=f"site_pages_max{APP_KEY_SUFFIX}")
-                    site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key=f"site_features_max{APP_KEY_SUFFIX}")
-                    site_brand_personality = st.text_input("Personalidade da sua marca:", key=f"site_brand_max{APP_KEY_SUFFIX}")
-                    site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key=f"site_visual_ref_max{APP_KEY_SUFFIX}")
-                    submitted_site = st.form_submit_button("🏛️ Gerar Estrutura do Site com Max IA!")
-                    if submitted_site:
-                        site_details_dict = {"business_type": site_business_type, "main_purpose": site_main_purpose, "target_audience": site_target_audience, "essential_pages": site_essential_pages, "key_features": site_key_features, "brand_personality": site_brand_personality, "visual_references": site_visual_references}
-                        # Passando self.llm
-                        _marketing_handle_criar_site(marketing_files_info_for_prompt_local, site_details_dict, self.llm)
-                    if f'generated_site_content_new{APP_KEY_SUFFIX}' in st.session_state:
-                        st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
-                        st.markdown(st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'])
-                        st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max{APP_KEY_SUFFIX}")
+                SESSION_KEY_SITE_CONTENT = f'generated_site_content_new{APP_KEY_SUFFIX}'
+                FORM_KEY_SITE = f"site_creator_form_max{APP_KEY_SUFFIX}"
+                if SESSION_KEY_SITE_CONTENT in st.session_state:
+                    st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
+                    st.markdown(st.session_state[SESSION_KEY_SITE_CONTENT])
+                    st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[SESSION_KEY_SITE_CONTENT].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max_ தனி{APP_KEY_SUFFIX}") # Chave única
+                    if st.button("Criar Nova Estrutura de Site", key=f"clear_site_content_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_SITE_CONTENT, None)
+                        st.rerun()
+                else:
+                    with st.form(key=FORM_KEY_SITE):
+                        site_business_type = st.text_input("Tipo do seu negócio/empresa:", key=f"site_biz_type_max{APP_KEY_SUFFIX}")
+                        site_main_purpose = st.text_area("Principal objetivo do seu site:", key=f"site_purpose_max{APP_KEY_SUFFIX}")
+                        site_target_audience = st.text_input("Público principal do site:", key=f"site_audience_max{APP_KEY_SUFFIX}")
+                        site_essential_pages = st.text_area("Páginas essenciais (Ex: Home, Sobre, Serviços):", key=f"site_pages_max{APP_KEY_SUFFIX}")
+                        site_key_features = st.text_area("Principais produtos/serviços/diferenciais:", key=f"site_features_max{APP_KEY_SUFFIX}")
+                        site_brand_personality = st.text_input("Personalidade da sua marca:", key=f"site_brand_max{APP_KEY_SUFFIX}")
+                        site_visual_references = st.text_input("Preferências de cores, estilo ou sites de referência? (Opcional)", key=f"site_visual_ref_max{APP_KEY_SUFFIX}")
+                        submitted_site = st.form_submit_button("🏛️ Gerar Estrutura do Site com Max IA!")
+                        if submitted_site:
+                            site_details_dict = {"business_type": site_business_type, "main_purpose": site_main_purpose, "target_audience": site_target_audience, "essential_pages": site_essential_pages, "key_features": site_key_features, "brand_personality": site_brand_personality, "visual_references": site_visual_references}
+                            _marketing_handle_criar_site(marketing_files_info_for_prompt_local, site_details_dict, self.llm)
+                            st.rerun()
+
+            # Lógica similar para "Encontrar cliente"
             elif main_action == "5 - Encontrar meu cliente ideal (Análise de Público-Alvo)":
                 st.subheader("🎯 Decodificador de Clientes com Max IA")
-                with st.form(f"find_client_form_max{APP_KEY_SUFFIX}"):
-                    fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key=f"fc_campaign_max{APP_KEY_SUFFIX}")
-                    fc_location = st.text_input("Cidade(s) ou região de alcance:", key=f"fc_location_max{APP_KEY_SUFFIX}")
-                    fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key=f"fc_budget_max{APP_KEY_SUFFIX}")
-                    fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key=f"fc_age_gender_max{APP_KEY_SUFFIX}")
-                    fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key=f"fc_interests_max{APP_KEY_SUFFIX}")
-                    fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key=f"fc_channels_max{APP_KEY_SUFFIX}")
-                    fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key=f"fc_deep_max{APP_KEY_SUFFIX}")
-                    submitted_fc = st.form_submit_button("🔍 Encontrar Meu Cliente com Max IA!")
-                    if submitted_fc:
-                        client_details_dict = {"product_campaign": fc_product_campaign, "location": fc_location, "budget": fc_budget, "age_gender": fc_age_gender, "interests": fc_interests, "current_channels": fc_current_channels, "deep_research": fc_deep_research}
-                        # Passando self.llm
-                        _marketing_handle_encontre_cliente(marketing_files_info_for_prompt_local, client_details_dict, self.llm)
-                    if f'generated_client_analysis_new{APP_KEY_SUFFIX}' in st.session_state:
-                        st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
-                        st.markdown(st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'])
-                        st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max{APP_KEY_SUFFIX}")
+                SESSION_KEY_CLIENT_ANALYSIS = f'generated_client_analysis_new{APP_KEY_SUFFIX}'
+                FORM_KEY_CLIENT = f"find_client_form_max{APP_KEY_SUFFIX}"
+                if SESSION_KEY_CLIENT_ANALYSIS in st.session_state:
+                    st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
+                    st.markdown(st.session_state[SESSION_KEY_CLIENT_ANALYSIS])
+                    st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[SESSION_KEY_CLIENT_ANALYSIS].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max_ தனி{APP_KEY_SUFFIX}") # Chave única
+                    if st.button("Nova Análise de Cliente", key=f"clear_client_analysis_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_CLIENT_ANALYSIS, None)
+                        st.rerun()
+                else:
+                    with st.form(key=FORM_KEY_CLIENT):
+                        fc_product_campaign = st.text_area("Produto/serviço ou campanha para análise:", key=f"fc_campaign_max{APP_KEY_SUFFIX}")
+                        fc_location = st.text_input("Cidade(s) ou região de alcance:", key=f"fc_location_max{APP_KEY_SUFFIX}")
+                        fc_budget = st.text_input("Verba aproximada para ação/campanha? (Opcional)", key=f"fc_budget_max{APP_KEY_SUFFIX}")
+                        fc_age_gender = st.text_input("Faixa etária e gênero predominante:", key=f"fc_age_gender_max{APP_KEY_SUFFIX}")
+                        fc_interests = st.text_area("Principais interesses, hobbies, dores, necessidades:", key=f"fc_interests_max{APP_KEY_SUFFIX}")
+                        fc_current_channels = st.text_area("Canais de marketing que já utiliza ou considera:", key=f"fc_channels_max{APP_KEY_SUFFIX}")
+                        fc_deep_research = st.checkbox("Habilitar 'Deep Research' (análise mais aprofundada pela IA)", key=f"fc_deep_max{APP_KEY_SUFFIX}")
+                        submitted_fc = st.form_submit_button("🔍 Encontrar Meu Cliente com Max IA!")
+                        if submitted_fc:
+                            client_details_dict = {"product_campaign": fc_product_campaign, "location": fc_location, "budget": fc_budget, "age_gender": fc_age_gender, "interests": fc_interests, "current_channels": fc_current_channels, "deep_research": fc_deep_research}
+                            _marketing_handle_encontre_cliente(marketing_files_info_for_prompt_local, client_details_dict, self.llm)
+                            st.rerun()
+
+            # Lógica similar para "Analisar concorrência"
             elif main_action == "6 - Conhecer a concorrência (Análise Competitiva)":
                 st.subheader("🧐 Radar da Concorrência com Max IA")
-                with st.form(f"competitor_analysis_form_max{APP_KEY_SUFFIX}"):
-                    ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key=f"ca_your_biz_max{APP_KEY_SUFFIX}")
-                    ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key=f"ca_competitors_max{APP_KEY_SUFFIX}")
-                    ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key=f"ca_aspects_max{APP_KEY_SUFFIX}")
-                    submitted_ca = st.form_submit_button("📡 Analisar Concorrentes com Max IA!")
-                    if submitted_ca:
-                        competitor_details_dict = {"your_business": ca_your_business, "competitors_list": ca_competitors_list, "aspects_to_analyze": ca_aspects_to_analyze}
-                        # Passando self.llm
-                        _marketing_handle_conheca_concorrencia(marketing_files_info_for_prompt_local, competitor_details_dict, self.llm)
-                    if f'generated_competitor_analysis_new{APP_KEY_SUFFIX}' in st.session_state:
-                        st.subheader("📊 Análise da Concorrência e Insights:")
-                        st.markdown(st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'])
-                        st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max{APP_KEY_SUFFIX}")
+                SESSION_KEY_COMPETITOR_ANALYSIS = f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'
+                FORM_KEY_COMPETITOR = f"competitor_analysis_form_max{APP_KEY_SUFFIX}"
+                if SESSION_KEY_COMPETITOR_ANALYSIS in st.session_state:
+                    st.subheader("📊 Análise da Concorrência e Insights:")
+                    st.markdown(st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS])
+                    st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max_ தனி{APP_KEY_SUFFIX}") # Chave única
+                    if st.button("Nova Análise de Concorrência", key=f"clear_competitor_analysis_button{APP_KEY_SUFFIX}"):
+                        st.session_state.pop(SESSION_KEY_COMPETITOR_ANALYSIS, None)
+                        st.rerun()
+                else:
+                    with st.form(key=FORM_KEY_COMPETITOR):
+                        ca_your_business = st.text_area("Descreva seu próprio negócio/produto para comparação:", key=f"ca_your_biz_max{APP_KEY_SUFFIX}")
+                        ca_competitors_list = st.text_area("Liste seus principais concorrentes (nomes, sites, redes sociais):", key=f"ca_competitors_max{APP_KEY_SUFFIX}")
+                        ca_aspects_to_analyze = st.multiselect( "Quais aspectos da concorrência analisar?", ["Presença Online", "Tipos de Conteúdo", "Comunicação", "Pontos Fortes", "Pontos Fracos", "Preços (se observável)", "Engajamento"], default=["Presença Online", "Pontos Fortes", "Pontos Fracos"], key=f"ca_aspects_max{APP_KEY_SUFFIX}")
+                        submitted_ca = st.form_submit_button("📡 Analisar Concorrentes com Max IA!")
+                        if submitted_ca:
+                            competitor_details_dict = {"your_business": ca_your_business, "competitors_list": ca_competitors_list, "aspects_to_analyze": ca_aspects_to_analyze}
+                            _marketing_handle_conheca_concorrencia(marketing_files_info_for_prompt_local, competitor_details_dict, self.llm)
+                            st.rerun()
+            
             elif main_action == "Selecione uma opção...":
                 st.info("👋 Bem-vindo ao MaxMarketing Total! Escolha uma das opções acima para começar.")
                 LOGO_PATH_MARKETING_WELCOME = "images/max-ia-logo.png"
@@ -742,6 +814,7 @@ if user_is_authenticated:
                     st.image("https://i.imgur.com/7IIYxq1.png", caption="Max IA (Fallback)", width=200)
 
         def exibir_max_financeiro(self):
+            # ... (código existente, sem st.form aqui, então _handle_chat_with_image não deve ter problemas)
             st.header("💰 MaxFinanceiro")
             st.caption("Seu agente Max IA para inteligência financeira, cálculo de preços e mais.")
             st.subheader("💲 Cálculo de Preços Inteligente com Max IA")
@@ -775,6 +848,7 @@ if user_is_authenticated:
             st.caption("Por enquanto, algumas funcionalidades de análise de público e concorrência estão disponíveis no MaxMarketing Total.")
 
         def exibir_max_bussola(self):
+            # ... (código existente, sem st.form aqui para os chats, então deve estar ok)
             st.header("🧭 MaxBússola Estratégica")
             st.caption("Seu guia Max IA para planejamento estratégico, novas ideias e direção de negócios.")
             tab1_plano, tab2_ideias = st.tabs(["🗺️ Plano de Negócios com Max IA", "💡 Gerador de Ideias com Max IA"])
@@ -821,7 +895,10 @@ if user_is_authenticated:
             """)
             st.balloons()
 
-    # --- Funções Utilitárias Globais (se não forem métodos de classe) ---
+    # --- Funções Utilitárias Globais ---
+    # (inicializar_ou_resetar_chat, exibir_chat_e_obter_input, _sidebar_clear_button_max, 
+    #  _handle_chat_with_image, _handle_chat_with_files permanecem como antes)
+    # ... (elas já estão no seu código colado, mantive-as para referência de onde entram) ...
     def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
         chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
         st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
@@ -938,21 +1015,21 @@ if user_is_authenticated:
             st.session_state[user_input_processed_key] = False
 
     # --- Instanciação do Agente ---
-    # As definições das funções _marketing_handle_... devem estar ANTES da definição da classe MaxAgente
-    # ou serem métodos da classe (o que não são atualmente) se a classe for precisar chamá-las como self._marketing_handle_...
-    # No momento, elas são chamadas como funções globais (dentro do escopo do if user_is_authenticated)
-    # a partir dos métodos da classe MaxAgente, como exibir_max_marketing_total. Isso está OK.
-
-    if 'max_agente_instancia' not in st.session_state or not isinstance(st.session_state.max_agente_instancia, MaxAgente) or (hasattr(st.session_state.max_agente_instancia, 'llm') and st.session_state.max_agente_instancia.llm != llm_model_instance):
-        if llm_model_instance: # Só instancia o agente se o LLM foi carregado
+    if 'max_agente_instancia' not in st.session_state or \
+       not isinstance(st.session_state.max_agente_instancia, MaxAgente) or \
+       (hasattr(st.session_state.max_agente_instancia, 'llm') and st.session_state.max_agente_instancia.llm != llm_model_instance):
+        
+        if llm_model_instance:
             st.session_state.max_agente_instancia = MaxAgente(llm_passed_model=llm_model_instance)
         else:
-            st.session_state.max_agente_instancia = None # Define como None se o LLM falhou
-
-    # Garante que 'agente' só é usado se a instância existir e o LLM estiver ok.
+            st.session_state.max_agente_instancia = None 
+    
+    agente = None # Inicializa agente como None
     if st.session_state.get('max_agente_instancia') and llm_model_instance:
         agente = st.session_state.max_agente_instancia
 
+    # --- Interface da Sidebar e Lógica de Navegação (Somente se agente foi instanciado) ---
+    if agente:
         st.sidebar.write(f"Logado como: {display_email}")
         if st.sidebar.button("Logout", key=f"main_app_logout_max{APP_KEY_SUFFIX}"):
             st.session_state.user_session_pyrebase = None
@@ -1077,7 +1154,7 @@ if user_is_authenticated:
             agente.exibir_max_bussola()
         elif current_section_key_max_ia == "max_trainer_ia":
             agente.exibir_max_trainer()
-    else: # Se llm_model_instance ou max_agente_instancia não foram inicializados
+    else: # Se agente é None (devido a llm_model_instance ser None)
         st.error("🚨 O Max IA não pôde ser totalmente iniciado.")
         st.info("Isso pode ter ocorrido devido a um problema com a chave da API do Google ou ao contatar os serviços do Google Generative AI.")
         if llm_init_exception:
