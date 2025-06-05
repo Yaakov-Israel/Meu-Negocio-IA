@@ -1,20 +1,20 @@
 import streamlit as st
 import os
 import json
-import pyrebase
+import pyrebase # Para Firebase Auth
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 import google.generativeai as genai
-from PIL import Image # Para o logo na sidebar
+from PIL import Image
 import base64
-import time # Para pequenos delays na UI
-import datetime # Para registrar data/hora da ativação
+import time
+import datetime
 
-# NOVA IMPORTAÇÃO: Cliente Firestore do Google Cloud
-from google.cloud import firestore
+# Importação para Firestore
+from google.cloud import firestore # Garanta que 'google-cloud-firestore' está no requirements.txt
 
 # --- Função Auxiliar para Imagem em Base64 ---
 def convert_image_to_base64(image_path):
@@ -29,10 +29,7 @@ def convert_image_to_base64(image_path):
         return None
 
 # --- Funções do Sistema de Ativação ---
-# As funções check_user_activation_status, validate_and_claim_key, 
-# e display_activation_form permanecem as mesmas internamente, 
-# mas agora receberão o cliente Firestore inicializado corretamente.
-
+# Estas funções esperam um cliente Firestore funcional (db)
 def check_user_activation_status(uid, db):
     """Verifica no Firestore se o usuário já está ativado."""
     try:
@@ -40,7 +37,7 @@ def check_user_activation_status(uid, db):
         if user_activation_ref.exists:
             return user_activation_ref.to_dict().get("activated", False)
     except Exception as e:
-        st.error(f"Erro ao verificar status de ativação: {e}")
+        st.error(f"Erro ao verificar status de ativação (check_user_activation_status): {e}")
     return False
 
 def validate_and_claim_key(key_input, uid, db):
@@ -73,7 +70,7 @@ def validate_and_claim_key(key_input, uid, db):
         else:
             return False, "Chave de ativação não encontrada."
     except Exception as e:
-        st.error(f"Erro ao validar a chave de ativação: {e}")
+        st.error(f"Erro ao validar a chave de ativação (validate_and_claim_key): {e}")
         return False, f"Erro ao processar a chave: {e}"
 
 def display_activation_form(uid, db):
@@ -101,7 +98,6 @@ def display_activation_form(uid, db):
     st.markdown("---")
     st.caption("Não possui uma chave? Entre em contato com o suporte para obter acesso.")
 
-
 # --- Configuração da Página Streamlit ---
 PAGE_ICON_PATH = "images/carinha-agente-max-ia.png"
 try:
@@ -118,155 +114,185 @@ st.set_page_config(
 )
 
 # --- Inicialização do Firebase e Firestore ---
-firebase_app = None
-pb_auth_client = None
-firestore_db_client = None # NOVO: Cliente Firestore
-error_message_firebase_init = None
-firebase_initialized_successfully = False # Para Pyrebase (Auth)
-firestore_initialized_successfully = False # NOVO: Para Firestore
+firebase_app = None # Pyrebase app instance
+pb_auth_client = None # Pyrebase auth client
+firestore_db_client = None # google-cloud-firestore client instance
+error_message_firebase_init = "" # Acumulador de mensagens de erro
+firebase_initialized_successfully = False
+firestore_initialized_successfully = False
 auth_exception_object = None
 
 try:
     firebase_config_from_secrets = st.secrets.get("firebase_config")
     if not firebase_config_from_secrets:
-        error_message_firebase_init = "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada ou está vazia nos Segredos."
+        error_message_firebase_init += "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada ou está vazia nos Segredos.\n"
     else:
         plain_firebase_config_dict = {k: v for k, v in firebase_config_from_secrets.items()}
         required_keys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId"]
         missing_keys = [key for key in required_keys if key not in plain_firebase_config_dict]
 
         if missing_keys:
-            error_message_firebase_init = f"ERRO CRÍTICO: Chaves faltando em [firebase_config] nos segredos: {', '.join(missing_keys)}"
+            error_message_firebase_init += f"ERRO CRÍTICO: Chaves faltando em [firebase_config] nos segredos: {', '.join(missing_keys)}\n"
         else:
             # Inicializa Pyrebase para Autenticação
-            if 'firebase_app_instance' not in st.session_state:
-                st.session_state.firebase_app_instance = pyrebase.initialize_app(plain_firebase_config_dict)
-            firebase_app = st.session_state.firebase_app_instance
-            pb_auth_client = firebase_app.auth()
-            firebase_initialized_successfully = True
-
-            if 'firebase_init_success_message_shown' not in st.session_state and not st.session_state.get('user_session_pyrebase'):
-                st.sidebar.success("✅ Firebase SDK (Pyrebase4 Auth) inicializado!")
-                st.session_state.firebase_init_success_message_shown = True
+            try:
+                if 'firebase_app_instance' not in st.session_state:
+                    st.session_state.firebase_app_instance = pyrebase.initialize_app(plain_firebase_config_dict)
+                firebase_app = st.session_state.firebase_app_instance
+                pb_auth_client = firebase_app.auth()
+                firebase_initialized_successfully = True
+                if 'firebase_init_success_message_shown' not in st.session_state and not st.session_state.get('user_session_pyrebase'):
+                    st.sidebar.success("✅ Firebase Auth (Pyrebase4) inicializado!")
+                    st.session_state.firebase_init_success_message_shown = True
+            except Exception as e_pyrebase:
+                error_message_firebase_init += f"ERRO AO INICIALIZAR PYREBASE AUTH: {e_pyrebase}\n"
+                firebase_initialized_successfully = False
             
-            # NOVA INICIALIZAÇÃO: Cliente Firestore
+            # Inicializa Cliente Firestore (google-cloud-firestore)
             try:
                 project_id = plain_firebase_config_dict.get("projectId")
                 if project_id:
                     if 'firestore_client_instance' not in st.session_state:
                          st.session_state.firestore_client_instance = firestore.Client(project=project_id)
                     firestore_db_client = st.session_state.firestore_client_instance
-                    firestore_initialized_successfully = True # Marca o Firestore como inicializado com sucesso
                     
-                    if 'firestore_init_success_message_shown' not in st.session_state and firestore_db_client:
-                         st.sidebar.success("✅ Firestore Client (google-cloud) inicializado!")
-                         st.session_state.firestore_init_success_message_shown = True
+                    if firestore_db_client: # Confirma que a instância não é None
+                        firestore_initialized_successfully = True
+                        if 'firestore_init_success_message_shown' not in st.session_state and not st.session_state.get('user_session_pyrebase'):
+                             st.sidebar.success("✅ Firestore Client (google-cloud) inicializado!")
+                             st.session_state.firestore_init_success_message_shown = True
+                    else: # Caso firestore.Client() retorne None por algum motivo raro
+                        error_message_firebase_init += "ERRO: Falha ao obter instância do cliente Firestore mesmo com projectId.\n"
+                        firestore_initialized_successfully = False
                 else:
-                    # Adiciona ao erro existente ou cria um novo se for o primeiro erro
-                    error_msg_firestore = "ERRO: projectId não encontrado em [firebase_config] para inicializar o Firestore."
-                    error_message_firebase_init = f"{error_message_firebase_init}\n{error_msg_firestore}" if error_message_firebase_init else error_msg_firestore
-                    firestore_db_client = None 
+                    error_message_firebase_init += "ERRO: projectId não encontrado em [firebase_config] para inicializar o Firestore.\n"
+                    firestore_initialized_successfully = False
             
             except Exception as e_firestore:
-                error_msg_firestore = f"ERRO AO INICIALIZAR CLIENTE FIRESTORE: {e_firestore}"
-                error_message_firebase_init = f"{error_message_firebase_init}\n{error_msg_firestore}" if error_message_firebase_init else error_msg_firestore
-                firestore_db_client = None
+                error_message_firebase_init += f"ERRO AO INICIALIZAR CLIENTE FIRESTORE (google-cloud): {e_firestore}\n"
+                firestore_initialized_successfully = False
 
-except KeyError:
-    error_message_firebase_init = "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada nos Segredos do Streamlit."
+except KeyError: # Erro ao buscar 'firebase_config' nos secrets
+    error_message_firebase_init += "ERRO CRÍTICO: A seção '[firebase_config]' não foi encontrada nos Segredos do Streamlit.\n"
     auth_exception_object = Exception(error_message_firebase_init)
-except AttributeError as e_attr_fb:
-    error_message_firebase_init = f"ERRO CRÍTICO ao acessar st.secrets['firebase_config']: {e_attr_fb}"
+except AttributeError as e_attr_fb: # Erro se st.secrets não for como esperado
+    error_message_firebase_init += f"ERRO CRÍTICO ao acessar st.secrets['firebase_config']: {e_attr_fb}\n"
     auth_exception_object = e_attr_fb
-except Exception as e_general_fb:
-    error_message_firebase_init = f"ERRO GERAL ao inicializar Pyrebase4/Firestore: {e_general_fb}"
+except Exception as e_general_fb: # Outros erros gerais na inicialização
+    error_message_firebase_init += f"ERRO GERAL na inicialização do Firebase/Firestore: {e_general_fb}\n"
     auth_exception_object = e_general_fb
 
-if error_message_firebase_init and not (firebase_initialized_successfully and firestore_initialized_successfully) : # Se houver erro E um dos serviços não inicializou
-    st.error(error_message_firebase_init)
-    if auth_exception_object and ('st' in locals() or 'st' in globals()):
+# Verifica se houve algum erro acumulado ou falha na inicialização de algum dos serviços
+if error_message_firebase_init.strip() or not firebase_initialized_successfully or not firestore_initialized_successfully:
+    if error_message_firebase_init.strip(): # Mostra erros acumulados se houver
+      st.error(error_message_firebase_init)
+    if not firebase_initialized_successfully:
+        st.error("Falha crítica na inicialização do Firebase Auth. O app não pode continuar.")
+    if not firestore_initialized_successfully:
+        st.error("Falha crítica na inicialização do Firestore Client. Funcionalidades de ativação podem não funcionar.")
+    
+    if auth_exception_object: # Mostra o objeto da exceção se capturado
         st.exception(auth_exception_object)
     st.stop()
 
-if not firebase_initialized_successfully or not pb_auth_client:
-    st.error("Falha crítica na inicialização do Firebase Auth. O app não pode continuar.")
-    st.stop()
-# A verificação do firestore_db_client será feita antes de usá-lo
 
 # --- Lógica de Autenticação e Estado da Sessão ---
-# ... (código existente, sem alterações aqui) ...
 if 'user_session_pyrebase' not in st.session_state:
     st.session_state.user_session_pyrebase = None
 
 user_is_authenticated = False
 if st.session_state.user_session_pyrebase and 'idToken' in st.session_state.user_session_pyrebase:
     try:
-        # Verifica e atualiza as informações do usuário, incluindo UID e email.
         refreshed_user_info = pb_auth_client.get_account_info(st.session_state.user_session_pyrebase['idToken'])
         st.session_state.user_session_pyrebase['email'] = refreshed_user_info['users'][0].get('email', "Email não disponível")
         st.session_state.user_session_pyrebase['localId'] = refreshed_user_info['users'][0].get('localId') 
         user_is_authenticated = True
-        st.session_state.pop('auth_error_shown', None) # Limpa erro de auth anterior se a sessão for válida
+        st.session_state.pop('auth_error_shown', None)
     except Exception as e_session:
-        # Lida com sessão inválida ou expirada
         error_message_session_check = "Sessão inválida ou expirada."
-        try:
-            # Tenta parsear a mensagem de erro da API do Firebase
-            error_details_str = e_session.args[0] if len(e_session.args) > 0 else "{}"
-            error_data = json.loads(error_details_str.replace("'", "\"")) # Cuidado com a substituição de aspas
-            api_error_message = error_data.get('error', {}).get('message', "ERRO_DESCONHECIDO_SESSAO")
-            
-            if "TOKEN_EXPIRED" in api_error_message or "INVALID_ID_TOKEN" in api_error_message:
-                error_message_session_check = "Sua sessão expirou. Por favor, faça login novamente."
+        
+        # CORREÇÃO: Tratamento mais robusto da mensagem de erro da API
+        api_error_details_text = ""
+        if hasattr(e_session, 'args') and len(e_session.args) > 0:
+            raw_error_content = e_session.args[0]
+            if isinstance(raw_error_content, str):
+                api_error_details_text = raw_error_content
+                # Tenta parsear como JSON se for uma string e parecer um erro estruturado do Firebase
+                if raw_error_content.strip().startswith("{") and "\"error\"" in raw_error_content.lower():
+                    try:
+                        # A substituição de aspas simples pode ser arriscada se o JSON for complexo.
+                        # Idealmente, a API retornaria JSON válido.
+                        error_data = json.loads(raw_error_content) 
+                        parsed_message = error_data.get('error', {}).get('message', api_error_details_text)
+                        if parsed_message: # Usa a mensagem parseada se disponível
+                             api_error_details_text = parsed_message
+                    except json.JSONDecodeError:
+                        pass # Mantém api_error_details_text como a string original
+            elif isinstance(raw_error_content, dict): # Se o erro já for um dict
+                api_error_details_text = raw_error_content.get('error', {}).get('message', str(raw_error_content))
             else:
-                error_message_session_check = f"Erro ao verificar sessão ({api_error_message}). Faça login."
-        except (json.JSONDecodeError, IndexError, TypeError, AttributeError):
-            # Fallback se o parsing do erro falhar
-            error_message_session_check = f"Erro ao verificar sessão (parsing). Faça login. Detalhe: {str(e_session)}"
+                api_error_details_text = str(raw_error_content) # Fallback
+        else:
+            api_error_details_text = str(e_session) # Fallback geral
 
-        st.session_state.user_session_pyrebase = None # Limpa a sessão inválida
+        # Agora use api_error_details_text que é garantido ser uma string
+        if "TOKEN_EXPIRED" in api_error_details_text or \
+           "INVALID_ID_TOKEN" in api_error_details_text or \
+           "ID_TOKEN_EXPIRED" in api_error_details_text: # Adicionado ID_TOKEN_EXPIRED
+            error_message_session_check = "Sua sessão expirou. Por favor, faça login novamente."
+        elif api_error_details_text: # Se houver algum detalhe
+             error_message_session_check = f"Erro ao verificar sessão ({api_error_details_text}). Faça login."
+        # else: mantém a mensagem "Sessão inválida ou expirada."
+
+        st.session_state.user_session_pyrebase = None
         user_is_authenticated = False
-        if 'auth_error_shown' not in st.session_state: # Mostra o erro apenas uma vez
+        if 'auth_error_shown' not in st.session_state:
             st.sidebar.warning(error_message_session_check)
             st.session_state.auth_error_shown = True
         
-        # Lógica de rerun para evitar loops infinitos de rerun em caso de falha na autenticação
-        session_rerun_key = 'running_rerun_after_auth_fail_v3' # Chave única para este rerun
+        session_rerun_key = 'running_rerun_after_auth_fail_v3'
         if not st.session_state.get(session_rerun_key, False):
             st.session_state[session_rerun_key] = True
             st.rerun()
         else:
-            # Se já tentou rerun e falhou de novo, limpa a chave para permitir nova tentativa se o usuário interagir
             st.session_state.pop(session_rerun_key, None)
 
-# Limpa a chave de controle de rerun se a autenticação for bem-sucedida ou se a página for recarregada por outra razão
 session_rerun_key_check = 'running_rerun_after_auth_fail_v3'
-if session_rerun_key_check in st.session_state and st.session_state[session_rerun_key_check] and user_is_authenticated : # Limpa se autenticado
-    st.session_state.pop(session_rerun_key_check, None)
-elif session_rerun_key_check in st.session_state and not user_is_authenticated and not st.session_state.user_session_pyrebase:
-    # Se não autenticado e sem tentativa de login (ex: primeira carga), também pode limpar
-    pass # Mantém a lógica de rerun para falhas de login
+if session_rerun_key_check in st.session_state:
+    if user_is_authenticated or not st.session_state.user_session_pyrebase : # Limpa se autenticado ou se não há mais sessão
+        st.session_state.pop(session_rerun_key_check, None)
 
 
 # --- Interface do Usuário Condicional e Lógica Principal do App ---
-APP_KEY_SUFFIX = "_v20_final" # Mantenha seu sufixo
+APP_KEY_SUFFIX = "_v20_final" 
 
 if user_is_authenticated:
     uid = st.session_state.user_session_pyrebase.get('localId')
     
-    # MODIFICAÇÃO: Usar firestore_db_client em vez de firebase_app.firestore()
+    # ATENÇÃO: Use a instância correta do cliente Firestore
     db_firestore = firestore_db_client 
 
+    # LINHA DE DEBUG (REMOVA APÓS VERIFICAR):
+    # st.sidebar.info(f"DEBUG: Tipo de db_firestore: {type(db_firestore)}")
+
     if not db_firestore: 
-        st.error("ERRO CRÍTICO: Cliente Firestore não está disponível. Funcionalidades de ativação estão desabilitadas.")
+        st.error("ERRO CRÍTICO: Cliente Firestore não está disponível (db_firestore é None). Funcionalidades de ativação estão desabilitadas.")
+        st.warning("Isso pode ocorrer se o 'projectId' não estiver nos seus segredos do Firebase ou se houver um problema na inicialização do google-cloud-firestore.")
         st.stop() 
+
+    # !! ALERTA IMPORTANTE !!
+    # Verifique em TODO o restante do seu código (incluindo a classe MaxAgente e suas funções)
+    # se existe alguma chamada como `firebase_app.firestore()` ou `alguma_variavel_pyrebase.firestore()`.
+    # TODAS as interações com Firestore devem usar `db_firestore` (que é o cliente google-cloud-firestore).
+    # O erro "AttributeError: 'Firebase' object has no attribute 'firestore'" que você viu
+    # significa que uma chamada incorreta ainda existe em algum lugar.
 
     if 'is_user_activated' not in st.session_state:
         st.session_state.is_user_activated = check_user_activation_status(uid, db_firestore)
 
     if st.session_state.is_user_activated:
         # ----- USUÁRIO AUTENTICADO E ATIVADO - LÓGICA PRINCIPAL DO APP -----
-        st.session_state.pop('auth_error_shown', None) # Limpa mensagens de erro de autenticação/sessão
+        st.session_state.pop('auth_error_shown', None)
         display_email = st.session_state.user_session_pyrebase.get('email', "Usuário Logado")
 
         GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY")
@@ -290,13 +316,9 @@ if user_is_authenticated:
                 llm_init_exception = e_llm
                 st.error(f"😥 ERRO AO INICIALIZAR O MODELO LLM DO GOOGLE: {e_llm}")
         
-        # --- Restante das suas funções _marketing_handle_... e a classe MaxAgente ---
-        # Essas partes do código permanecem as mesmas, assumindo que não usam
-        # 'db' para Firestore diretamente, ou se usarem, precisarão ser adaptadas
-        # para receber 'db_firestore' se necessário.
-        # Se MaxAgente ou suas sub-funções precisarem do cliente firestore, 
-        # ele precisará ser passado para elas.
-
+        # --- Funções _marketing_handle_... e classe MaxAgente ---
+        # (O restante do seu código da classe MaxAgente e funções de marketing aqui)
+        # Lembre-se: se MaxAgente ou suas funções precisarem do Firestore, passe `db_firestore`.
         # Funções _marketing_handle_... (já corrigidas)
         def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
             st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
@@ -326,7 +348,6 @@ if user_is_authenticated:
                 print(f"ERRO NO DOWNLOAD BUTTON ({section_key}): {e_download}")
 
         def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
-            #st.error("DEBUG: EXECUTANDO A VERSÃO CORRIGIDA DE _marketing_handle_criar_post v2") 
             if not selected_platforms_list:
                 st.warning("Por favor, selecione pelo menos uma plataforma.")
                 st.session_state.pop(f'generated_post_content_new{APP_KEY_SUFFIX}', None)
@@ -361,8 +382,7 @@ if user_is_authenticated:
                     ai_response = llm.invoke(final_prompt)
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = ai_response.content
-                    else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
+                    else: # Fallback para Langchain mais antigo ou diferentes tipos de resposta
                         st.session_state[f'generated_post_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para o post: {ve}")
@@ -419,7 +439,6 @@ if user_is_authenticated:
                         st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
                         st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) 
                     else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
                         st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None)
                 except ValueError as ve:
@@ -470,7 +489,6 @@ if user_is_authenticated:
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = ai_response.content
                     else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_lp_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a landing page: {ve}")
@@ -517,7 +535,6 @@ if user_is_authenticated:
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = ai_response.content
                     else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_site_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a estrutura do site: {ve}")
@@ -560,7 +577,6 @@ if user_is_authenticated:
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
                     else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_client_analysis_new{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para análise de cliente: {ve}")
@@ -608,7 +624,6 @@ if user_is_authenticated:
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = ai_response.content
                     else:
-                        st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para análise de concorrência: {ve}")
@@ -652,7 +667,6 @@ if user_is_authenticated:
                     if hasattr(ai_response, 'content'):
                         st.session_state[f'generated_campaign_details_content{APP_KEY_SUFFIX}'] = ai_response.content
                     else:
-                        st.warning("Resposta da IA (detalhamento) não continha o atributo 'content' esperado. Usando a resposta como string.")
                         st.session_state[f'generated_campaign_details_content{APP_KEY_SUFFIX}'] = str(ai_response)
                 except ValueError as ve:
                     st.error(f"🚧 Max IA encontrou um erro de valor ao detalhar a campanha: {ve}")
@@ -671,25 +685,40 @@ if user_is_authenticated:
                     st.error("❌ Erro crítico: MaxAgente tentou ser inicializado sem um modelo LLM.")
                     st.stop()
                 self.llm = llm_passed_model
-                if f'memoria_max_bussola_plano{APP_KEY_SUFFIX}' not in st.session_state:
-                    st.session_state[f'memoria_max_bussola_plano{APP_KEY_SUFFIX}'] = ConversationBufferMemory(memory_key=f"historico_chat_bussola_plano{APP_KEY_SUFFIX}", return_messages=True)
-                if f'memoria_max_bussola_ideias{APP_KEY_SUFFIX}' not in st.session_state:
-                    st.session_state[f'memoria_max_bussola_ideias{APP_KEY_SUFFIX}'] = ConversationBufferMemory(memory_key=f"historico_chat_bussola_ideias{APP_KEY_SUFFIX}", return_messages=True)
-                if f'memoria_max_financeiro_precos{APP_KEY_SUFFIX}' not in st.session_state:
-                    st.session_state[f'memoria_max_financeiro_precos{APP_KEY_SUFFIX}'] = ConversationBufferMemory(memory_key=f"historico_chat_financeiro_precos{APP_KEY_SUFFIX}", return_messages=True)
+                # Inicialização das memórias
+                mem_keys = {
+                    "plano": f'memoria_max_bussola_plano{APP_KEY_SUFFIX}',
+                    "ideias": f'memoria_max_bussola_ideias{APP_KEY_SUFFIX}',
+                    "precos": f'memoria_max_financeiro_precos{APP_KEY_SUFFIX}'
+                }
+                hist_keys = {
+                    "plano": f"historico_chat_bussola_plano{APP_KEY_SUFFIX}",
+                    "ideias": f"historico_chat_bussola_ideias{APP_KEY_SUFFIX}",
+                    "precos": f"historico_chat_financeiro_precos{APP_KEY_SUFFIX}"
+                }
 
-                self.memoria_max_bussola_plano = st.session_state[f'memoria_max_bussola_plano{APP_KEY_SUFFIX}']
-                self.memoria_max_bussola_ideias = st.session_state[f'memoria_max_bussola_ideias{APP_KEY_SUFFIX}']
-                self.memoria_max_financeiro_precos = st.session_state[f'memoria_max_financeiro_precos{APP_KEY_SUFFIX}']
-                self.memoria_plano_negocios = self.memoria_max_bussola_plano # Alias
-                self.memoria_calculo_precos = self.memoria_max_financeiro_precos # Alias
-                self.memoria_gerador_ideias = self.memoria_max_bussola_ideias # Alias
+                if mem_keys["plano"] not in st.session_state:
+                    st.session_state[mem_keys["plano"]] = ConversationBufferMemory(memory_key=hist_keys["plano"], return_messages=True)
+                if mem_keys["ideias"] not in st.session_state:
+                    st.session_state[mem_keys["ideias"]] = ConversationBufferMemory(memory_key=hist_keys["ideias"], return_messages=True)
+                if mem_keys["precos"] not in st.session_state:
+                    st.session_state[mem_keys["precos"]] = ConversationBufferMemory(memory_key=hist_keys["precos"], return_messages=True)
+
+                self.memoria_max_bussola_plano = st.session_state[mem_keys["plano"]]
+                self.memoria_max_bussola_ideias = st.session_state[mem_keys["ideias"]]
+                self.memoria_max_financeiro_precos = st.session_state[mem_keys["precos"]]
+                
+                # Aliases
+                self.memoria_plano_negocios = self.memoria_max_bussola_plano
+                self.memoria_calculo_precos = self.memoria_max_financeiro_precos
+                self.memoria_gerador_ideias = self.memoria_max_bussola_ideias
 
             def _criar_cadeia_conversacional(self, system_message_content, memoria_especifica, memory_key_placeholder_base="historico_chat"):
-                actual_memory_key = memoria_especifica.memory_key # Usa a memory_key definida na instância da memória
+                # Usa a memory_key da instância de memória fornecida
+                actual_memory_key = memoria_especifica.memory_key 
                 prompt_template = ChatPromptTemplate.from_messages([
                     SystemMessagePromptTemplate.from_template(system_message_content),
-                    MessagesPlaceholder(variable_name=actual_memory_key), # Deve corresponder à memory_key
+                    MessagesPlaceholder(variable_name=actual_memory_key), 
                     HumanMessagePromptTemplate.from_template("{input_usuario}")
                 ])
                 return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria_especifica, verbose=False)
@@ -712,11 +741,11 @@ if user_is_authenticated:
                         temp_marketing_files_info = []
                         for up_file in uploaded_marketing_files:
                             temp_marketing_files_info.append({"name": up_file.name, "type": up_file.type, "size": up_file.size})
-                        if temp_marketing_files_info: # Verifica se a lista não está vazia
-                            marketing_files_info_for_prompt_local = temp_marketing_files_info # Atualiza a variável local
+                        if temp_marketing_files_info:
+                            marketing_files_info_for_prompt_local = temp_marketing_files_info
                             st.success(f"{len(uploaded_marketing_files)} arquivo(s) de contexto carregado(s) para MaxMarketing!")
                         with st.expander("Ver arquivos de contexto de Marketing"):
-                            for finfo in marketing_files_info_for_prompt_local: # Usa a variável local atualizada
+                            for finfo in marketing_files_info_for_prompt_local:
                                 st.write(f"- {finfo['name']} ({finfo['type']})")
 
                 main_action_key = f"main_marketing_action_choice_max{APP_KEY_SUFFIX}"
@@ -735,15 +764,15 @@ if user_is_authenticated:
                 if radio_index_key not in st.session_state:
                     st.session_state[radio_index_key] = 0 
                 
-                def update_marketing_radio_index_on_change(): # Callback para atualizar o índice
+                def update_marketing_radio_index_on_change():
                     st.session_state[radio_index_key] = opcoes_radio_marketing.index(st.session_state[main_action_key])
 
                 main_action = st.radio(
                     "Olá! Sou o Max, seu agente de Marketing. O que vamos criar hoje?",
                     opcoes_radio_marketing,
-                    index=st.session_state[radio_index_key], # Usa o índice da session_state
-                    key=main_action_key, # Key para o widget radio
-                    on_change=update_marketing_radio_index_on_change # Callback para atualizar o índice
+                    index=st.session_state[radio_index_key],
+                    key=main_action_key,
+                    on_change=update_marketing_radio_index_on_change
                 )
                 st.markdown("---")
                 platforms_config_options = {
@@ -753,6 +782,10 @@ if user_is_authenticated:
                     "E-mail Marketing (Campanha Google Ads)": "email_google"
                 }
 
+                # Lógica para cada ação de marketing (Criar Post, Campanha, etc.)
+                # ... (código das seções de marketing que você já tem)...
+                # (Assegure-se que a lógica de "Selecionar Todas" e a leitura das plataformas
+                # selecionadas no submit dos forms estejam corretas como nas minhas sugestões anteriores)
                 if main_action == "1 - Criar post para redes sociais ou e-mail":
                     st.subheader("✨ Criador de Posts com Max IA")
                     SESSION_KEY_POST_CONTENT = f'generated_post_content_new{APP_KEY_SUFFIX}'
@@ -768,49 +801,36 @@ if user_is_authenticated:
                             st.subheader(" Plataformas Desejadas:")
                             key_select_all_post = f"post_select_all_max{APP_KEY_SUFFIX}"
                             
-                            # Lógica para o checkbox "Selecionar Todas"
-                            if key_select_all_post not in st.session_state:
-                                st.session_state[key_select_all_post] = False # Estado inicial
+                            if key_select_all_post not in st.session_state: st.session_state[key_select_all_post] = False
 
-                            def toggle_all_platforms_post(): # Callback para o checkbox "Selecionar Todas"
-                                st.session_state[key_select_all_post] = not st.session_state[key_select_all_post]
-                                for _, platform_suffix in platforms_config_options.items():
-                                    platform_key = f"post_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                                    st.session_state[platform_key] = st.session_state[key_select_all_post]
+                            def toggle_all_platforms_post_cb():
+                                new_state = not st.session_state[key_select_all_post]
+                                st.session_state[key_select_all_post] = new_state
+                                for _, platform_suffix_iter in platforms_config_options.items():
+                                    st.session_state[f"post_platform_max_{platform_suffix_iter}{APP_KEY_SUFFIX}"] = new_state
                             
-                            # O checkbox "Selecionar Todas" não pode estar dentro do loop que ele controla diretamente no mesmo form
-                            # Vamos colocar fora ou gerenciar o estado de forma mais explícita.
-                            # Simplificação: usar o valor de st.session_state[key_select_all_post] para o 'value' dos checkboxes individuais
-                            # e atualizar todos se 'Selecionar Todas' for clicado.
-
-                            st.checkbox("Selecionar Todas as Plataformas Abaixo", 
-                                        key=key_select_all_post, 
-                                        on_change=toggle_all_platforms_post)
+                            st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_post, on_change=toggle_all_platforms_post_cb)
                             
-                            cols_post = st.columns(2); selected_platforms_post_ui = []
+                            cols_post = st.columns(2)
                             for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                                 col_index = i % 2
                                 platform_key = f"post_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                                
-                                # Garante que a chave existe no session_state antes de usá-la
-                                if platform_key not in st.session_state:
-                                    st.session_state[platform_key] = st.session_state.get(key_select_all_post, False)
+                                if platform_key not in st.session_state: # Inicializa se não existir
+                                    st.session_state[platform_key] = st.session_state[key_select_all_post] 
 
                                 with cols_post[col_index]:
-                                    if st.checkbox(platform_name, key=platform_key, value=st.session_state[platform_key]): # Usa o valor da session_state
-                                        selected_platforms_post_ui.append(platform_name)
+                                    st.checkbox(platform_name, key=platform_key) # o on_change do "select all" já atualiza
                                     if "E-mail Marketing" in platform_name and st.session_state.get(platform_key):
-                                        st.caption("💡 Para e-mail marketing, considere segmentar sua lista e personalizar a saudação.")
+                                        st.caption("💡 Para e-mail marketing...")
                             
                             post_details = _marketing_get_objective_details(f"post_max{APP_KEY_SUFFIX}", "post")
                             submit_button_pressed_post = st.form_submit_button("💡 Gerar Post com Max IA!")
 
                             if submit_button_pressed_post:
-                                # Reconstrói selected_platforms_post_ui com base no estado atual dos checkboxes no momento do submit
-                                current_selected_platforms = []
-                                for platform_name_iter, platform_suffix_iter in platforms_config_options.items():
-                                    if st.session_state.get(f"post_platform_max_{platform_suffix_iter}{APP_KEY_SUFFIX}", False):
-                                        current_selected_platforms.append(platform_name_iter)
+                                current_selected_platforms = [
+                                    name for name, suffix in platforms_config_options.items() 
+                                    if st.session_state.get(f"post_platform_max_{suffix}{APP_KEY_SUFFIX}")
+                                ]
                                 _marketing_handle_criar_post(marketing_files_info_for_prompt_local, post_details, current_selected_platforms, self.llm)
                                 st.rerun()
                 
@@ -824,14 +844,13 @@ if user_is_authenticated:
                         st.subheader("📝 Conteúdo Detalhado da Campanha:")
                         st.markdown(st.session_state[SESSION_KEY_CAMPAIGN_DETAILS])
                         try:
-                            st.download_button(label="📥 Baixar Conteúdo Detalhado da Campanha",
+                            st.download_button(label="📥 Baixar Conteúdo Detalhado",
                                                 data=st.session_state[SESSION_KEY_CAMPAIGN_DETAILS].encode('utf-8'),
                                                 file_name=f"campanha_detalhada_max_ia{APP_KEY_SUFFIX}.txt",
                                                 mime="text/plain",
-                                                key=f"download_campaign_details_btn_{SESSION_KEY_CAMPAIGN_DETAILS}{APP_KEY_SUFFIX}") 
+                                                key=f"download_campaign_details_btn_{APP_KEY_SUFFIX}") 
                         except Exception as e_dl_details:
-                            # O erro "can't be used in an `st.form()`" não deveria ocorrer aqui, pois não está dentro de um form.
-                            st.error(f"Erro ao renderizar botão de download dos detalhes da campanha: {e_dl_details}")
+                            st.error(f"Erro download detalhes campanha: {e_dl_details}")
                         
                         if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_all_campaign_button{APP_KEY_SUFFIX}"):
                             st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
@@ -842,54 +861,48 @@ if user_is_authenticated:
                         st.subheader("📋 Plano da Campanha Gerado:")
                         _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_PLAN], f"campaign_plan_output_max{APP_KEY_SUFFIX}", "plano_campanha_max_ia")
                         st.markdown("---")
-                        if st.button("✍️ Detalhar Conteúdo da Campanha com Max IA", key=f"detail_campaign_button{APP_KEY_SUFFIX}"):
-                            plano_gerado = st.session_state[SESSION_KEY_CAMPAIGN_PLAN]
-                            _marketing_handle_detalhar_campanha(marketing_files_info_for_prompt_local, plano_gerado, self.llm)
+                        if st.button("✍️ Detalhar Conteúdo da Campanha", key=f"detail_campaign_button{APP_KEY_SUFFIX}"):
+                            _marketing_handle_detalhar_campanha(marketing_files_info_for_prompt_local, st.session_state[SESSION_KEY_CAMPAIGN_PLAN], self.llm)
                             st.rerun() 
-                        if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_campaign_plan_button{APP_KEY_SUFFIX}"):
+                        if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_campaign_plan_button_again{APP_KEY_SUFFIX}"): # Chave diferente
                             st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
                             st.session_state.pop(SESSION_KEY_CAMPAIGN_DETAILS, None)
                             st.rerun()
-                    else:
+                    else: # Formulário para criar plano de campanha
                         with st.form(key=FORM_KEY_CAMPAIGN_PLAN):
                             campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_max{APP_KEY_SUFFIX}")
                             st.subheader(" Plataformas Desejadas:")
                             key_select_all_camp = f"campaign_select_all_max{APP_KEY_SUFFIX}"
+                            if key_select_all_camp not in st.session_state: st.session_state[key_select_all_camp] = False
 
-                            if key_select_all_camp not in st.session_state:
-                                st.session_state[key_select_all_camp] = False
+                            def toggle_all_platforms_camp_cb():
+                                new_state = not st.session_state[key_select_all_camp]
+                                st.session_state[key_select_all_camp] = new_state
+                                for _, platform_suffix_iter in platforms_config_options.items():
+                                    st.session_state[f"campaign_platform_max_{platform_suffix_iter}{APP_KEY_SUFFIX}"] = new_state
 
-                            def toggle_all_platforms_camp():
-                                st.session_state[key_select_all_camp] = not st.session_state[key_select_all_camp]
-                                for _, platform_suffix in platforms_config_options.items():
-                                    platform_key = f"campaign_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                                    st.session_state[platform_key] = st.session_state[key_select_all_camp]
+                            st.checkbox("Selecionar Todas", key=key_select_all_camp, on_change=toggle_all_platforms_camp_cb)
                             
-                            st.checkbox("Selecionar Todas as Plataformas Abaixo", 
-                                        key=key_select_all_camp,
-                                        on_change=toggle_all_platforms_camp)
-                            
-                            cols_camp = st.columns(2); selected_platforms_camp_ui = [] # Será reconstruída no submit
+                            cols_camp = st.columns(2)
                             for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                                 col_index = i % 2
                                 platform_key = f"campaign_platform_max_{platform_suffix}{APP_KEY_SUFFIX}"
-                                if platform_key not in st.session_state: # Inicializa se não existir
-                                    st.session_state[platform_key] = st.session_state.get(key_select_all_camp, False)
+                                if platform_key not in st.session_state:
+                                    st.session_state[platform_key] = st.session_state[key_select_all_camp]
                                 with cols_camp[col_index]:
-                                    if st.checkbox(platform_name, key=platform_key, value=st.session_state[platform_key]):
-                                        pass # A seleção será lida no submit
+                                    st.checkbox(platform_name, key=platform_key)
                             
                             campaign_details_obj = _marketing_get_objective_details(f"campaign_max{APP_KEY_SUFFIX}", "campanha")
                             campaign_duration = st.text_input("Duração Estimada:", key=f"campaign_duration_max{APP_KEY_SUFFIX}")
                             campaign_budget_approx = st.text_input("Orçamento Aproximado (opcional):", key=f"campaign_budget_max{APP_KEY_SUFFIX}")
                             specific_kpis = st.text_area("KPIs mais importantes:", key=f"campaign_kpis_max{APP_KEY_SUFFIX}")
-                            submit_button_pressed_camp_plan = st.form_submit_button("🚀 Gerar Plano de Campanha com Max IA!")
+                            submit_button_pressed_camp_plan = st.form_submit_button("🚀 Gerar Plano de Campanha")
 
                             if submit_button_pressed_camp_plan:
-                                current_selected_platforms_camp = []
-                                for platform_name_iter, platform_suffix_iter in platforms_config_options.items():
-                                    if st.session_state.get(f"campaign_platform_max_{platform_suffix_iter}{APP_KEY_SUFFIX}", False):
-                                        current_selected_platforms_camp.append(platform_name_iter)
+                                current_selected_platforms_camp = [
+                                    name for name, suffix in platforms_config_options.items()
+                                    if st.session_state.get(f"campaign_platform_max_{suffix}{APP_KEY_SUFFIX}")
+                                ]
                                 campaign_specifics_dict = {"name": campaign_name, "duration": campaign_duration, "budget": campaign_budget_approx, "kpis": specific_kpis}
                                 _marketing_handle_criar_campanha(marketing_files_info_for_prompt_local, campaign_details_obj, campaign_specifics_dict, current_selected_platforms_camp, self.llm)
                                 st.rerun()
@@ -903,7 +916,7 @@ if user_is_authenticated:
                         st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
                         st.markdown(st.session_state[SESSION_KEY_LP_CONTENT])
                         try: 
-                            st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[SESSION_KEY_LP_CONTENT].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max_output_{SESSION_KEY_LP_CONTENT}{APP_KEY_SUFFIX}")
+                            st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[SESSION_KEY_LP_CONTENT].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max_output_{APP_KEY_SUFFIX}")
                         except Exception as e_dl_lp:
                             st.error(f"Erro ao renderizar botão de download da LP: {e_dl_lp}")
                         if st.button("✨ Criar Nova Estrutura de LP", key=f"clear_lp_content_button{APP_KEY_SUFFIX}"):
@@ -931,7 +944,7 @@ if user_is_authenticated:
                         st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
                         st.markdown(st.session_state[SESSION_KEY_SITE_CONTENT])
                         try: 
-                            st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[SESSION_KEY_SITE_CONTENT].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max_output_{SESSION_KEY_SITE_CONTENT}{APP_KEY_SUFFIX}")
+                            st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[SESSION_KEY_SITE_CONTENT].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max_output_{APP_KEY_SUFFIX}")
                         except Exception as e_dl_site:
                             st.error(f"Erro ao renderizar botão de download do Site: {e_dl_site}")
                         if st.button("✨ Criar Nova Estrutura de Site", key=f"clear_site_content_button{APP_KEY_SUFFIX}"):
@@ -960,7 +973,7 @@ if user_is_authenticated:
                         st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
                         st.markdown(st.session_state[SESSION_KEY_CLIENT_ANALYSIS])
                         try:
-                            st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[SESSION_KEY_CLIENT_ANALYSIS].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max_output_{SESSION_KEY_CLIENT_ANALYSIS}{APP_KEY_SUFFIX}")
+                            st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[SESSION_KEY_CLIENT_ANALYSIS].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max_output_{APP_KEY_SUFFIX}")
                         except Exception as e_dl_client:
                             st.error(f"Erro ao renderizar botão de download da Análise de Cliente: {e_dl_client}")
                         if st.button("✨ Nova Análise de Cliente", key=f"clear_client_analysis_button{APP_KEY_SUFFIX}"):
@@ -989,7 +1002,7 @@ if user_is_authenticated:
                         st.subheader("📊 Análise da Concorrência e Insights:")
                         st.markdown(st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS])
                         try:
-                            st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max_output_{SESSION_KEY_COMPETITOR_ANALYSIS}{APP_KEY_SUFFIX}")
+                            st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max_output_{APP_KEY_SUFFIX}")
                         except Exception as e_dl_comp:
                             st.error(f"Erro ao renderizar botão de download da Análise de Concorrência: {e_dl_comp}")
                         if st.button("✨ Nova Análise de Concorrência", key=f"clear_competitor_analysis_button{APP_KEY_SUFFIX}"):
@@ -1008,11 +1021,10 @@ if user_is_authenticated:
                 
                 elif main_action == "Selecione uma opção...":
                     st.info("👋 Bem-vindo ao MaxMarketing Total! Escolha uma das opções acima para começar.")
-                    LOGO_PATH_MARKETING_WELCOME = "images/max-ia-logo.png" # Use a constante definida
+                    LOGO_PATH_MARKETING_WELCOME = "images/max-ia-logo.png"
                     try:
                         st.image(LOGO_PATH_MARKETING_WELCOME, width=200)
-                    except Exception: # Captura exceção mais genérica para o caso da imagem não carregar
-                        # Fallback se a imagem local não carregar
+                    except Exception: 
                         st.image("https://i.imgur.com/7IIYxq1.png", caption="Max IA (Fallback)", width=200)
             
             def exibir_max_financeiro(self):
@@ -1021,29 +1033,28 @@ if user_is_authenticated:
                 st.subheader("💲 Cálculo de Preços Inteligente com Max IA")
                 st.caption("Descreva seu produto/serviço, custos, mercado e objetivos. Envie uma imagem se ajudar.")
                 
-                current_section_key_finance = "max_financeiro_precos" # Identificador único para esta seção
-                memoria_financeiro = self.memoria_max_financeiro_precos # Memória específica
+                current_section_key_finance = "max_financeiro_precos"
+                memoria_financeiro = self.memoria_max_financeiro_precos
                 
                 uploaded_image_calc = st.file_uploader("Envie uma imagem do produto (opcional):", type=["png", "jpg", "jpeg"], key=f"preco_img_max_financeiro{APP_KEY_SUFFIX}")
                 
                 system_message_financeiro = "Você é Max IA, um especialista em finanças e precificação para PMEs. Ajude o usuário a calcular o preço de seus produtos ou serviços, considerando custos, margens, mercado e valor percebido. Seja claro e didático."
                 chain_financeiro = self._criar_cadeia_conversacional(system_message_financeiro, memoria_financeiro)
 
-                def conversar_max_financeiro_precos(input_usuario, descricao_imagem_contexto=None): # Aceita contexto da imagem
+                def conversar_max_financeiro_precos(input_usuario, descricao_imagem_contexto=None):
                     prompt_final_usuario = input_usuario
-                    if descricao_imagem_contexto: # Adiciona contexto da imagem ao prompt se disponível
+                    if descricao_imagem_contexto:
                         prompt_final_usuario = f"{descricao_imagem_contexto}\n\n{input_usuario}"
-                    
                     resposta_ai = chain_financeiro.invoke({"input_usuario": prompt_final_usuario})
-                    return resposta_ai['text'] # Ou .content dependendo da versão do Langchain
+                    return resposta_ai['text'] if isinstance(resposta_ai, dict) and 'text' in resposta_ai else str(resposta_ai)
 
-                # Usar a função _handle_chat_with_image para gerenciar o input com imagem
+
                 _handle_chat_with_image(current_section_key_finance, "Descreva o produto/serviço, custos, etc.", conversar_max_financeiro_precos, uploaded_image_calc)
                 _sidebar_clear_button_max("Preços (MaxFinanceiro)", memoria_financeiro, current_section_key_finance)
 
             def exibir_max_administrativo(self):
                 st.header("⚙️ MaxAdministrativo")
-                st.image("images/max-ia-logo.png", width=150) # Use a constante ou caminho direto
+                st.image("images/max-ia-logo.png", width=150) 
                 st.subheader("Olá! Sou o Max, seu agente para otimizar a gestão administrativa do seu negócio.")
                 st.markdown("Escolha uma ferramenta abaixo para começarmos:")
 
@@ -1070,7 +1081,6 @@ if user_is_authenticated:
                 acao_selecionada = opcoes_administrativo.get(escolha_admin_label)
                 st.markdown("---")
 
-                # Chamadas para as funções de renderização correspondentes
                 if acao_selecionada == "admin_fluxo_caixa": self._admin_render_fluxo_caixa()
                 elif acao_selecionada == "admin_planej_financeiro": self._admin_render_planejamento_financeiro()
                 elif acao_selecionada == "admin_contabil": self._admin_render_contabil()
@@ -1084,7 +1094,6 @@ if user_is_authenticated:
                 elif acao_selecionada == "admin_selecione":
                     st.info("Por favor, selecione uma ferramenta administrativa no menu acima para começar.")
             
-            # Funções _admin_render_... (sem alterações no conteúdo, apenas na estrutura de chamada)
             def _admin_render_fluxo_caixa(self):
                 st.subheader("1) MaxFluxo de Caixa")
                 st.write("Ferramenta para ajudar você a lançar e analisar as entradas e saídas, projetar saldos e tomar decisões financeiras mais assertivas para sua empresa.")
@@ -1159,7 +1168,7 @@ if user_is_authenticated:
 
             def exibir_max_pesquisa_mercado(self):
                 st.header("📈 MaxPesquisa de Mercado")
-                st.image("images/max-ia-logo.png", width=150) # Use a constante ou caminho direto
+                st.image("images/max-ia-logo.png", width=150) 
                 st.subheader("Olá! Sou o Max, seu agente para desvendar o mercado e seus clientes.")
                 st.info("Esta área está em desenvolvimento. Em breve, você poderá realizar análises de público-alvo aprofundadas, entender a concorrência e descobrir novas tendências de mercado, tudo com a ajuda da IA.")
                 st.caption("Por enquanto, algumas funcionalidades de análise de público e concorrência estão disponíveis no MaxMarketing Total.")
@@ -1177,11 +1186,10 @@ if user_is_authenticated:
                     system_message_plano = "Você é Max IA, um consultor de negócios experiente. Ajude o usuário a criar um rascunho de plano de negócios, seção por seção. Faça perguntas, ofereça sugestões e ajude a estruturar as ideias."
                     chain_plano = self._criar_cadeia_conversacional(system_message_plano, memoria_plano)
                     
-                    def conversar_max_bussola_plano(input_usuario): # Não precisa de contexto de arquivos aqui
+                    def conversar_max_bussola_plano(input_usuario):
                         resposta_ai = chain_plano.invoke({"input_usuario": input_usuario})
-                        return resposta_ai['text'] # Ou .content
-                    
-                    # Usar a função global exibir_chat_e_obter_input
+                        return resposta_ai['text'] if isinstance(resposta_ai, dict) and 'text' in resposta_ai else str(resposta_ai)
+
                     exibir_chat_e_obter_input(current_section_key_plano, "Sua resposta ou próxima seção do plano...", conversar_max_bussola_plano)
                     _sidebar_clear_button_max("Plano (MaxBússola)", memoria_plano, current_section_key_plano)
 
@@ -1193,12 +1201,13 @@ if user_is_authenticated:
                     system_message_ideias = "Você é Max IA, um especialista em inovação e brainstorming. Ajude o usuário a gerar novas ideias para seus negócios, resolver problemas ou explorar novas oportunidades. Use o contexto de arquivos, se fornecido."
                     chain_ideias = self._criar_cadeia_conversacional(system_message_ideias, memoria_ideias)
 
-                    def conversar_max_bussola_ideias(input_usuario, contexto_arquivos=None): # Aceita contexto
+                    def conversar_max_bussola_ideias(input_usuario, contexto_arquivos=None):
                         prompt_final_usuario = input_usuario
                         if contexto_arquivos:
                             prompt_final_usuario = f"Contexto dos arquivos:\n{contexto_arquivos}\n\nCom base nisso e na minha solicitação: {input_usuario}"
                         resposta_ai = chain_ideias.invoke({"input_usuario": prompt_final_usuario})
-                        return resposta_ai['text'] # Ou .content
+                        return resposta_ai['text'] if isinstance(resposta_ai, dict) and 'text' in resposta_ai else str(resposta_ai)
+
 
                     uploaded_files_ideias_ui = st.file_uploader(
                         "Envie arquivos de contexto (opcional - .txt, .png, .jpg):", 
@@ -1206,60 +1215,51 @@ if user_is_authenticated:
                         accept_multiple_files=True, 
                         key=f"ideias_file_uploader_max_bussola{APP_KEY_SUFFIX}"
                     )
-                    # Usar a função global _handle_chat_with_files
                     _handle_chat_with_files(current_section_key_ideias, "Descreva seu desafio ou peça ideias:", conversar_max_bussola_ideias, uploaded_files_ideias_ui)
                     _sidebar_clear_button_max("Ideias (MaxBússola)", memoria_ideias, current_section_key_ideias)
 
             def exibir_max_trainer(self):
                 st.header("🎓 MaxTrainer IA")
-                st.image("images/max-ia-logo.png", width=150) # Use a constante ou caminho direto
+                st.image("images/max-ia-logo.png", width=150) 
                 st.subheader("Olá! Sou o Max, seu treinador pessoal de IA para negócios.")
-                st.info("Esta área está em desenvolvimento. Em breve, o MaxTrainer trará tutoriais interativos, dicas personalizadas sobre como usar o Max IA ao máximo, e insights para você se tornar um mestre em aplicar IA no seu dia a dia empresarial.")
+                st.info("Esta área está em desenvolvimento...")
                 st.write("Imagine aprender sobre:")
                 st.markdown("""
-                - Como criar os melhores prompts para cada agente Max IA.
-                - Interpretando os resultados da IA e aplicando-os na prática.
-                - Novas funcionalidades e como elas podem te ajudar.
-                - Estudos de caso e exemplos de sucesso.
+                - Como criar os melhores prompts...
+                - Interpretando os resultados da IA...
+                - Novas funcionalidades...
+                - Estudos de caso...
                 """)
                 st.balloons()
 
         # --- Funções Utilitárias Globais ---
-        # (inicializar_ou_resetar_chat, exibir_chat_e_obter_input, _sidebar_clear_button_max, 
-        #  _handle_chat_with_image, _handle_chat_with_files)
-        # Estas funções já existem e parecem corretas. Apenas garanta que as chaves de sessão
-        # usadas dentro delas são únicas e não conflitam.
-
         def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
             chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
             st.session_state[chat_display_key] = [{"role": "assistant", "content": mensagem_inicial_ia}]
             if memoria_agente_instancia:
-                memoria_agente_instancia.clear() # Limpa a memória Langchain
-                # Adiciona a mensagem inicial da IA à memória Langchain
-                if hasattr(memoria_agente_instancia.chat_memory, 'add_ai_message'):
+                memoria_agente_instancia.clear()
+                if hasattr(memoria_agente_instancia.chat_memory, 'add_ai_message'): # Para alguns tipos de memória
                     memoria_agente_instancia.chat_memory.add_ai_message(mensagem_inicial_ia)
                 elif hasattr(memoria_agente_instancia.chat_memory, 'messages') and isinstance(memoria_agente_instancia.chat_memory.messages, list):
-                    # Para ConversationBufferMemory que usa uma lista de BaseMessage
                     memoria_agente_instancia.chat_memory.messages.clear()
                     memoria_agente_instancia.chat_memory.messages.append(AIMessage(content=mensagem_inicial_ia))
 
-            # Limpeza específica para seções com uploads
             if area_chave == "max_financeiro_precos":
                 st.session_state.pop(f'last_uploaded_image_info_{area_chave}{APP_KEY_SUFFIX}', None)
                 st.session_state.pop(f'processed_image_id_{area_chave}{APP_KEY_SUFFIX}', None)
                 st.session_state.pop(f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}', None)
             elif area_chave == "max_bussola_ideias":
                 st.session_state.pop(f'uploaded_file_info_{area_chave}_for_prompt{APP_KEY_SUFFIX}', None)
-                st.session_state.pop(f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}', None) # processed_file_id_key na função original
+                st.session_state.pop(f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}', None)
                 st.session_state.pop(f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}', None)
 
 
         def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
             chat_display_key = f"chat_display_{area_chave}{APP_KEY_SUFFIX}"
             if chat_display_key not in st.session_state:
-                # Isso deve ser inicializado por inicializar_ou_resetar_chat
-                # Se não for, pode indicar um problema no fluxo lógico.
-                # Por segurança, inicializa aqui se não existir.
+                # Deveria ter sido inicializado por inicializar_ou_resetar_chat. Se não, é um bug no fluxo.
+                # Para segurança, inicializa se não existir, mas isso não deveria ser necessário.
+                # st.warning(f"Aviso: {chat_display_key} não encontrado. Verifique o fluxo de inicialização do chat.")
                 st.session_state[chat_display_key] = [] 
 
             for msg_info in st.session_state[chat_display_key]:
@@ -1272,79 +1272,66 @@ if user_is_authenticated:
                 st.session_state[chat_display_key].append({"role": "user", "content": prompt_usuario})
                 with st.chat_message("user"): st.markdown(prompt_usuario)
                 
-                # Sinaliza que o input do usuário foi processado para seções com uploads
                 if area_chave in ["max_financeiro_precos", "max_bussola_ideias"]:
                     st.session_state[f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'] = True
 
                 with st.spinner("Max IA está processando... 🤔"):
                     resposta_ai = funcao_conversa_agente(prompt_usuario, **kwargs_funcao_agente)
                     st.session_state[chat_display_key].append({"role": "assistant", "content": resposta_ai})
-                st.rerun() # Recarrega para exibir a nova mensagem e limpar o input
+                st.rerun()
 
         def _sidebar_clear_button_max(label, memoria, section_key_prefix):
             if st.sidebar.button(f"🗑️ Limpar Histórico de {label}", key=f"btn_reset_{section_key_prefix}{APP_KEY_SUFFIX}_clear_max"):
                 msg_inicial = f"Ok, vamos recomeçar {label.lower()}! Qual o seu ponto de partida?"
-                # Mensagens iniciais personalizadas
-                if section_key_prefix == "max_financeiro_precos":
-                    msg_inicial = "Ok, vamos recomeçar o cálculo de preços com MaxFinanceiro! Descreva seu produto ou serviço."
-                elif section_key_prefix == "max_bussola_ideias":
-                    msg_inicial = "Ok, vamos recomeçar a geração de ideias com MaxBússola! Qual o seu ponto de partida?"
-                elif section_key_prefix == "max_bussola_plano":
-                    msg_inicial = "Olá! Sou Max IA com a MaxBússola. Vamos elaborar um rascunho do seu plano de negócios? Comece me contando sobre sua ideia."
+                if section_key_prefix == "max_financeiro_precos": msg_inicial = "Ok, vamos recomeçar o cálculo de preços com MaxFinanceiro! Descreva seu produto ou serviço."
+                elif section_key_prefix == "max_bussola_ideias": msg_inicial = "Ok, vamos recomeçar a geração de ideias com MaxBússola! Qual o seu ponto de partida?"
+                elif section_key_prefix == "max_bussola_plano": msg_inicial = "Olá! Sou Max IA com a MaxBússola. Vamos elaborar um rascunho do seu plano de negócios? Comece me contando sobre sua ideia."
                 
                 inicializar_ou_resetar_chat(section_key_prefix, msg_inicial, memoria)
                 st.rerun()
 
         def _handle_chat_with_image(area_chave, prompt_placeholder, funcao_conversa_agente, uploaded_image_obj):
             descricao_imagem_para_ia = None
-            processed_image_id_key = f'processed_image_id_{area_chave}{APP_KEY_SUFFIX}' # ID da imagem processada
-            last_uploaded_info_key = f'last_uploaded_image_info_{area_chave}{APP_KEY_SUFFIX}' # Info da imagem para IA
-            user_input_processed_key = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}' # Flag
+            processed_image_id_key = f'processed_image_id_{area_chave}{APP_KEY_SUFFIX}'
+            last_uploaded_info_key = f'last_uploaded_image_info_{area_chave}{APP_KEY_SUFFIX}'
+            user_input_processed_key = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'
 
             if uploaded_image_obj is not None:
-                # Verifica se a imagem é nova ou se a informação de contexto foi limpa
                 if st.session_state.get(processed_image_id_key) != uploaded_image_obj.file_id or not st.session_state.get(last_uploaded_info_key):
                     try:
                         img_pil = Image.open(uploaded_image_obj); 
                         st.image(img_pil, caption=f"Imagem: {uploaded_image_obj.name}", width=150)
-                        descricao_imagem_para_ia = f"Usuário carregou imagem '{uploaded_image_obj.name}'." # Descrição simples
+                        descricao_imagem_para_ia = f"Usuário carregou imagem '{uploaded_image_obj.name}'."
                         st.session_state[last_uploaded_info_key] = descricao_imagem_para_ia
                         st.session_state[processed_image_id_key] = uploaded_image_obj.file_id
                         st.info(f"Imagem '{uploaded_image_obj.name}' pronta para o diálogo com Max IA.")
-                        # Limpa o flag de processamento de input anterior, pois uma nova imagem foi carregada
                         st.session_state[user_input_processed_key] = False 
                     except Exception as e_img_proc:
                         st.error(f"Erro ao processar imagem: {e_img_proc}")
                         st.session_state[last_uploaded_info_key] = None; st.session_state[processed_image_id_key] = None
                 else:
-                    # Se a imagem é a mesma e já foi processada, recupera a descrição
                     descricao_imagem_para_ia = st.session_state.get(last_uploaded_info_key)
             
             kwargs_chat = {}
-            # Passa o contexto da imagem APENAS se o input do usuário ainda não foi processado com este contexto
             ctx_img_prox_dialogo = st.session_state.get(last_uploaded_info_key)
             if ctx_img_prox_dialogo and not st.session_state.get(user_input_processed_key, False):
                 kwargs_chat['descricao_imagem_contexto'] = ctx_img_prox_dialogo
             
             exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_chat)
 
-            # Após o input do usuário ser processado (em exibir_chat_e_obter_input),
-            # se havia um contexto de imagem, ele já foi usado. Limpa para o próximo diálogo,
-            # a menos que a mesma imagem seja explicitamente mantida ou uma nova seja carregada.
-            if st.session_state.get(user_input_processed_key, False):
-                if st.session_state.get(last_uploaded_info_key): # Se havia contexto de imagem
-                     # st.session_state[last_uploaded_info_key] = None # Comentar para manter o contexto da imagem entre turnos
-                     pass # Decida se quer limpar o contexto da imagem após cada uso ou mantê-lo
+            if st.session_state.get(user_input_processed_key, False): # Se o input foi processado
+                # Decide se quer limpar o contexto da imagem após o uso.
+                # st.session_state.pop(last_uploaded_info_key, None) # Para limpar após cada uso
                 st.session_state[user_input_processed_key] = False # Reseta o flag
+
 
         def _handle_chat_with_files(area_chave, prompt_placeholder, funcao_conversa_agente, uploaded_files_objs):
             contexto_para_ia_local = None
-            processed_file_id_key = f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}' # Assinatura dos arquivos processados
-            uploaded_info_key = f'uploaded_file_info_{area_chave}_for_prompt{APP_KEY_SUFFIX}' # Contexto extraído para IA
-            user_input_processed_key = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}' # Flag
+            processed_file_id_key = f'processed_file_id_{area_chave}{APP_KEY_SUFFIX}'
+            uploaded_info_key = f'uploaded_file_info_{area_chave}_for_prompt{APP_KEY_SUFFIX}'
+            user_input_processed_key = f'user_input_processed_{area_chave}{APP_KEY_SUFFIX}'
 
             if uploaded_files_objs:
-                # Cria uma assinatura única para o conjunto atual de arquivos carregados
                 current_file_signature = "-".join(sorted([f"{f.name}-{f.size}-{f.file_id}" for f in uploaded_files_objs]))
                 
                 if st.session_state.get(processed_file_id_key) != current_file_signature or not st.session_state.get(uploaded_info_key):
@@ -1353,11 +1340,9 @@ if user_is_authenticated:
                         for f_item in uploaded_files_objs:
                             try:
                                 if f_item.type == "text/plain":
-                                    text_contents.append(f"Arquivo '{f_item.name}':\n{f_item.read().decode('utf-8')[:3000]}...") # Limita o tamanho
+                                    text_contents.append(f"Arquivo '{f_item.name}':\n{f_item.read().decode('utf-8', errors='replace')[:3000]}...")
                                 elif f_item.type in ["image/png","image/jpeg"]:
-                                    # Não exibe a imagem aqui para não poluir o chat, apenas extrai info
                                     image_info.append(f"Usuário forneceu uma imagem chamada '{f_item.name}'.") 
-                                    # Se quiser exibir, use st.image(...)
                             except Exception as e_file_proc:
                                 st.error(f"Erro ao processar '{f_item.name}': {e_file_proc}")
                     
@@ -1369,11 +1354,11 @@ if user_is_authenticated:
                         contexto_para_ia_local = st.session_state[uploaded_info_key]
                         st.info("Arquivo(s) de contexto pronto(s) para Max IA.")
                     else:
-                        st.session_state[uploaded_info_key] = None # Nenhum contexto útil extraído
+                        st.session_state.pop(uploaded_info_key, None) 
                     st.session_state[processed_file_id_key] = current_file_signature
-                    st.session_state[user_input_processed_key] = False # Novos arquivos, reseta flag
+                    st.session_state[user_input_processed_key] = False 
                 else:
-                    contexto_para_ia_local = st.session_state.get(uploaded_info_key) # Usa contexto já processado
+                    contexto_para_ia_local = st.session_state.get(uploaded_info_key)
             
             kwargs_chat = {}
             ctx_files_prox_dialogo = st.session_state.get(uploaded_info_key)
@@ -1383,9 +1368,7 @@ if user_is_authenticated:
             exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_chat)
 
             if st.session_state.get(user_input_processed_key, False):
-                if st.session_state.get(uploaded_info_key):
-                    # st.session_state[uploaded_info_key] = None # Comentar para manter contexto entre turnos
-                    pass
+                # st.session_state.pop(uploaded_info_key, None) # Para limpar após cada uso
                 st.session_state[user_input_processed_key] = False
 
 
@@ -1394,28 +1377,28 @@ if user_is_authenticated:
            not isinstance(st.session_state.max_agente_instancia, MaxAgente) or \
            (hasattr(st.session_state.max_agente_instancia, 'llm') and st.session_state.max_agente_instancia.llm != llm_model_instance):
             
-            if llm_model_instance: # Só instancia o agente se o LLM foi carregado
+            if llm_model_instance:
                 st.session_state.max_agente_instancia = MaxAgente(llm_passed_model=llm_model_instance)
             else:
                 st.session_state.max_agente_instancia = None 
         
         agente = None 
-        if st.session_state.get('max_agente_instancia') and llm_model_instance: # Verifica se o agente e o LLM estão disponíveis
+        if st.session_state.get('max_agente_instancia') and llm_model_instance:
             agente = st.session_state.max_agente_instancia
 
             st.sidebar.write(f"Logado como: {display_email}")
             if st.sidebar.button("Logout", key=f"main_app_logout_max{APP_KEY_SUFFIX}"):
                 st.session_state.user_session_pyrebase = None
-                # Lista abrangente de chaves para limpar no logout
-                keys_to_clear_on_logout = [k for k in st.session_state if APP_KEY_SUFFIX in k or k.startswith('memoria_') or k.startswith('chat_display_') or k.startswith('generated_') or k.startswith('post_') or k.startswith('campaign_') or k.startswith('main_marketing_action_choice_') or k.startswith('sidebar_selection_') or k.startswith('selectbox_admin_tool') or k.startswith('radio_plan_fin')]
+                keys_to_clear_on_logout = [k for k in st.session_state if APP_KEY_SUFFIX in k or k.startswith('memoria_') or k.startswith('chat_display_') or k.startswith('generated_') or 'form' in k.lower() or 'radio' in k.lower() or 'select' in k.lower()]
                 keys_to_clear_on_logout.extend([
                     'max_agente_instancia', 'area_selecionada_max_ia',
                     'firebase_init_success_message_shown', 'firebase_app_instance',
-                    'firestore_init_success_message_shown', 'firestore_client_instance', # Limpa flags e instâncias do firestore
-                    'llm_init_success_sidebar_shown_main_app', 'is_user_activated' # Limpa status de ativação
+                    'firestore_init_success_message_shown', 'firestore_client_instance',
+                    'llm_init_success_sidebar_shown_main_app', 'is_user_activated'
                 ])
-                for key_to_clear in keys_to_clear_on_logout:
-                    st.session_state.pop(key_to_clear, None)
+                for key_to_clear in list(st.session_state.keys()): # Itera sobre uma cópia das chaves
+                    if key_to_clear in keys_to_clear_on_logout or APP_KEY_SUFFIX in key_to_clear:
+                         st.session_state.pop(key_to_clear, None)
                 st.rerun()
 
             LOGO_PATH_SIDEBAR_APP = "images/max-ia-logo.png"
@@ -1439,58 +1422,48 @@ if user_is_authenticated:
             }
             radio_key_sidebar_main_max = f'sidebar_selection_max_ia{APP_KEY_SUFFIX}'
 
-            # Gerenciamento do estado do menu da sidebar
             if 'area_selecionada_max_ia' not in st.session_state or st.session_state.area_selecionada_max_ia not in opcoes_menu_max_ia.keys():
-                st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0] # Padrão para o primeiro item
+                st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
 
             radio_index_key_nav_max = f'{radio_key_sidebar_main_max}_index'
-            if radio_index_key_nav_max not in st.session_state: # Inicializa o índice do rádio
-                try:
-                    st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(st.session_state.area_selecionada_max_ia)
-                except ValueError: # Fallback se a área selecionada não for válida
-                    st.session_state[radio_index_key_nav_max] = 0
-                    st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
+            # Garante que o índice seja inicializado corretamente
+            try:
+                current_selection_label = st.session_state.area_selecionada_max_ia
+                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(current_selection_label)
+            except (ValueError, KeyError): # Fallback se a chave ou valor não for válido
+                st.session_state.area_selecionada_max_ia = list(opcoes_menu_max_ia.keys())[0]
+                st.session_state[radio_index_key_nav_max] = 0
             
-            def update_main_radio_index_on_change_max_ia(): # Callback para o rádio da sidebar
-                # Atualiza o índice E a área selecionada com base na escolha do rádio
+            def on_sidebar_menu_change():
                 nova_selecao_label = st.session_state[radio_key_sidebar_main_max]
-                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(nova_selecao_label)
                 st.session_state.area_selecionada_max_ia = nova_selecao_label # Atualiza a área principal
-                 # Limpa conteúdos de marketing se sair da seção MaxMarketing
+                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(nova_selecao_label) # Atualiza o índice
+                
                 if nova_selecao_label != "🚀 MaxMarketing Total":
-                    keys_to_clear_on_nav = [
-                        f'generated_post_content_new{APP_KEY_SUFFIX}',
-                        f'generated_campaign_content_new{APP_KEY_SUFFIX}',
-                        f'generated_campaign_details_content{APP_KEY_SUFFIX}', 
-                        f'generated_lp_content_new{APP_KEY_SUFFIX}',
-                        f'generated_site_content_new{APP_KEY_SUFFIX}',
-                        f'generated_client_analysis_new{APP_KEY_SUFFIX}',
-                        f'generated_competitor_analysis_new{APP_KEY_SUFFIX}'
-                    ]
-                    for key_to_clear in keys_to_clear_on_nav:
-                        st.session_state.pop(key_to_clear, None)
+                    keys_to_clear = [f'generated_post_content_new{APP_KEY_SUFFIX}', f'generated_campaign_content_new{APP_KEY_SUFFIX}', f'generated_campaign_details_content{APP_KEY_SUFFIX}', f'generated_lp_content_new{APP_KEY_SUFFIX}', f'generated_site_content_new{APP_KEY_SUFFIX}', f'generated_client_analysis_new{APP_KEY_SUFFIX}', f'generated_competitor_analysis_new{APP_KEY_SUFFIX}']
+                    for key in keys_to_clear: st.session_state.pop(key, None)
 
-
-            area_selecionada_label_max_ia = st.sidebar.radio(
+            area_selecionada_label_max_ia = st.sidebar.radio( # Removido o _max_ia do final da var local
                 "Max Agentes IA:",
                 options=list(opcoes_menu_max_ia.keys()),
-                key=radio_key_sidebar_main_max, # Chave do widget
-                index=st.session_state[radio_index_key_nav_max], # Usa o índice da session_state
-                on_change=update_main_radio_index_on_change_max_ia # Callback
+                key=radio_key_sidebar_main_max,
+                index=st.session_state[radio_index_key_nav_max],
+                on_change=on_sidebar_menu_change 
             )
+            
+            # A lógica de exibição agora usa st.session_state.area_selecionada_max_ia que é atualizada pelo on_change
+            current_section_key_to_display = opcoes_menu_max_ia.get(st.session_state.area_selecionada_max_ia)
 
-            # O on_change já lida com a atualização e limpeza. O rerun acontece naturalmente.
-            current_section_key_max_ia = opcoes_menu_max_ia.get(st.session_state.area_selecionada_max_ia)
 
-            if current_section_key_max_ia == "painel_max_ia":
+            if current_section_key_to_display == "painel_max_ia": # Usar a variável correta
                 st.markdown("<div style='text-align: center;'><h1>👋 Bem-vindo ao Max IA!</h1></div>", unsafe_allow_html=True)
                 logo_base64 = convert_image_to_base64('images/max-ia-logo.png')
                 if logo_base64:
                     st.markdown(f"<div style='text-align: center;'><img src='data:image/png;base64,{logo_base64}' width='200'></div>", unsafe_allow_html=True)
                 else:
                     st.markdown("<div style='text-align: center;'><p>(Logo não pôde ser carregado)</p></div>", unsafe_allow_html=True)
-                st.markdown("<div style='text-align: center;'><p style='font-size: 1.2em;'>Olá! Eu sou o <strong>Max</strong>, seu conjunto de agentes de IA dedicados a impulsionar o sucesso da sua Pequena ou Média Empresa.</p></div>", unsafe_allow_html=True)
-                st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para selecionar um agente especializado e começar a transformar seu negócio hoje mesmo.</p></div>", unsafe_allow_html=True)
+                st.markdown("<div style='text-align: center;'><p style='font-size: 1.2em;'>Olá! Eu sou o <strong>Max</strong>...</p></div>", unsafe_allow_html=True)
+                st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda...</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
                 st.subheader("Conheça seus Agentes Max IA:")
                 cols_cards = st.columns(3)
@@ -1505,46 +1478,42 @@ if user_is_authenticated:
                 for i, (title, caption) in enumerate(card_data):
                     with cols_cards[i % 3]:
                         matching_key_for_button = None
-                        correct_menu_label_for_button = title # Default to title if no direct match
+                        correct_menu_label_for_button = title 
                         for menu_title_iter, section_key_val_iter in opcoes_menu_max_ia.items():
-                            # Tenta encontrar a correspondência exata do título do card com o menu
                             if menu_title_iter.strip() == title.strip():
                                 matching_key_for_button = section_key_val_iter
                                 correct_menu_label_for_button = menu_title_iter
                                 break
                         
                         if matching_key_for_button and st.button(title, key=f"btn_goto_card_{matching_key_for_button}{APP_KEY_SUFFIX}", use_container_width=True, help=f"Ir para {title}"):
-                            st.session_state.area_selecionada_max_ia = correct_menu_label_for_button
-                            try: # Atualiza o índice do rádio
-                                st.session_state[radio_index_key_nav_max] = list(opcoes_menu_max_ia.keys()).index(correct_menu_label_for_button)
-                            except ValueError: pass # Ignora se não encontrar (improvável)
+                            st.session_state[radio_key_sidebar_main_max] = correct_menu_label_for_button # Dispara o on_change
+                            on_sidebar_menu_change() # Chama explicitamente para garantir a atualização antes do rerun
                             st.rerun()
-                        else: # Se não houver botão ou não for clicado, apenas exibe
+                        else:
                              st.markdown(f"**{title}**") 
                         st.caption(caption)
                         st.markdown("<hr style='margin-top: 0.5rem; margin-bottom: 0.5rem;'>", unsafe_allow_html=True)
                 st.balloons()
 
-            elif current_section_key_max_ia == "max_marketing_total": agente.exibir_max_marketing_total()
-            elif current_section_key_max_ia == "max_financeiro": agente.exibir_max_financeiro()
-            elif current_section_key_max_ia == "max_administrativo": agente.exibir_max_administrativo() 
-            elif current_section_key_max_ia == "max_pesquisa_mercado": agente.exibir_max_pesquisa_mercado()
-            elif current_section_key_max_ia == "max_bussola": agente.exibir_max_bussola()
-            elif current_section_key_max_ia == "max_trainer_ia": agente.exibir_max_trainer()
+            elif current_section_key_to_display == "max_marketing_total": agente.exibir_max_marketing_total()
+            elif current_section_key_to_display == "max_financeiro": agente.exibir_max_financeiro()
+            elif current_section_key_to_display == "max_administrativo": agente.exibir_max_administrativo() 
+            elif current_section_key_to_display == "max_pesquisa_mercado": agente.exibir_max_pesquisa_mercado()
+            elif current_section_key_to_display == "max_bussola": agente.exibir_max_bussola()
+            elif current_section_key_to_display == "max_trainer_ia": agente.exibir_max_trainer()
         
-        else: 
+        else: # Agente não pôde ser instanciado ou LLM falhou
             st.error("🚨 O Max IA não pôde ser totalmente iniciado.")
             st.info("Isso pode ter ocorrido devido a um problema com a chave da API do Google, ao contatar os serviços do Google Generative AI, ou o agente não pôde ser instanciado.")
             if llm_init_exception:
                 st.exception(llm_init_exception)
 
-    else:
-        # Usuário autenticado, mas NÃO ATIVADO
-        display_activation_form(uid, db_firestore) # Passa db_firestore
+    else: # Usuário autenticado, mas NÃO ATIVADO
+        display_activation_form(uid, db_firestore)
 
-# --- Seção de Login/Registro (executada se user_is_authenticated for False) ---
-else:
-    st.session_state.pop('auth_error_shown', None) # Limpa erro de auth se chegou aqui (não autenticado)
+# --- Seção de Login/Registro ---
+else: # user_is_authenticated é False
+    st.session_state.pop('auth_error_shown', None)
     st.title("🔑 Bem-vindo ao Max IA")
     st.sidebar.subheader("Login / Registro")
     auth_action_choice_key = "app_auth_choice_pyrebase_max"
@@ -1560,26 +1529,33 @@ else:
                 if login_email and login_password and pb_auth_client:
                     try:
                         user_session = pb_auth_client.sign_in_with_email_and_password(login_email, login_password)
-                        st.session_state.user_session_pyrebase = dict(user_session) # Armazena a sessão
-                        # Limpa flags para permitir novas mensagens de sucesso na inicialização
+                        st.session_state.user_session_pyrebase = dict(user_session)
                         st.session_state.pop('firebase_init_success_message_shown', None)
                         st.session_state.pop('firestore_init_success_message_shown', None)
-                        st.session_state.pop('is_user_activated', None) # Limpa status de ativação para revalidar
+                        st.session_state.pop('is_user_activated', None)
+                        st.session_state.pop('auth_error_shown', None) # Limpa erro anterior
                         st.rerun()
                     except Exception as e_login:
                         error_message_login = "Erro no login. Verifique suas credenciais."
-                        try:
-                            error_details_str = e_login.args[0] if len(e_login.args) > 0 else "{}"
-                            error_data = json.loads(error_details_str.replace("'", "\""))
-                            api_error_message = error_data.get('error', {}).get('message', '')
-                            if "INVALID_LOGIN_CREDENTIALS" in api_error_message or \
-                               "EMAIL_NOT_FOUND" in api_error_message or \
-                               "INVALID_PASSWORD" in api_error_message or \
-                               "USER_DISABLED" in api_error_message or \
-                               "INVALID_EMAIL" in api_error_message: # Adicionado INVALID_EMAIL
-                                error_message_login = "Email ou senha inválidos, ou usuário desabilitado."
-                            elif api_error_message: error_message_login = f"Erro no login: {api_error_message}"
-                        except: pass # Falha no parsing do erro, mantém a mensagem genérica
+                        # (Lógica de parsing de erro do Firebase similar à da verificação de sessão)
+                        login_error_details_text = ""
+                        if hasattr(e_login, 'args') and len(e_login.args) > 0:
+                            raw_err = e_login.args[0]
+                            if isinstance(raw_err, str): 
+                                login_error_details_text = raw_err
+                                if raw_err.strip().startswith("{") and "\"error\"" in raw_err.lower():
+                                    try:
+                                        err_data = json.loads(raw_err)
+                                        parsed_msg = err_data.get('error',{}).get('message', login_error_details_text)
+                                        if parsed_msg: login_error_details_text = parsed_msg
+                                    except: pass
+                            else: login_error_details_text = str(raw_err)
+                        else: login_error_details_text = str(e_login)
+
+                        if any(code in login_error_details_text for code in ["INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND", "INVALID_PASSWORD", "USER_DISABLED", "INVALID_EMAIL", "TOO_MANY_ATTEMPTS_TRY_LATER"]):
+                            error_message_login = "Email ou senha inválidos, usuário desabilitado, ou muitas tentativas. Tente mais tarde."
+                        elif login_error_details_text: 
+                            error_message_login = f"Erro no login: {login_error_details_text}"
                         st.sidebar.error(error_message_login)
                 elif not pb_auth_client: st.sidebar.error("Cliente Firebase Auth não inicializado.")
                 else: st.sidebar.warning("Por favor, preencha email e senha.")
@@ -1602,22 +1578,32 @@ else:
                             st.sidebar.caption(f"Nota: Não foi possível enviar email de verificação: {verify_email_error_local}")
                     except Exception as e_register:
                         error_message_register = "Erro no registro."
-                        try:
-                            error_details_str = e_register.args[0] if len(e_register.args) > 0 else "{}"
-                            error_data = json.loads(error_details_str.replace("'", "\""))
-                            api_error_message = error_data.get('error', {}).get('message', '')
-                            if "EMAIL_EXISTS" in api_error_message:
-                                error_message_register = "Este email já está registrado. Tente fazer login."
-                            elif api_error_message:
-                                error_message_register = f"Erro no registro: {api_error_message}"
-                        except: # Falha no parsing do erro
-                            error_message_register = f"Erro no registro: {str(e_register)}"
+                        # (Lógica de parsing de erro do Firebase similar)
+                        reg_error_details_text = ""
+                        if hasattr(e_register, 'args') and len(e_register.args) > 0:
+                            raw_err_reg = e_register.args[0]
+                            if isinstance(raw_err_reg, str): 
+                                reg_error_details_text = raw_err_reg
+                                if raw_err_reg.strip().startswith("{") and "\"error\"" in raw_err_reg.lower():
+                                    try:
+                                        err_data_reg = json.loads(raw_err_reg)
+                                        parsed_msg_reg = err_data_reg.get('error',{}).get('message', reg_error_details_text)
+                                        if parsed_msg_reg: reg_error_details_text = parsed_msg_reg
+                                    except: pass
+                            else: reg_error_details_text = str(raw_err_reg)
+                        else: reg_error_details_text = str(e_register)
+
+                        if "EMAIL_EXISTS" in reg_error_details_text:
+                            error_message_register = "Este email já está registrado. Tente fazer login."
+                        elif "WEAK_PASSWORD" in reg_error_details_text : # Exemplo de outro erro
+                            error_message_register = "Senha muito fraca. Use pelo menos 6 caracteres."
+                        elif reg_error_details_text:
+                            error_message_register = f"Erro no registro: {reg_error_details_text}"
                         st.sidebar.error(error_message_register)
                 elif not pb_auth_client: st.sidebar.error("Cliente Firebase Auth não inicializado.")
                 else: st.sidebar.warning("Por favor, preencha email e senha para registro.")
 
-    # Exibe informações na tela de login se nenhuma mensagem de erro crítica da inicialização do Firebase ocorreu
-    if not error_message_firebase_init or (firebase_initialized_successfully and firestore_initialized_successfully):
+    if not error_message_firebase_init.strip() or (firebase_initialized_successfully and firestore_initialized_successfully):
         st.info("Faça login ou registre-se na barra lateral para usar o Max IA.")
     
     LOGO_PATH_LOGIN_UNAUTH = "images/max-ia-logo.png"
