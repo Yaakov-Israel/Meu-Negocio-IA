@@ -1,3 +1,4 @@
+
 import streamlit as st
 import os
 import json
@@ -157,6 +158,7 @@ if user_is_authenticated:
             llm_init_exception = e_llm
             st.error(f"😥 ERRO AO INICIALIZAR O MODELO LLM DO GOOGLE: {e_llm}")
 
+    # Funções _marketing_handle_... e outras funções auxiliares
     def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
         st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
         details = {}
@@ -243,7 +245,7 @@ if user_is_authenticated:
         if not selected_platforms_list:
             st.warning("Por favor, selecione pelo menos uma plataforma para a campanha.")
             st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
-            st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) # Limpa detalhes também
+            st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None)
             return
         if not details_dict.get("objective") or not details_dict["objective"].strip():
             st.warning("Por favor, descreva o objetivo principal da campanha.")
@@ -286,13 +288,14 @@ if user_is_authenticated:
                 ai_response = llm.invoke(final_prompt)
                 if hasattr(ai_response, 'content'):
                     st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = ai_response.content
-                    st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) # Limpa detalhes antigos ao gerar novo plano
+                    st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None)
                 else:
                     st.warning("Resposta da IA não continha o atributo 'content' esperado. Usando a resposta como string.")
                     st.session_state[f'generated_campaign_content_new{APP_KEY_SUFFIX}'] = str(ai_response)
                     st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None)
             except ValueError as ve:
                 st.error(f"🚧 Max IA encontrou um erro de valor ao processar sua solicitação para a campanha: {ve}")
+                st.error("Isso pode ser devido a um formato inesperado nos dados enviados ou uma configuração interna.")
                 st.error(f"Detalhes do prompt que podem ter causado o erro (primeiros 500 caracteres): {final_prompt[:500]}...")
                 st.session_state.pop(f'generated_campaign_content_new{APP_KEY_SUFFIX}', None)
                 print(f"ValueError DETALHADO em llm.invoke para CRIAR CAMPANHA: {ve}")
@@ -680,7 +683,7 @@ if user_is_authenticated:
                                            data=st.session_state[SESSION_KEY_CAMPAIGN_DETAILS].encode('utf-8'),
                                            file_name=f"campanha_detalhada_max_ia{APP_KEY_SUFFIX}.txt",
                                            mime="text/plain",
-                                           key=f"download_campaign_details_button{APP_KEY_SUFFIX}")
+                                           key=f"download_campaign_details_button_{SESSION_KEY_CAMPAIGN_DETAILS}{APP_KEY_SUFFIX}") # Chave única
                     except Exception as e_dl_details:
                         if "can't be used in an `st.form()`" in str(e_dl_details):
                             st.warning("O botão de download para o conteúdo detalhado está temporariamente indisponível aqui.")
@@ -698,7 +701,7 @@ if user_is_authenticated:
                     st.markdown("---")
                     if st.button("✍️ Detalhar Conteúdo da Campanha com Max IA", key=f"detail_campaign_button{APP_KEY_SUFFIX}"):
                         plano_gerado = st.session_state[SESSION_KEY_CAMPAIGN_PLAN]
-                        _marketing_handle_detalhar_campanha(marketing_files_info_for_prompt_local, plano_gerado, self.llm) # Passa o llm da classe
+                        _marketing_handle_detalhar_campanha(marketing_files_info_for_prompt_local, plano_gerado, self.llm)
                         st.rerun() 
                     if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_campaign_plan_button{APP_KEY_SUFFIX}"):
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
@@ -737,7 +740,7 @@ if user_is_authenticated:
                     st.subheader("💡 Estrutura e Conteúdo Sugeridos para Landing Page:")
                     st.markdown(st.session_state[SESSION_KEY_LP_CONTENT])
                     try: 
-                        st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[SESSION_KEY_LP_CONTENT].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max_output_{SESSION_KEY_LP_CONTENT}{APP_KEY_SUFFIX}") # Chave de botão única
+                        st.download_button(label="📥 Baixar Sugestões da LP",data=st.session_state[SESSION_KEY_LP_CONTENT].encode('utf-8'), file_name=f"landing_page_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain", key=f"download_lp_max_output_{SESSION_KEY_LP_CONTENT}{APP_KEY_SUFFIX}")
                     except Exception as e_dl_lp:
                         st.error(f"Erro ao renderizar botão de download da LP: {e_dl_lp}")
                     if st.button("✨ Criar Nova Estrutura de LP", key=f"clear_lp_content_button{APP_KEY_SUFFIX}"):
@@ -765,7 +768,7 @@ if user_is_authenticated:
                     st.subheader("🏛️ Estrutura e Conteúdo Sugeridos para o Site:")
                     st.markdown(st.session_state[SESSION_KEY_SITE_CONTENT])
                     try: 
-                        st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[SESSION_KEY_SITE_CONTENT].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max_output_{SESSION_KEY_SITE_CONTENT}{APP_KEY_SUFFIX}") # Chave de botão única
+                        st.download_button(label="📥 Baixar Sugestões do Site",data=st.session_state[SESSION_KEY_SITE_CONTENT].encode('utf-8'), file_name=f"site_sugestoes_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_site_max_output_{SESSION_KEY_SITE_CONTENT}{APP_KEY_SUFFIX}")
                     except Exception as e_dl_site:
                         st.error(f"Erro ao renderizar botão de download do Site: {e_dl_site}")
                     if st.button("✨ Criar Nova Estrutura de Site", key=f"clear_site_content_button{APP_KEY_SUFFIX}"):
@@ -794,7 +797,7 @@ if user_is_authenticated:
                     st.subheader("🕵️‍♂️ Análise de Público-Alvo e Recomendações:")
                     st.markdown(st.session_state[SESSION_KEY_CLIENT_ANALYSIS])
                     try:
-                        st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[SESSION_KEY_CLIENT_ANALYSIS].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max_output_{SESSION_KEY_CLIENT_ANALYSIS}{APP_KEY_SUFFIX}") # Chave de botão única
+                        st.download_button(label="📥 Baixar Análise de Público",data=st.session_state[SESSION_KEY_CLIENT_ANALYSIS].encode('utf-8'), file_name=f"analise_publico_alvo_max_ia{APP_KEY_SUFFIX}.txt", mime="text/plain",key=f"download_client_analysis_max_output_{SESSION_KEY_CLIENT_ANALYSIS}{APP_KEY_SUFFIX}")
                     except Exception as e_dl_client:
                         st.error(f"Erro ao renderizar botão de download da Análise de Cliente: {e_dl_client}")
                     if st.button("✨ Nova Análise de Cliente", key=f"clear_client_analysis_button{APP_KEY_SUFFIX}"):
@@ -823,7 +826,7 @@ if user_is_authenticated:
                     st.subheader("📊 Análise da Concorrência e Insights:")
                     st.markdown(st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS])
                     try:
-                        st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max_output_{SESSION_KEY_COMPETITOR_ANALYSIS}{APP_KEY_SUFFIX}") # Chave de botão única
+                        st.download_button(label="📥 Baixar Análise da Concorrência", data=st.session_state[SESSION_KEY_COMPETITOR_ANALYSIS].encode('utf-8'), file_name=f"analise_concorrencia_max_ia{APP_KEY_SUFFIX}.txt",mime="text/plain",key=f"download_competitor_analysis_max_output_{SESSION_KEY_COMPETITOR_ANALYSIS}{APP_KEY_SUFFIX}")
                     except Exception as e_dl_comp:
                         st.error(f"Erro ao renderizar botão de download da Análise de Concorrência: {e_dl_comp}")
                     if st.button("✨ Nova Análise de Concorrência", key=f"clear_competitor_analysis_button{APP_KEY_SUFFIX}"):
@@ -887,7 +890,7 @@ if user_is_authenticated:
                 "10) Planejamento de Riscos": "admin_plan_riscos"
             }
 
-            escolha_admin_label = st.selectbox( # Renomeado para evitar conflito com a chave do dict
+            escolha_admin_label = st.selectbox(
                 "Ferramentas Administrativas:",
                 options=list(opcoes_administrativo.keys()),
                 key=f"selectbox_admin_tool{APP_KEY_SUFFIX}"
@@ -921,12 +924,11 @@ if user_is_authenticated:
         
         def _admin_render_fluxo_caixa(self):
             st.subheader("1) MaxFluxo de Caixa")
-            st.info("Em desenvolvimento: Ferramenta para ajudar você a lançar e analisar as entradas e saídas, projetar saldos e tomar decisões financeiras mais assertivas para sua empresa.")
-            # Futuramente: Entradas, saídas, projeções, talvez com chat para dicas.
+            st.write("Ferramenta para ajudar você a lançar e analisar as entradas e saídas, projetar saldos e tomar decisões financeiras mais assertivas para sua empresa.")
+            st.info("Em desenvolvimento.")
 
         def _admin_render_planejamento_financeiro(self):
             st.subheader("2) MaxPlanejamento Financeiro")
-            # Usando st.tabs para as sub-opções A e B
             tab_orcamento, tab_plano_negocios_fin = st.tabs([
                 "A) Elaborar Orçamento", 
                 "B) Plano de Negócios Detalhado (Foco Financeiro)"
@@ -940,20 +942,20 @@ if user_is_authenticated:
 
         def _admin_render_contabil(self):
             st.subheader("3) MaxContábil")
-            st.write("Agentes de IA para auxiliar na organização de documentos fiscais, dar orientações sobre conformidade, entender demonstrativos e facilitar a comunicação com seu contador. Max IA te ajuda a usar ferramentas de gestão financeira para controlar receitas, despesas e custos.")
+            st.write("Oferecer agentes de IA para manter a contabilidade em dia e utilizar ferramentas de gestão financeira para controlar receitas, despesas e custos.")
             st.info("Em desenvolvimento.")
 
         def _admin_render_controle_estoque(self):
             st.subheader("4) Controle de Estoque")
-            tab_relatorios, tab_previsao = st.tabs([
+            tab_planilhas, tab_previsao = st.tabs([
                 "A) Planilhas, Gráficos e Relatórios de Estoque", 
                 "B) Previsão de Demanda"
             ])
-            with tab_relatorios:
-                st.write("Crie e gerencie planilhas de controle de estoque, visualize gráficos de níveis de produtos, gere relatórios para identificar produtos com baixa rotatividade e evitar perdas por obsolescência.")
+            with tab_planilhas:
+                st.write("Gerar planilhas, gráficos e relatórios (o usuário escolhe) para controlar o estoque, monitorar níveis de produtos, identificar produtos com baixa rotatividade e evitar perdas por obsolescência.")
                 st.info("Em desenvolvimento.")
             with tab_previsao:
-                st.write("Utilize IA para estimar a demanda futura de seus produtos, ajudando a otimizar os níveis de estoque, evitar faltas ou excessos.")
+                st.write("Estimar a demanda futura para evitar falta de produtos em estoque ou excesso de produtos.")
                 st.info("Em desenvolvimento.")
 
         def _admin_render_gestao_pessoas(self):
@@ -964,38 +966,38 @@ if user_is_authenticated:
                 "C) Motivação e Produtividade"
             ])
             with tab_rh:
-                st.write("Planeje a contratação, desenvolvimento e retenção de talentos. Max IA pode ajudar a definir descrições de cargos, rascunhar políticas de RH e sugerir ideias para programas de treinamento.")
+                st.write("Planejar a contratação, desenvolvimento e retenção de talentos, definindo políticas de RH e treinamentos.")
                 st.info("Em desenvolvimento.")
             with tab_comunicacao:
-                st.write("Estabeleça canais de comunicação claros e eficientes. Max IA pode ajudar a redigir comunicados internos, criar templates para reuniões e sugerir ferramentas.")
+                st.write("Estabelecer canais de comunicação claros e eficientes para manter a equipe informada e motivada.")
                 st.info("Em desenvolvimento.")
             with tab_motivacao:
-                st.write("Crie um ambiente de trabalho positivo e incentive a produtividade da equipe com sugestões e planos de ação gerados por IA.")
+                st.write("Criar um ambiente de trabalho positivo e incentivar a produtividade da equipe.")
                 st.info("Em desenvolvimento.")
 
         def _admin_render_planejamento_estrategico_objetivos(self):
             st.subheader("6) Planejamento Estratégico (Definição de Objetivos)")
-            st.write("Estabeleça metas claras e mensuráveis (SMART) para a empresa. Max IA te ajuda a definir como a empresa se diferenciará da concorrência e a traçar os objetivos principais.")
+            st.write("Estabelecer metas claras e mensuráveis para a empresa, definindo como a empresa se diferenciará da concorrência.")
             st.info("Em desenvolvimento.")
 
         def _admin_render_analise_swot(self):
             st.subheader("7) Análise SWOT")
-            st.write("Conduza uma análise SWOT (Forças, Fraquezas, Oportunidades e Ameaças) guiada pela IA para entender melhor o posicionamento da sua empresa.")
+            st.write("Avaliar as forças e fraquezas internas da empresa, bem como as oportunidades e ameaças externas.")
             st.info("Em desenvolvimento.")
 
         def _admin_render_definicao_estrategias(self):
             st.subheader("8) Definição de Estratégias")
-            st.write("Com base nos seus objetivos e análises, elabore um plano de ação detalhado. Max IA pode ajudar a brainstormar e estruturar estratégias de marketing, vendas, operações e outras áreas chave.")
+            st.write("Elaborar um plano de ação para alcançar as metas definidas, incluindo estratégias de marketing, vendas e operações.")
             st.info("Em desenvolvimento.")
 
         def _admin_render_analise_risco(self):
             st.subheader("9) Análise de Risco")
-            st.write("Avalie os possíveis riscos que a empresa pode enfrentar, como riscos de mercado, financeiros, operacionais ou tecnológicos, com a ajuda da IA para identificação e categorização.")
+            st.write("Avaliar os possíveis riscos que a empresa pode enfrentar, como riscos de mercado, financeiros ou operacionais.")
             st.info("Em desenvolvimento.")
 
         def _admin_render_planejamento_riscos(self):
             st.subheader("10) Planejamento de Riscos")
-            st.write("Elabore um plano de ação para mitigar ou evitar os riscos identificados, incluindo planos de contingência e estratégias preventivas.")
+            st.write("Elaborar um plano de ação para mitigar ou evitar os riscos identificados.")
             st.info("Em desenvolvimento.")
 
         def exibir_max_pesquisa_mercado(self):
@@ -1238,12 +1240,11 @@ if user_is_authenticated:
 
         if area_selecionada_label_max_ia != st.session_state.area_selecionada_max_ia:
             st.session_state.area_selecionada_max_ia = area_selecionada_label_max_ia
-            # Limpa todos os conteúdos gerados de marketing se sair da seção MaxMarketing Total
             if area_selecionada_label_max_ia != "🚀 MaxMarketing Total": 
                 keys_to_clear_on_nav = [
                     f'generated_post_content_new{APP_KEY_SUFFIX}',
                     f'generated_campaign_content_new{APP_KEY_SUFFIX}',
-                    f'generated_campaign_details_content{APP_KEY_SUFFIX}',
+                    f'generated_campaign_details_content{APP_KEY_SUFFIX}', 
                     f'generated_lp_content_new{APP_KEY_SUFFIX}',
                     f'generated_site_content_new{APP_KEY_SUFFIX}',
                     f'generated_client_analysis_new{APP_KEY_SUFFIX}',
@@ -1270,7 +1271,7 @@ if user_is_authenticated:
             card_data = [
                 ("🚀 MaxMarketing Total", "Crie posts, campanhas, sites e muito mais!"),
                 ("💰 MaxFinanceiro", "Inteligência para preços, custos e finanças."),
-                ("⚙️ MaxAdministrativo", "Otimize sua gestão e rotinas (Em breve!)."),
+                ("⚙️ MaxAdministrativo", "Otimize sua gestão e rotinas."), # Atualizado
                 ("📈 MaxPesquisa de Mercado", "Desvende seu público e a concorrência (Em breve!)."),
                 ("🧭 MaxBússola Estratégica", "Planejamento, ideias e direção para o futuro."),
                 ("🎓 MaxTrainer IA", "Aprenda a usar todo o poder da IA (Em breve!).")
@@ -1307,7 +1308,7 @@ if user_is_authenticated:
         elif current_section_key_max_ia == "max_financeiro":
             agente.exibir_max_financeiro()
         elif current_section_key_max_ia == "max_administrativo":
-            agente.exibir_max_administrativo()
+            agente.exibir_max_administrativo() # Chamada para o novo método
         elif current_section_key_max_ia == "max_pesquisa_mercado":
             agente.exibir_max_pesquisa_mercado()
         elif current_section_key_max_ia == "max_bussola":
