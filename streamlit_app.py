@@ -545,8 +545,8 @@ if user_is_authenticated:
                 print(f"Prompt completo que causou o Erro Geral (ANÁLISE DE CONCORRÊNCIA): {final_prompt}")
                 return
 
-    def _marketing_handle_detalhar_campanha(uploaded_files_info, plano_campanha_gerado, llm): # NOVA FUNÇÃO
-        st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None) 
+    def _marketing_handle_detalhar_campanha(uploaded_files_info, plano_campanha_gerado, llm):
+        st.session_state.pop(f'generated_campaign_details_content{APP_KEY_SUFFIX}', None)
 
         if not plano_campanha_gerado or not plano_campanha_gerado.strip():
             st.error("Não há um plano de campanha para detalhar. Por favor, gere um plano primeiro.")
@@ -695,7 +695,7 @@ if user_is_authenticated:
                     with st.form(key=FORM_KEY_POST):
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_post = f"post_select_all_max{APP_KEY_SUFFIX}"
-                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_post) # Texto corrigido
+                        select_all_post_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_post) # CORRIGIDO
                         cols_post = st.columns(2); selected_platforms_post_ui = []
                         for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                             col_index = i % 2
@@ -715,9 +715,10 @@ if user_is_authenticated:
             elif main_action == "2 - Criar campanha de marketing completa":
                 st.subheader("🌍 Planejador de Campanhas de Marketing com Max IA")
                 SESSION_KEY_CAMPAIGN_PLAN = f'generated_campaign_content_new{APP_KEY_SUFFIX}'
-                SESSION_KEY_CAMPAIGN_DETAILS = f'generated_campaign_details_content{APP_KEY_SUFFIX}'
+                SESSION_KEY_CAMPAIGN_DETAILS = f'generated_campaign_details_content{APP_KEY_SUFFIX}' # Nova chave para detalhes
                 FORM_KEY_CAMPAIGN_PLAN = f"campaign_creator_form_max{APP_KEY_SUFFIX}"
 
+                # Fluxo: 1. Mostrar Detalhes (se houver) -> 2. Mostrar Plano (se houver) -> 3. Mostrar Formulário do Plano
                 if SESSION_KEY_CAMPAIGN_DETAILS in st.session_state and st.session_state[SESSION_KEY_CAMPAIGN_DETAILS]:
                     st.subheader("📝 Conteúdo Detalhado da Campanha:")
                     st.markdown(st.session_state[SESSION_KEY_CAMPAIGN_DETAILS])
@@ -727,8 +728,12 @@ if user_is_authenticated:
                                            file_name=f"campanha_detalhada_max_ia{APP_KEY_SUFFIX}.txt",
                                            mime="text/plain",
                                            key=f"download_campaign_details_button{APP_KEY_SUFFIX}")
-                    except Exception as e_dl_details:
-                        st.error(f"Erro ao renderizar botão de download dos detalhes da campanha: {e_dl_details}")
+                    except Exception as e_dl_details: # Mais específico para o erro do botão
+                        if "can't be used in an `st.form()`" in str(e_dl_details):
+                            st.warning("O botão de download para o conteúdo detalhado está temporariamente indisponível aqui. Tente após um refresh ou próxima interação.")
+                            print(f"INFO: st.download_button para detalhes da campanha ainda encontrou contexto de form: {e_dl_details}")
+                        else:
+                            st.error(f"Erro ao renderizar botão de download dos detalhes da campanha: {e_dl_details}")
                     
                     if st.button("💡 Gerar Novo Plano de Campanha", key=f"clear_all_campaign_button{APP_KEY_SUFFIX}"):
                         st.session_state.pop(SESSION_KEY_CAMPAIGN_PLAN, None)
@@ -737,7 +742,7 @@ if user_is_authenticated:
                 
                 elif SESSION_KEY_CAMPAIGN_PLAN in st.session_state and st.session_state[SESSION_KEY_CAMPAIGN_PLAN]:
                     st.subheader("📋 Plano da Campanha Gerado:")
-                    _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_PLAN], f"campaign_plan_output_max{APP_KEY_SUFFIX}", "plano_campanha_max_ia") # Chave de output do display ajustada
+                    _marketing_display_output_options(st.session_state[SESSION_KEY_CAMPAIGN_PLAN], f"campaign_plan_output_max{APP_KEY_SUFFIX}", "plano_campanha_max_ia")
                     st.markdown("---")
                     if st.button("✍️ Detalhar Conteúdo da Campanha com Max IA", key=f"detail_campaign_button{APP_KEY_SUFFIX}"):
                         plano_gerado = st.session_state[SESSION_KEY_CAMPAIGN_PLAN]
@@ -752,7 +757,7 @@ if user_is_authenticated:
                         campaign_name = st.text_input("Nome da Campanha:", key=f"campaign_name_max{APP_KEY_SUFFIX}")
                         st.subheader(" Plataformas Desejadas:")
                         key_select_all_camp = f"campaign_select_all_max{APP_KEY_SUFFIX}"
-                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_camp) # Texto corrigido
+                        select_all_camp_checked = st.checkbox("Selecionar Todas as Plataformas Abaixo", key=key_select_all_camp) # CORRIGIDO
                         cols_camp = st.columns(2); selected_platforms_camp_ui = []
                         for i, (platform_name, platform_suffix) in enumerate(platforms_config_options.items()):
                             col_index = i % 2
@@ -914,8 +919,113 @@ if user_is_authenticated:
             st.header("⚙️ MaxAdministrativo")
             st.image("images/max-ia-logo.png", width=150)
             st.subheader("Olá! Sou o Max, seu agente para otimizar a gestão administrativa do seu negócio.")
-            st.info("Esta área está em desenvolvimento e em breve trará ferramentas para simplificar suas rotinas administrativas, organizar tarefas, gerenciar equipes e muito mais. Volte em breve!")
-            st.balloons()
+            st.markdown("Escolha uma ferramenta abaixo para começarmos:")
+
+            opcoes_administrativo = {
+                "Selecione uma ferramenta...": "admin_selecione",
+                "1) MaxFluxo de Caixa": "admin_fluxo_caixa",
+                "2) MaxPlanejamento Financeiro": "admin_planej_financeiro",
+                "3) MaxContábil": "admin_contabil",
+                "4) Controle de Estoque": "admin_controle_estoque",
+                "5) Gestão de Pessoas": "admin_gestao_pessoas",
+                "6) Planejamento Estratégico (Definição de Objetivos)": "admin_plan_estr_objetivos",
+                "7) Análise SWOT": "admin_analise_swot",
+                "8) Definição de Estratégias": "admin_def_estrategias",
+                "9) Análise de Risco": "admin_analise_risco",
+                "10) Planejamento de Riscos": "admin_plan_riscos"
+            }
+
+            escolha_admin = st.selectbox(
+                "Ferramentas Administrativas:",
+                options=list(opcoes_administrativo.keys()),
+                key=f"selectbox_admin_tool{APP_KEY_SUFFIX}"
+            )
+
+            acao_selecionada = opcoes_administrativo.get(escolha_admin)
+            st.markdown("---")
+
+            if acao_selecionada == "admin_fluxo_caixa":
+                self._admin_render_fluxo_caixa()
+            elif acao_selecionada == "admin_planej_financeiro":
+                self._admin_render_planejamento_financeiro()
+            elif acao_selecionada == "admin_contabil":
+                self._admin_render_contabil()
+            elif acao_selecionada == "admin_controle_estoque":
+                self._admin_render_controle_estoque()
+            elif acao_selecionada == "admin_gestao_pessoas":
+                self._admin_render_gestao_pessoas()
+            elif acao_selecionada == "admin_plan_estr_objetivos":
+                self._admin_render_planejamento_estrategico_objetivos()
+            elif acao_selecionada == "admin_analise_swot":
+                self._admin_render_analise_swot()
+            elif acao_selecionada == "admin_def_estrategias":
+                self._admin_render_definicao_estrategias()
+            elif acao_selecionada == "admin_analise_risco":
+                self._admin_render_analise_risco()
+            elif acao_selecionada == "admin_plan_riscos":
+                self._admin_render_planejamento_riscos()
+            elif acao_selecionada == "admin_selecione":
+                st.info("Por favor, selecione uma ferramenta administrativa no menu acima para começar.")
+        
+        # Métodos placeholder para MaxAdministrativo (precisam ser adicionados dentro da classe MaxAgente)
+        def _admin_render_fluxo_caixa(self):
+            st.subheader("1) MaxFluxo de Caixa")
+            st.info("Esta ferramenta para te ajudar a gerenciar o fluxo de caixa está em desenvolvimento.")
+            # Futuramente: Entradas, saídas, projeções, talvez com chat para dicas.
+
+        def _admin_render_planejamento_financeiro(self):
+            st.subheader("2) MaxPlanejamento Financeiro")
+            sub_opcao_plan_fin = st.radio(
+                "Escolha uma opção do Planejamento Financeiro:",
+                ("A) Elaborar Orçamento", "B) Elaborar Plano de Negócios Detalhado (para definir metas e estratégias financeiras)"),
+                key=f"radio_plan_fin{APP_KEY_SUFFIX}"
+            )
+            if sub_opcao_plan_fin == "A) Elaborar Orçamento":
+                st.info("Ferramenta para elaboração de orçamento em desenvolvimento.")
+            elif sub_opcao_plan_fin == "B) Elaborar Plano de Negócios Detalhado (para definir metas e estratégias financeiras)":
+                st.info("Ferramenta para plano de negócios financeiro detalhado em desenvolvimento.")
+
+        def _admin_render_contabil(self):
+            st.subheader("3) MaxContábil")
+            st.info("Agentes de IA para manter a contabilidade em dia e utilizar ferramentas de gestão financeira para controlar receitas, despesas e custos. Em desenvolvimento.")
+
+        def _admin_render_controle_estoque(self):
+            st.subheader("4) Controle de Estoque")
+            tab_planilhas, tab_previsao = st.tabs(["A) Planilhas, Gráficos e Relatórios", "B) Previsão de Demanda"])
+            with tab_planilhas:
+                st.info("Ferramentas para controlar o estoque, monitorar níveis de produtos, identificar produtos com baixa rotatividade e evitar perdas por obsolescência. Em desenvolvimento.")
+            with tab_previsao:
+                st.info("Ferramenta para estimar a demanda futura para evitar falta de produtos em estoque ou excesso de produtos. Em desenvolvimento.")
+
+        def _admin_render_gestao_pessoas(self):
+            st.subheader("5) Gestão de Pessoas")
+            tab_rh, tab_comunicacao, tab_motivacao = st.tabs(["A) Recursos Humanos", "B) Comunicação Interna", "C) Motivação e Produtividade"])
+            with tab_rh:
+                st.info("Planejar a contratação, desenvolvimento e retenção de talentos, definindo políticas de RH e treinamentos. Em desenvolvimento.")
+            with tab_comunicacao:
+                st.info("Estabelecer canais de comunicação claros e eficientes para manter a equipe informada e motivada. Em desenvolvimento.")
+            with tab_motivacao:
+                st.info("Criar um ambiente de trabalho positivo e incentivar a produtividade da equipe. Em desenvolvimento.")
+
+        def _admin_render_planejamento_estrategico_objetivos(self):
+            st.subheader("6) Planejamento Estratégico (Definição de Objetivos)")
+            st.info("Estabelecer metas claras e mensuráveis para a empresa, definindo como a empresa se diferenciará da concorrência. Em desenvolvimento.")
+
+        def _admin_render_analise_swot(self):
+            st.subheader("7) Análise SWOT")
+            st.info("Avaliar as forças e fraquezas internas da empresa, bem como as oportunidades e ameaças externas. Em desenvolvimento.")
+
+        def _admin_render_definicao_estrategias(self):
+            st.subheader("8) Definição de Estratégias")
+            st.info("Elaborar um plano de ação para alcançar as metas definidas, incluindo estratégias de marketing, vendas e operações. Em desenvolvimento.")
+
+        def _admin_render_analise_risco(self):
+            st.subheader("9) Análise de Risco")
+            st.info("Avaliar os possíveis riscos que a empresa pode enfrentar, como riscos de mercado, financeiros ou operacionais. Em desenvolvimento.")
+
+        def _admin_render_planejamento_riscos(self):
+            st.subheader("10) Planejamento de Riscos")
+            st.info("Elaborar um plano de ação para mitigar ou evitar os riscos identificados. Em desenvolvimento.")
 
         def exibir_max_pesquisa_mercado(self):
             st.header("📈 MaxPesquisa de Mercado")
@@ -1157,11 +1267,11 @@ if user_is_authenticated:
 
         if area_selecionada_label_max_ia != st.session_state.area_selecionada_max_ia:
             st.session_state.area_selecionada_max_ia = area_selecionada_label_max_ia
-            if area_selecionada_label_max_ia != "🚀 MaxMarketing Total": # Se sair da seção de marketing, limpa os gerados
+            if area_selecionada_label_max_ia != "🚀 MaxMarketing Total": 
                 keys_to_clear_on_nav = [
                     f'generated_post_content_new{APP_KEY_SUFFIX}',
                     f'generated_campaign_content_new{APP_KEY_SUFFIX}',
-                    f'generated_campaign_details_content{APP_KEY_SUFFIX}',
+                    f'generated_campaign_details_content{APP_KEY_SUFFIX}', # Limpa detalhes da campanha também
                     f'generated_lp_content_new{APP_KEY_SUFFIX}',
                     f'generated_site_content_new{APP_KEY_SUFFIX}',
                     f'generated_client_analysis_new{APP_KEY_SUFFIX}',
@@ -1198,20 +1308,19 @@ if user_is_authenticated:
                     matching_key = None
                     for menu_title, section_key_val in opcoes_menu_max_ia.items():
                         # Tentativa de match mais robusta para os botões do painel
-                        normalized_title_card = title.split(" ")[0].lower() + title.split(" ")[1].lower() if len(title.split(" ")) > 1 else title.split(" ")[0].lower()
-                        normalized_title_menu = menu_title.split(" ")[0].lower().replace("👋","").replace("🚀","").replace("💰","").replace("⚙️","").replace("📈","").replace("🧭","").replace("🎓","").strip() + \
-                                                (menu_title.split(" ")[1].lower() if len(menu_title.split(" ")) > 1 else "")
+                        # Remove emojis e compara as primeiras palavras, normalizando para minúsculas
+                        card_title_check = "".join(title.split(" ")[1:]).lower() # Ex: "maxmarketingtotal"
+                        menu_label_check = "".join(menu_title.split(" ")[1:]).lower() # Ex: "maxmarketingtotal"
                         
-                        if normalized_title_card in normalized_title_menu and section_key_val.startswith(title.split(" ")[1].lower()[:3]): # Compara início
+                        if card_title_check == menu_label_check:
                              matching_key = section_key_val
                              break
-                        elif menu_title.startswith(title): # Fallback para match exato do início
+                        elif menu_title.startswith(title): 
                             matching_key = section_key_val
                             break
                             
                     if matching_key:
                         if st.button(title, key=f"btn_goto_card_{matching_key}{APP_KEY_SUFFIX}", use_container_width=True, help=f"Ir para {title}"):
-                            # Encontra o label exato do menu para definir area_selecionada_max_ia
                             correct_menu_label = [k for k, v in opcoes_menu_max_ia.items() if v == matching_key][0]
                             st.session_state.area_selecionada_max_ia = correct_menu_label
                             try:
@@ -1219,7 +1328,7 @@ if user_is_authenticated:
                             except ValueError: pass
                             st.rerun()
                     else:
-                         st.markdown(f"**{title}**") # Se não achar key, só mostra o título
+                         st.markdown(f"**{title}**") 
                     st.caption(caption)
                     st.markdown("<hr style='margin-top: 0.5rem; margin-bottom: 0.5rem;'>", unsafe_allow_html=True)
             st.balloons()
