@@ -12,19 +12,16 @@ from PIL import Image
 import base64
 import time
 import datetime
-
-# Importação para Firestore com alias para clareza
 import firebase_admin
 from firebase_admin import credentials, firestore as firebase_admin_firestore
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.0" # Novo sufixo para esta versão
+APP_KEY_SUFFIX = "maxia_app_v1.1_stable"
 USER_COLLECTION = "users"
-ACTIVATION_KEYS_COLLECTION = "activation_keys"
-
+ACTIVATION_KEYS_COLLECTION = "activation_keys" # Mantido para referência futura
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# --- Funções Auxiliares ---
+# --- Funções Auxiliares e de Configuração ---
 def convert_image_to_base64(image_path):
     try:
         if not os.path.exists(image_path):
@@ -36,82 +33,6 @@ def convert_image_to_base64(image_path):
         print(f"ERRO convert_image_to_base64: {e}")
         return None
 
-# --- Funções do Sistema de Ativação ---
-def check_user_activation_status_firestore(user_uid, db_client):
-    """Verifica no Firestore se o usuário está ativado."""
-    if not db_client: raise ValueError("Firestore não conectado para verificar ativação.")
-    try:
-        user_ref = db_client.collection(USER_COLLECTION).document(user_uid)
-        user_doc = user_ref.get()
-        return user_doc.exists and user_doc.to_dict().get("is_activated", False)
-    except Exception as e:
-        print(f"ERRO em check_user_activation_status_firestore: {type(e).__name__}")
-        raise e
-
-def process_activation_key_firestore(user_uid, key_code, db_client):
-    """Valida e reivindica uma chave de ativação usando uma transação Firestore."""
-    if not db_client: return False, "Erro interno: Banco de dados indisponível."
-    if not key_code: return False, "Por favor, insira uma chave de ativação."
-
-    key_ref = db_client.collection(ACTIVATION_KEYS_COLLECTION).document(key_code)
-    user_ref = db_client.collection(USER_COLLECTION).document(user_uid)
-
-    @firebase_admin_firestore.transactional
-    def claim_key_transaction(transaction, key_doc_ref, user_doc_ref):
-        key_snapshot = key_doc_ref.get(transaction=transaction)
-        if not key_snapshot.exists:
-            return False, "Chave de ativação não encontrada ou inválida."
-        
-        key_data = key_snapshot.to_dict()
-        if key_data.get("is_used", False):
-            return False, "Chave de ativação já foi utilizada."
-        
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        transaction.update(key_doc_ref, {"is_used": True, "used_by_uid": user_uid, "activation_date": now_utc})
-        transaction.set(user_doc_ref, {"is_activated": True, "activated_at": now_utc}, merge=True)
-        return True, "Chave ativada com sucesso! Bem-vindo ao Max IA."
-
-    try:
-        return claim_key_transaction(db_client.transaction(), key_ref, user_ref)
-    except Exception as e:
-        print(f"ERRO em process_activation_key_firestore: {type(e).__name__} - {e}")
-        if "deadline exceeded" in str(e).lower() or "timeout" in str(e).lower():
-            return False, "Tempo esgotado ao validar a chave. Verifique sua conexão ou tente mais tarde."
-        return False, "Ocorreu um erro ao processar sua chave. Tente novamente."
-
-def display_activation_prompt_area(user_uid, db_client):
-    """Mostra o formulário de ativação na área principal da página."""
-    if not db_client:
-        st.error("Serviço de ativação indisponível (DB).")
-        return
-
-    st.subheader("🔑 Ativação do Max IA")
-    st.info("Para utilizar esta funcionalidade, por favor, ative sua conta com uma chave válida.")
-    
-    with st.form(key=f"{APP_KEY_SUFFIX}_activation_form"):
-        key_code_input = st.text_input("Sua Chave de Ativação", type="password")
-        submit_button = st.form_submit_button("✅ Ativar Agora")
-        if submit_button:
-            with st.spinner("Validando sua chave..."):
-                success, msg = process_activation_key_firestore(user_uid, key_code_input, db_client)
-            if success:
-                st.success(msg + " Atualizando seu acesso...")
-                st.session_state.is_user_activated = True
-                st.session_state.pop(f'{APP_KEY_SUFFIX}_show_activation_prompt', None)
-                time.sleep(1.5)
-                st.rerun()
-            else:
-                st.error(msg)
-    st.caption("Não possui uma chave? Entre em contato com o suporte.")
-
-# --- Configuração da Página Streamlit ---
-try:
-    page_icon_img_obj = Image.open("images/carinha-agente-max-ia.png") if os.path.exists("images/carinha-agente-max-ia.png") else "🤖"
-except Exception:
-    page_icon_img_obj = "🤖"
-st.set_page_config(page_title="Max IA", page_icon=page_icon_img_obj, layout="wide", initial_sidebar_state="expanded")
-
-# --- Inicialização Centralizada e Cacheada do Firebase ---
 @st.cache_resource
 def initialize_firebase_services():
     """Inicializa Pyrebase Auth e Firebase Admin SDK para Firestore."""
@@ -119,23 +40,25 @@ def initialize_firebase_services():
     pb_auth = None
     firestore_db = None
     try:
-        # Inicializa Pyrebase para autenticação
         conf = st.secrets["firebase_config"]
         pb_auth = pyrebase.initialize_app(dict(conf)).auth()
     except Exception as e:
-        pb_auth = None
         init_errors.append(f"ERRO Auth: {e}")
     try:
-        # Inicializa Firebase Admin SDK para Firestore
         sa_creds = st.secrets["gcp_service_account"]
         if not firebase_admin._apps:
             cred = credentials.Certificate(dict(sa_creds))
             firebase_admin.initialize_app(cred)
         firestore_db = firebase_admin_firestore.client()
     except Exception as e:
-        firestore_db = None
         init_errors.append(f"ERRO Firestore: {e}")
     return pb_auth, firestore_db, init_errors
+
+# --- Configuração da Página e Inicialização dos Serviços ---
+try:
+    page_icon_img_obj = Image.open("images/carinha-agente-max-ia.png") if os.path.exists("images/carinha-agente-max-ia.png") else "🤖"
+except Exception: page_icon_img_obj = "🤖"
+st.set_page_config(page_title="Max IA", page_icon=page_icon_img_obj, layout="wide", initial_sidebar_state="expanded")
 
 pb_auth_client, firestore_db, init_errors = initialize_firebase_services()
 
@@ -152,9 +75,9 @@ if not pb_auth_client:
     st.error("ERRO CRÍTICO: Autenticação Firebase não inicializada.")
     st.stop()
 
-# --- Lógica de Sessão e Autenticação ---
-def get_current_user_status(auth_client, db_client):
-    user_auth, user_act, uid, email = False, False, None, None
+# --- Lógica de Sessão e Autenticação (Simplificada) ---
+def get_current_user_status(auth_client):
+    user_auth, uid, email = False, None, None
     session_key = f'{APP_KEY_SUFFIX}_user_session_data'
     if session_key in st.session_state and st.session_state[session_key]:
         try:
@@ -166,10 +89,7 @@ def get_current_user_status(auth_client, db_client):
             uid = user_info['localId']
             email = user_info.get('email')
             st.session_state[session_key].update({'localId': uid, 'email': email})
-
-            if db_client and uid:
-                user_act = check_user_activation_status_firestore(uid, db_client)
-        except Exception as e:
+        except Exception:
             st.session_state.pop(session_key, None)
             user_auth = False
             if 'auth_error_shown' not in st.session_state:
@@ -178,12 +98,11 @@ def get_current_user_status(auth_client, db_client):
             st.rerun()
             
     st.session_state.user_is_authenticated = user_auth
-    st.session_state.is_user_activated = user_act
     st.session_state.user_uid = uid
     st.session_state.user_email = email
-    return user_auth, user_act, uid, email
+    return user_auth, uid, email
 
-user_is_authenticated, user_is_activated, user_uid, user_email = get_current_user_status(pb_auth_client, firestore_db)
+user_is_authenticated, user_uid, user_email = get_current_user_status(pb_auth_client)
 
 # --- Inicialização do LLM ---
 llm = None
@@ -192,13 +111,15 @@ if user_is_authenticated:
     if llm_key not in st.session_state:
         try:
             api_key = st.secrets["GOOGLE_API_KEY"]
-            st.session_state[llm_key] = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key, temperature=0.7)
+            st.session_state[llm_key] = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key, temperature=0.7)
             if 'llm_msg_shown' not in st.session_state:
                 st.sidebar.success("✅ LLM (Gemini) OK.")
                 st.session_state['llm_msg_shown'] = True
         except Exception as e: st.error(f"Erro ao inicializar LLM: {e}")
     llm = st.session_state.get(llm_key)
-# --- Funções de Marketing e Classe MaxAgente (Conteúdo Original Preservado e Adaptado) ---
+
+# --- Funções _marketing_handle_... e outras funções utilitárias ---
+# (Aqui entram as funções que você já tinha, que são chamadas pelo MaxAgente)
 def _marketing_get_objective_details(section_key, type_of_creation="post/campanha"):
     st.subheader(f"Detalhes para Orientar a Criação do(a) {type_of_creation.capitalize()}:")
     details = {}
@@ -225,14 +146,58 @@ def _marketing_display_output_options(generated_content, section_key, file_name_
     except Exception as e_download:
         st.error(f"Erro ao tentar renderizar o botão de download: {e_download}")
 
-# --- (COLE AQUI SUAS OUTRAS FUNÇÕES _marketing_handle_... que você tinha) ---
-# Exemplo: def _marketing_handle_criar_post(...)
-# ...
+def _marketing_handle_criar_post(uploaded_files_info, details_dict, selected_platforms_list, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_criar_post)
+    pass
 
+def _marketing_handle_criar_campanha(uploaded_files_info, details_dict, campaign_specifics, selected_platforms_list, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_criar_campanha)
+    pass
+
+def _marketing_handle_criar_landing_page(uploaded_files_info, lp_details, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_criar_landing_page)
+    pass
+
+def _marketing_handle_criar_site(uploaded_files_info, site_details, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_criar_site)
+    pass
+
+def _marketing_handle_encontre_cliente(uploaded_files_info, client_details, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_encontre_cliente)
+    pass
+
+def _marketing_handle_conheca_concorrencia(uploaded_files_info, competitor_details, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_conheca_concorrencia)
+    pass
+
+def _marketing_handle_detalhar_campanha(uploaded_files_info, plano_campanha_gerado, llm):
+    # ... (cole aqui o corpo COMPLETO da sua função _marketing_handle_detalhar_campanha)
+    pass
+
+def inicializar_ou_resetar_chat(area_chave, mensagem_inicial_ia, memoria_agente_instancia):
+    # ... (cole aqui o corpo COMPLETO da sua função inicializar_ou_resetar_chat)
+    pass
+
+def exibir_chat_e_obter_input(area_chave, prompt_placeholder, funcao_conversa_agente, **kwargs_funcao_agente):
+    # ... (cole aqui o corpo COMPLETO da sua função exibir_chat_e_obter_input)
+    pass
+
+def _sidebar_clear_button_max(label, memoria, section_key_prefix):
+    # ... (cole aqui o corpo COMPLETO da sua função _sidebar_clear_button_max)
+    pass
+
+def _handle_chat_with_image(area_chave, prompt_placeholder, funcao_conversa_agente, uploaded_image_obj):
+    # ... (cole aqui o corpo COMPLETO da sua função _handle_chat_with_image)
+    pass
+
+def _handle_chat_with_files(area_chave, prompt_placeholder, funcao_conversa_agente, uploaded_files_objs):
+    # ... (cole aqui o corpo COMPLETO da sua função _handle_chat_with_files)
+    pass
+# --- Definição da Classe MaxAgente ---
 class MaxAgente:
     def __init__(self, llm_instance, db_firestore_instance):
         self.llm = llm_instance
-        self.db = db_firestore_instance # ESSENCIAL: usa o cliente Firestore
+        self.db = db_firestore_instance
         if not self.llm: st.warning("MaxAgente: LLM não disponível.")
         if not self.db: st.warning("MaxAgente: Firestore não disponível.")
 
@@ -250,9 +215,10 @@ class MaxAgente:
         self.memoria_plano_negocios = self.memoria_max_bussola_plano
         self.memoria_calculo_precos = self.memoria_max_financeiro_precos
         self.memoria_gerador_ideias = self.memoria_max_bussola_ideias
-
+    
     def _criar_cadeia_conversacional(self, system_message, memoria):
         if not self.llm: return None
+        # ... (seu código original para _criar_cadeia_conversacional)
         actual_memory_key = memoria.memory_key
         prompt_template = ChatPromptTemplate.from_messages([
             SystemMessagePromptTemplate.from_template(system_message),
@@ -260,48 +226,53 @@ class MaxAgente:
             HumanMessagePromptTemplate.from_template("{input_usuario}")
         ])
         return LLMChain(llm=self.llm, prompt=prompt_template, memory=memoria, verbose=False)
-    
-    def _check_activation(self, feature_name="Esta funcionalidade"):
-        """Verifica se o usuário está ativado. Se não, sinaliza para mostrar o prompt e retorna True para bloquear."""
-        if not st.session_state.get('is_user_activated', False):
-            st.session_state[f'{APP_KEY_SUFFIX}_show_activation_prompt'] = True
-            return True
-        st.session_state.pop(f'{APP_KEY_SUFFIX}_show_activation_prompt', None)
-        return False
 
-    def exibir_painel_boas_vindas(self):
-        # (Seu painel de boas vindas original, adaptado)
-        st.header(f"👋 Bem-vindo ao Max IA, {st.session_state.user_email or 'Empreendedor'}!")
-        st.write("Use o menu à esquerda para explorar as funcionalidades.")
-        if not st.session_state.get('is_user_activated', False):
-             st.info("Sua conta ainda não está ativada. Algumas funcionalidades solicitarão uma chave de ativação.")
-        else:
-            st.success("🎉 Sua conta Max IA está ativa! Explore todo o potencial.")
-
-    # --- Métodos dos Agentes (Preservados do seu código, com a verificação de ativação) ---
+    # --- Métodos dos Agentes (Preservados do seu código original) ---
     def exibir_max_marketing_total(self):
-        if self._check_activation("o MaxMarketing Total"): return
-        if not self.llm: st.error("MaxMarketing indisponível: LLM não está pronto."); return
-        # (COLE AQUI TODO O CONTEÚDO ORIGINAL DA SUA FUNÇÃO exibir_max_marketing_total)
-        st.header("🚀 MaxMarketing Total (Acesso Permitido)")
-        st.write("Conteúdo do MaxMarketing aqui...")
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_marketing_total)
+        # O código de exemplo abaixo é apenas para estrutura.
+        st.header("🚀 MaxMarketing Total")
+        st.write("Conteúdo e ferramentas de marketing aqui...")
+        # Lembrete: Se esta função precisar usar o Firestore, use `self.db`
+        # Exemplo: doc_ref = self.db.collection("...").document(...)
 
-    # ... (COLE AQUI O RESTANTE DOS SEUS MÉTODOS: exibir_max_financeiro, etc.,
-    #      adicionando a linha `if self._check_activation(...): return` no início de cada um.)
+    def exibir_max_financeiro(self):
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_financeiro)
+        st.header("💰 MaxFinanceiro")
+        st.write("Conteúdo e ferramentas de finanças aqui...")
+        
+    def exibir_max_administrativo(self):
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_administrativo)
+        st.header("⚙️ MaxAdministrativo")
+        st.write("Conteúdo e ferramentas de administração aqui...")
+    
+    def exibir_max_pesquisa_mercado(self):
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_pesquisa_mercado)
+        st.header("📈 MaxPesquisa de Mercado")
+        st.write("Conteúdo e ferramentas de pesquisa de mercado aqui...")
+    
+    def exibir_max_bussola(self):
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_bussola)
+        st.header("🧭 MaxBússola Estratégica")
+        st.write("Conteúdo e ferramentas de estratégia aqui...")
+        
+    def exibir_max_trainer(self):
+        # ... (Cole aqui TODO o conteúdo original da sua função exibir_max_trainer)
+        st.header("🎓 MaxTrainer IA")
+        st.write("Conteúdo e ferramentas de treinamento aqui...")
 
 # --- Instanciação do Agente ---
 agente = None
-if user_is_authenticated:
-    if llm and firestore_db:
-        agent_key = f'{APP_KEY_SUFFIX}_agente_instancia'
-        if agent_key not in st.session_state:
-            st.session_state[agent_key] = MaxAgente(llm_instance=llm, db_firestore_instance=firestore_db)
-        agente = st.session_state[agent_key]
+if user_is_authenticated and llm: # Só instancia se autenticado e com LLM
+    agent_key = f'{APP_KEY_SUFFIX}_agente_instancia'
+    if agent_key not in st.session_state:
+        # Passa o cliente LLM e o cliente Firestore para o agente
+        st.session_state[agent_key] = MaxAgente(llm_instance=llm, db_firestore_instance=firestore_db)
+    agente = st.session_state[agent_key]
 
-# --- FLUXO PRINCIPAL DA INTERFACE ---
+# --- Lógica Principal da Interface ---
 if not user_is_authenticated:
     st.title("🔑 Bem-vindo ao Max IA")
-    # ... (código da tela de login/registro, adaptado para usar chaves únicas) ...
     auth_action = st.sidebar.radio("Acesso:", ["Login", "Registrar"], key=f"{APP_KEY_SUFFIX}_auth_choice")
     if auth_action == "Login":
         with st.sidebar.form(f"{APP_KEY_SUFFIX}_login_form"):
@@ -312,12 +283,12 @@ if not user_is_authenticated:
                     try:
                         user_creds = pb_auth_client.sign_in_with_email_and_password(email, password)
                         st.session_state[f'{APP_KEY_SUFFIX}_user_session_data'] = dict(user_creds)
+                        # Limpa caches para forçar re-verificação no próximo carregamento
                         for k in list(st.session_state.keys()):
                             if '_init_msgs_shown' in k or '_is_user_activated_' in k:
                                 del st.session_state[k]
                         st.rerun()
-                    except Exception as e: st.sidebar.error(f"Erro no login. Verifique as credenciais.")
-                else: st.sidebar.warning("Preencha todos os campos.")
+                    except Exception as e: st.sidebar.error(f"Erro no login: Verifique as credenciais.")
     else: # Registrar
         with st.sidebar.form(f"{APP_KEY_SUFFIX}_register_form"):
             email = st.text_input("Seu Email")
@@ -329,53 +300,44 @@ if not user_is_authenticated:
                         user_doc = firestore_db.collection(USER_COLLECTION).document(new_user['localId'])
                         user_doc.set({"email": email, "is_activated": False, "registration_date": firebase_admin_firestore.SERVER_TIMESTAMP}, merge=True)
                         st.sidebar.success(f"Conta criada! Faça o login.")
-                        try: pb_auth_client.send_email_verification(new_user['idToken'])
-                        except: pass
                     except Exception as e: st.sidebar.error(f"Erro no registro: {e}")
                 else:
                     if not firestore_db: st.sidebar.error("Serviço de registro indisponível (DB).")
                     else: st.sidebar.warning("Preencha os campos corretamente.")
-
-else: # Usuário está autenticado
+else: # Usuário está autenticado, exibe o app principal
     st.sidebar.write(f"Logado como: **{user_email}**")
     if st.sidebar.button("Logout", key=f"{APP_KEY_SUFFIX}_logout_button"):
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
     
-    # TESTE DE CONECTIVIDADE (executa uma vez por sessão)
-    if firestore_db:
-        test_key = f'{APP_KEY_SUFFIX}_firestore_test_completed'
-        if test_key not in st.session_state:
-            st.session_state[test_key] = firestore_test_connectivity(firestore_db, user_uid)
-
-    # Lógica de Navegação e Conteúdo
-    if st.session_state.get(f'{APP_KEY_SUFFIX}_show_activation_prompt', False):
-        display_activation_prompt_area(user_uid, firestore_db)
-    elif agente:
+    # Renderiza a interface principal do agente
+    if agente:
+        # --- (COLE AQUI O SEU CÓDIGO ORIGINAL DA SIDEBAR E LÓGICA DE NAVEGAÇÃO) ---
+        # Exemplo simplificado de como ficaria:
+        st.sidebar.markdown("---")
+        st.sidebar.title("Max IA")
         opcoes_menu = {
             "👋 Boas-vindas": "boas_vindas", 
-            "🚀 MaxMarketing": "marketing", 
-            "💰 MaxFinanceiro": "financeiro",
+            "🚀 MaxMarketing": "marketing",
+            "💰 MaxFinanceiro": "financeiro"
             # Adicione suas outras opções de agente aqui
         }
         view_key = f'{APP_KEY_SUFFIX}_current_view'
-        if view_key not in st.session_state:
-            st.session_state[view_key] = "boas_vindas"
+        if view_key not in st.session_state: st.session_state[view_key] = "boas_vindas"
         
         try: current_idx = list(opcoes_menu.values()).index(st.session_state[view_key])
         except ValueError: current_idx = 0
 
         selected_label = st.sidebar.radio("Navegar Agentes:", list(opcoes_menu.keys()), index=current_idx, key=f"{APP_KEY_SUFFIX}_nav")
-        
         if opcoes_menu[selected_label] != st.session_state[view_key]:
             st.session_state[view_key] = opcoes_menu[selected_label]
             st.rerun()
         
-        active_view = st.session_state[view_key]
-        if active_view == "boas_vindas": agente.exibir_painel_boas_vindas()
-        elif active_view == "marketing": agente.exibir_max_marketing_total()
-        elif active_view == "financeiro": agente.exibir_max_financeiro()
-        # ... Adicione elif para outras views
+        # Renderiza a view selecionada
+        if st.session_state[view_key] == "boas_vindas": agente.exibir_painel_boas_vindas()
+        elif st.session_state[view_key] == "marketing": agente.exibir_max_marketing_total()
+        elif st.session_state[view_key] == "financeiro": agente.exibir_max_financeiro()
+        # Adicione elif para outras views...
     else:
         st.error("Agente Max IA não pôde ser carregado. Verifique os erros de inicialização.")
 
