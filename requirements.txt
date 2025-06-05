@@ -2,8 +2,8 @@ streamlit
 Pyrebase4
 PyJWT
 firebase-admin
-google-cloud-firestore
+setuptools
 google-generativeai
 langchain
 langchain-google-genai
-Pillow
+pillow
