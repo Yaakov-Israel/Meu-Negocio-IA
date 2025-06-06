@@ -21,13 +21,14 @@ from docx import Document
 from fpdf import FPDF
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.6_mkt_download" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v1.7_download_fix" # Versão incremental
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # --- Funções Auxiliares Globais ---
 def convert_image_to_base64(image_path):
+    # ... (código sem alterações) ...
     try:
         if os.path.exists(image_path):
             with open(image_path, "rb") as image_file:
@@ -36,19 +37,15 @@ def convert_image_to_base64(image_path):
         print(f"ERRO convert_image_to_base64: {e}")
     return None
 
-# NOVA FUNÇÃO PARA GERAR ARQUIVOS DE DOWNLOAD
+# FUNÇÃO DE DOWNLOAD REFINADA E CORRIGIDA
 def gerar_arquivo_download(conteudo, formato):
     """Gera o conteúdo de um arquivo em memória para download."""
     if formato == "txt":
-        # Retorna os bytes do texto codificado em UTF-8
-        return io.BytesIO(conteudo.encode("utf-8"))
+        return conteudo.encode("utf-8")
         
     elif formato == "docx":
-        # Cria um documento Word em memória
         document = Document()
         document.add_paragraph(conteudo)
-        
-        # Salva o documento em um stream de bytes
         bio = io.BytesIO()
         document.save(bio)
         bio.seek(0)
@@ -57,36 +54,30 @@ def gerar_arquivo_download(conteudo, formato):
     elif formato == "pdf":
         pdf = FPDF()
         pdf.add_page()
-        # Adiciona uma fonte que suporte caracteres Unicode (UTF-8)
-        # É necessário ter o arquivo da fonte .ttf no ambiente (ex: na mesma pasta ou caminho conhecido)
-        # Usaremos uma fonte padrão como fallback, mas o ideal é ter uma fonte como DejaVuSans.
-        try:
-            pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-            pdf.set_font('DejaVu', '', 12)
-        except RuntimeError:
-            print("AVISO: Fonte 'DejaVuSans.ttf' não encontrada. Usando 'Arial' como fallback. Caracteres especiais podem não ser exibidos corretamente no PDF.")
-            pdf.set_font("Arial", size=12)
-
-        # Adiciona o conteúdo ao PDF
-        # O encode/decode é um truque para o fpdf lidar melhor com caracteres especiais com fontes padrão
-        pdf.multi_cell(0, 10, txt=conteudo.encode('latin-1', 'replace').decode('latin-1'))
-        
-        # Retorna os bytes do PDF gerado
-        return io.BytesIO(pdf.output(dest='S').encode('latin-1'))
+        # Define a fonte para Arial (padrão) que aceita a maioria dos caracteres
+        pdf.set_font("Arial", size=12)
+        # Codifica o texto para 'latin-1' para compatibilidade com as fontes padrão do FPDF
+        # O 'replace' garante que caracteres não suportados não quebrem a aplicação
+        texto_para_pdf = conteudo.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 10, txt=texto_para_pdf)
+        # O método output() sem nome de arquivo retorna os bytes do PDF
+        return pdf.output(dest='S').encode('latin-1')
 
     return None
 
 # --- Configuração da Página ---
+# ... (código sem alterações) ...
 try:
     page_icon_img_obj = Image.open("images/carinha-agente-max-ia.png") if os.path.exists("images/carinha-agente-max-ia.png") else "🤖"
 except Exception:
     page_icon_img_obj = "🤖"
 st.set_page_config(page_title="Max IA", page_icon=page_icon_img_obj, layout="wide", initial_sidebar_state="expanded")
 
+
 # --- INICIALIZAÇÃO E AUTENTICAÇÃO (Estrutura Robusta Mantida) ---
+# ... (código sem alterações) ...
 @st.cache_resource
 def initialize_firebase_services():
-    # ... (código sem alterações) ...
     init_errors = []
     pb_auth = None
     firestore_db = None
@@ -104,11 +95,8 @@ def initialize_firebase_services():
     except Exception as e:
         init_errors.append(f"ERRO Firestore: {e}")
     return pb_auth, firestore_db, init_errors
-
 pb_auth_client, firestore_db, init_errors = initialize_firebase_services()
-
 def get_current_user_status(auth_client):
-    # ... (código sem alterações) ...
     user_auth, uid, email = False, None, None
     session_key = f'{APP_KEY_SUFFIX}_user_session_data'
     if session_key in st.session_state and st.session_state[session_key]:
@@ -131,12 +119,9 @@ def get_current_user_status(auth_client):
     st.session_state.user_uid = uid
     st.session_state.user_email = email
     return user_auth, uid, email
-
 user_is_authenticated, user_uid, user_email = get_current_user_status(pb_auth_client)
-
 llm = None
 if user_is_authenticated:
-    # ... (código sem alterações) ...
     llm_key = f'{APP_KEY_SUFFIX}_llm_instance'
     if llm_key not in st.session_state:
         try:
@@ -147,6 +132,7 @@ if user_is_authenticated:
                 st.error("Chave GOOGLE_API_KEY não configurada nos segredos.")
         except Exception as e: st.error(f"Erro ao inicializar LLM: {e}")
     llm = st.session_state.get(llm_key)
+
 
 # --- Definição da Classe MaxAgente ---
 class MaxAgente:
@@ -166,7 +152,8 @@ class MaxAgente:
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para selecionar um agente especializado e começar a transformar seu negócio hoje mesmo.</p></div>", unsafe_allow_html=True)
         st.balloons()
 
-    # --- AGENTE DE MARKETING (AGORA COM DOWNLOAD) ---
+
+    # --- AGENTE DE MARKETING (COM DOWNLOAD CORRIGIDO) ---
     def exibir_max_marketing_total(self):
         st.header("🚀 MaxMarketing Total")
         st.caption("Seu copiloto Max IA para criar estratégias, posts, campanhas e mais!")
@@ -183,47 +170,47 @@ class MaxAgente:
             if st.session_state[session_key_post]:
                 st.subheader("🎉 Post Gerado pelo Max IA!")
                 conteudo_post = st.session_state[session_key_post]
-                st.markdown(conteudo_post)
+                st.markdown(f'<div style="background-color:#f0f2f6; padding: 15px; border-radius: 10px;">{conteudo_post}</div>', unsafe_allow_html=True)
                 st.markdown("---")
 
-                # --- SEÇÃO DE DOWNLOAD ---
+                # --- SEÇÃO DE DOWNLOAD (CORRIGIDA E SIMPLIFICADA) ---
                 st.subheader("📥 Baixar Conteúdo")
-                col1, col2 = st.columns([0.7, 0.3])
-                
+                col1, col2, col3 = st.columns(3)
+
                 with col1:
-                    formato_escolhido = st.selectbox(
-                        "Escolha o formato do arquivo:",
-                        ("txt", "docx", "pdf"),
-                        key=f"download_format_{APP_KEY_SUFFIX}"
+                    st.download_button(
+                       label="Baixar como .txt",
+                       data=gerar_arquivo_download(conteudo_post, "txt"),
+                       file_name="post_max_ia.txt",
+                       mime="text/plain",
+                       use_container_width=True
+                    )
+                with col2:
+                    st.download_button(
+                       label="Baixar como .docx",
+                       data=gerar_arquivo_download(conteudo_post, "docx"),
+                       file_name="post_max_ia.docx",
+                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                       use_container_width=True
+                    )
+                with col3:
+                    st.download_button(
+                       label="Baixar como .pdf",
+                       data=gerar_arquivo_download(conteudo_post, "pdf"),
+                       file_name="post_max_ia.pdf",
+                       mime="application/pdf",
+                       use_container_width=True
                     )
                 
-                with col2:
-                    st.write("") # Espaçador
-                    st.write("") # Espaçador
-                    try:
-                        # Gera o arquivo em memória ANTES de renderizar o botão
-                        arquivo_bytes = gerar_arquivo_download(conteudo_post, formato_escolhido)
-                        st.download_button(
-                           label=f"Baixar como .{formato_escolhido}",
-                           data=arquivo_bytes,
-                           file_name=f"post_max_ia.{formato_escolhido}",
-                           use_container_width=True
-                        )
-                    except Exception as e:
-                        st.error(f"Erro ao gerar arquivo para download: {e}")
-
                 st.markdown("---")
-                # --- FIM DA SEÇÃO DE DOWNLOAD ---
 
                 if st.button("✨ Criar Novo Post"):
                     st.session_state[session_key_post] = None
                     st.rerun()
             else:
-                # O formulário continua exatamente como antes
+                # O formulário continua o mesmo
                 st.subheader("📝 Briefing para Criação de Post")
-                st.write("Por favor, preencha os campos abaixo para que eu possa criar o melhor post para você.")
                 with st.form(key=f"post_briefing_form_{APP_KEY_SUFFIX}"):
-                    # ... (campos do formulário sem alteração)
                     objetivo = st.text_area("1) Qual o objetivo do seu post?")
                     publico = st.text_input("2) Quem você quer alcançar?")
                     produto_servico = st.text_area("3) Qual produto ou serviço principal você está promovendo?")
@@ -234,6 +221,7 @@ class MaxAgente:
                     
                     submitted = st.form_submit_button("💡 Gerar Post com Max IA!")
                     if submitted:
+                        # ... (lógica de geração de post sem alterações) ...
                         if not objetivo:
                             st.warning("Por favor, preencha pelo menos o objetivo do post.")
                         else:
