@@ -21,7 +21,7 @@ from docx import Document
 from fpdf import FPDF
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.9_pdf_fix" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v2.0_pdf_final_solution" # Versão incremental
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -36,7 +36,7 @@ def convert_image_to_base64(image_path):
         print(f"ERRO convert_image_to_base64: {e}")
     return None
 
-# FUNÇÃO DE DOWNLOAD COM A CORREÇÃO FINAL NO PDF
+# FUNÇÃO DE DOWNLOAD COM A SOLUÇÃO DEFINITIVA PARA PDF
 def gerar_arquivo_download(conteudo, formato):
     """Gera o conteúdo de um arquivo em memória para download."""
     if formato == "txt":
@@ -53,13 +53,23 @@ def gerar_arquivo_download(conteudo, formato):
     elif formato == "pdf":
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        texto_para_pdf = conteudo.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 10, txt=texto_para_pdf)
         
-        # ***** CORREÇÃO FINAL AQUI *****
-        # Converte o 'bytearray' retornado pelo FPDF para o formato 'bytes' que o Streamlit espera.
-        return bytes(pdf.output())
+        # ***** CORREÇÃO DEFINITIVA *****
+        # Adiciona a fonte Unicode. O arquivo .ttf deve estar na mesma pasta.
+        try:
+            pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+            pdf.set_font('DejaVu', '', 12)
+        except RuntimeError:
+            # Se a fonte não for encontrada, avisa o usuário de forma clara.
+            st.error("ERRO: Arquivo de fonte 'DejaVuSans.ttf' não encontrado. Faça o download e coloque-o na pasta do projeto para gerar PDFs.")
+            # Retorna None para não tentar gerar um arquivo quebrado.
+            return None
+            
+        # Adiciona o texto diretamente, sem truques de encode/decode.
+        pdf.multi_cell(0, 10, txt=conteudo)
+        
+        # Retorna os bytes do PDF. O fpdf2 já retorna no formato 'bytes' correto.
+        return pdf.output()
 
     return None
 
@@ -174,22 +184,16 @@ class MaxAgente:
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    try:
-                        st.download_button(label="Baixar como .txt", data=gerar_arquivo_download(conteudo_post, "txt"), file_name="post_max_ia.txt", mime="text/plain", use_container_width=True)
-                    except Exception as e:
-                        st.error(f"Falha ao gerar .txt: {e}")
+                    st.download_button(label="Baixar como .txt", data=gerar_arquivo_download(conteudo_post, "txt"), file_name="post_max_ia.txt", mime="text/plain", use_container_width=True, key="txt_dl")
                 
                 with col2:
-                    try:
-                        st.download_button(label="Baixar como .docx", data=gerar_arquivo_download(conteudo_post, "docx"), file_name="post_max_ia.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
-                    except Exception as e:
-                        st.error(f"Falha ao gerar .docx: {e}")
+                    st.download_button(label="Baixar como .docx", data=gerar_arquivo_download(conteudo_post, "docx"), file_name="post_max_ia.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True, key="docx_dl")
                 
                 with col3:
-                    try:
-                        st.download_button(label="Baixar como .pdf", data=gerar_arquivo_download(conteudo_post, "pdf"), file_name="post_max_ia.pdf", mime="application/pdf", use_container_width=True)
-                    except Exception as e:
-                        st.error(f"Falha ao gerar .pdf: {e}")
+                    # Gera os dados para o PDF
+                    pdf_data = gerar_arquivo_download(conteudo_post, "pdf")
+                    # Mostra o botão apenas se a geração do PDF foi bem-sucedida
+                    st.download_button(label="Baixar como .pdf", data=pdf_data, file_name="post_max_ia.pdf", mime="application/pdf", use_container_width=True, key="pdf_dl", disabled=(pdf_data is None))
                 
                 st.markdown("---")
 
