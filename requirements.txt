@@ -9,3 +9,4 @@ langchain-google-genai
 Pillow
 python-docx
 fpdf2
+requests
