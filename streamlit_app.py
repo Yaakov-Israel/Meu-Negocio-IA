@@ -21,7 +21,7 @@ from docx import Document
 from fpdf import FPDF
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v2.0_pdf_final_solution" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v1.8_download_final_fix" # Versão incremental
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -36,15 +36,18 @@ def convert_image_to_base64(image_path):
         print(f"ERRO convert_image_to_base64: {e}")
     return None
 
-# FUNÇÃO DE DOWNLOAD COM A SOLUÇÃO DEFINITIVA PARA PDF
+# FUNÇÃO DE DOWNLOAD REFINADA E CORRIGIDA
 def gerar_arquivo_download(conteudo, formato):
     """Gera o conteúdo de um arquivo em memória para download."""
     if formato == "txt":
+        # Retorna o conteúdo como bytes codificados em UTF-8
         return conteudo.encode("utf-8")
         
     elif formato == "docx":
+        # Cria um documento Word em memória
         document = Document()
         document.add_paragraph(conteudo)
+        # Salva o documento em um stream de bytes que o Streamlit pode ler
         bio = io.BytesIO()
         document.save(bio)
         bio.seek(0)
@@ -53,23 +56,14 @@ def gerar_arquivo_download(conteudo, formato):
     elif formato == "pdf":
         pdf = FPDF()
         pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        # Codifica o texto para 'latin-1' com substituição para evitar erros de caracteres
+        texto_para_pdf = conteudo.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 10, txt=texto_para_pdf)
         
-        # ***** CORREÇÃO DEFINITIVA *****
-        # Adiciona a fonte Unicode. O arquivo .ttf deve estar na mesma pasta.
-        try:
-            pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-            pdf.set_font('DejaVu', '', 12)
-        except RuntimeError:
-            # Se a fonte não for encontrada, avisa o usuário de forma clara.
-            st.error("ERRO: Arquivo de fonte 'DejaVuSans.ttf' não encontrado. Faça o download e coloque-o na pasta do projeto para gerar PDFs.")
-            # Retorna None para não tentar gerar um arquivo quebrado.
-            return None
-            
-        # Adiciona o texto diretamente, sem truques de encode/decode.
-        pdf.multi_cell(0, 10, txt=conteudo)
-        
-        # Retorna os bytes do PDF. O fpdf2 já retorna no formato 'bytes' correto.
-        return pdf.output()
+        # ***** CORREÇÃO CRÍTICA AQUI *****
+        # O método output() com dest='S' já retorna bytes. O .encode() extra causava o erro.
+        return pdf.output(dest='S')
 
     return None
 
@@ -160,7 +154,7 @@ class MaxAgente:
         st.balloons()
 
 
-    # --- AGENTE DE MARKETING ---
+    # --- AGENTE DE MARKETING (COM DOWNLOAD CORRIGIDO) ---
     def exibir_max_marketing_total(self):
         st.header("🚀 MaxMarketing Total")
         st.caption("Seu copiloto Max IA para criar estratégias, posts, campanhas e mais!")
@@ -180,20 +174,48 @@ class MaxAgente:
                 st.markdown(f'<div style="background-color:#f0f2f6; padding: 15px; border-radius: 10px; border: 1px solid #ddd;">{conteudo_post}</div>', unsafe_allow_html=True)
                 st.markdown("---")
 
+                # --- SEÇÃO DE DOWNLOAD (COM PROTEÇÃO EXTRA) ---
                 st.subheader("📥 Baixar Conteúdo")
                 col1, col2, col3 = st.columns(3)
 
+                # Botão TXT
                 with col1:
-                    st.download_button(label="Baixar como .txt", data=gerar_arquivo_download(conteudo_post, "txt"), file_name="post_max_ia.txt", mime="text/plain", use_container_width=True, key="txt_dl")
+                    try:
+                        st.download_button(
+                           label="Baixar como .txt",
+                           data=gerar_arquivo_download(conteudo_post, "txt"),
+                           file_name="post_max_ia.txt",
+                           mime="text/plain",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .txt: {e}")
                 
+                # Botão DOCX
                 with col2:
-                    st.download_button(label="Baixar como .docx", data=gerar_arquivo_download(conteudo_post, "docx"), file_name="post_max_ia.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True, key="docx_dl")
+                    try:
+                        st.download_button(
+                           label="Baixar como .docx",
+                           data=gerar_arquivo_download(conteudo_post, "docx"),
+                           file_name="post_max_ia.docx",
+                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .docx: {e}")
                 
+                # Botão PDF
                 with col3:
-                    # Gera os dados para o PDF
-                    pdf_data = gerar_arquivo_download(conteudo_post, "pdf")
-                    # Mostra o botão apenas se a geração do PDF foi bem-sucedida
-                    st.download_button(label="Baixar como .pdf", data=pdf_data, file_name="post_max_ia.pdf", mime="application/pdf", use_container_width=True, key="pdf_dl", disabled=(pdf_data is None))
+                    try:
+                        st.download_button(
+                           label="Baixar como .pdf",
+                           data=gerar_arquivo_download(conteudo_post, "pdf"),
+                           file_name="post_max_ia.pdf",
+                           mime="application/pdf",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .pdf: {e}")
                 
                 st.markdown("---")
 
