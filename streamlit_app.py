@@ -21,14 +21,13 @@ from docx import Document
 from fpdf import FPDF
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.7_download_fix" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v1.8_download_final_fix" # Versão incremental
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # --- Funções Auxiliares Globais ---
 def convert_image_to_base64(image_path):
-    # ... (código sem alterações) ...
     try:
         if os.path.exists(image_path):
             with open(image_path, "rb") as image_file:
@@ -41,11 +40,14 @@ def convert_image_to_base64(image_path):
 def gerar_arquivo_download(conteudo, formato):
     """Gera o conteúdo de um arquivo em memória para download."""
     if formato == "txt":
+        # Retorna o conteúdo como bytes codificados em UTF-8
         return conteudo.encode("utf-8")
         
     elif formato == "docx":
+        # Cria um documento Word em memória
         document = Document()
         document.add_paragraph(conteudo)
+        # Salva o documento em um stream de bytes que o Streamlit pode ler
         bio = io.BytesIO()
         document.save(bio)
         bio.seek(0)
@@ -54,19 +56,18 @@ def gerar_arquivo_download(conteudo, formato):
     elif formato == "pdf":
         pdf = FPDF()
         pdf.add_page()
-        # Define a fonte para Arial (padrão) que aceita a maioria dos caracteres
         pdf.set_font("Arial", size=12)
-        # Codifica o texto para 'latin-1' para compatibilidade com as fontes padrão do FPDF
-        # O 'replace' garante que caracteres não suportados não quebrem a aplicação
+        # Codifica o texto para 'latin-1' com substituição para evitar erros de caracteres
         texto_para_pdf = conteudo.encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 10, txt=texto_para_pdf)
-        # O método output() sem nome de arquivo retorna os bytes do PDF
-        return pdf.output(dest='S').encode('latin-1')
+        
+        # ***** CORREÇÃO CRÍTICA AQUI *****
+        # O método output() com dest='S' já retorna bytes. O .encode() extra causava o erro.
+        return pdf.output(dest='S')
 
     return None
 
 # --- Configuração da Página ---
-# ... (código sem alterações) ...
 try:
     page_icon_img_obj = Image.open("images/carinha-agente-max-ia.png") if os.path.exists("images/carinha-agente-max-ia.png") else "🤖"
 except Exception:
@@ -75,7 +76,6 @@ st.set_page_config(page_title="Max IA", page_icon=page_icon_img_obj, layout="wid
 
 
 # --- INICIALIZAÇÃO E AUTENTICAÇÃO (Estrutura Robusta Mantida) ---
-# ... (código sem alterações) ...
 @st.cache_resource
 def initialize_firebase_services():
     init_errors = []
@@ -96,6 +96,7 @@ def initialize_firebase_services():
         init_errors.append(f"ERRO Firestore: {e}")
     return pb_auth, firestore_db, init_errors
 pb_auth_client, firestore_db, init_errors = initialize_firebase_services()
+
 def get_current_user_status(auth_client):
     user_auth, uid, email = False, None, None
     session_key = f'{APP_KEY_SUFFIX}_user_session_data'
@@ -120,6 +121,7 @@ def get_current_user_status(auth_client):
     st.session_state.user_email = email
     return user_auth, uid, email
 user_is_authenticated, user_uid, user_email = get_current_user_status(pb_auth_client)
+
 llm = None
 if user_is_authenticated:
     llm_key = f'{APP_KEY_SUFFIX}_llm_instance'
@@ -143,7 +145,6 @@ class MaxAgente:
         if not self.db: st.warning("MaxAgente: Firestore não disponível.")
 
     def exibir_painel_boas_vindas(self):
-        # ... (código sem alterações) ...
         st.markdown("<div style='text-align: center;'><h1>👋 Bem-vindo ao Max IA!</h1></div>", unsafe_allow_html=True)
         logo_base64 = convert_image_to_base64('images/max-ia-logo.png')
         if logo_base64:
@@ -170,37 +171,51 @@ class MaxAgente:
             if st.session_state[session_key_post]:
                 st.subheader("🎉 Post Gerado pelo Max IA!")
                 conteudo_post = st.session_state[session_key_post]
-                st.markdown(f'<div style="background-color:#f0f2f6; padding: 15px; border-radius: 10px;">{conteudo_post}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color:#f0f2f6; padding: 15px; border-radius: 10px; border: 1px solid #ddd;">{conteudo_post}</div>', unsafe_allow_html=True)
                 st.markdown("---")
 
-                # --- SEÇÃO DE DOWNLOAD (CORRIGIDA E SIMPLIFICADA) ---
+                # --- SEÇÃO DE DOWNLOAD (COM PROTEÇÃO EXTRA) ---
                 st.subheader("📥 Baixar Conteúdo")
                 col1, col2, col3 = st.columns(3)
 
+                # Botão TXT
                 with col1:
-                    st.download_button(
-                       label="Baixar como .txt",
-                       data=gerar_arquivo_download(conteudo_post, "txt"),
-                       file_name="post_max_ia.txt",
-                       mime="text/plain",
-                       use_container_width=True
-                    )
+                    try:
+                        st.download_button(
+                           label="Baixar como .txt",
+                           data=gerar_arquivo_download(conteudo_post, "txt"),
+                           file_name="post_max_ia.txt",
+                           mime="text/plain",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .txt: {e}")
+                
+                # Botão DOCX
                 with col2:
-                    st.download_button(
-                       label="Baixar como .docx",
-                       data=gerar_arquivo_download(conteudo_post, "docx"),
-                       file_name="post_max_ia.docx",
-                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                       use_container_width=True
-                    )
+                    try:
+                        st.download_button(
+                           label="Baixar como .docx",
+                           data=gerar_arquivo_download(conteudo_post, "docx"),
+                           file_name="post_max_ia.docx",
+                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .docx: {e}")
+                
+                # Botão PDF
                 with col3:
-                    st.download_button(
-                       label="Baixar como .pdf",
-                       data=gerar_arquivo_download(conteudo_post, "pdf"),
-                       file_name="post_max_ia.pdf",
-                       mime="application/pdf",
-                       use_container_width=True
-                    )
+                    try:
+                        st.download_button(
+                           label="Baixar como .pdf",
+                           data=gerar_arquivo_download(conteudo_post, "pdf"),
+                           file_name="post_max_ia.pdf",
+                           mime="application/pdf",
+                           use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Falha ao gerar .pdf: {e}")
                 
                 st.markdown("---")
 
@@ -208,7 +223,7 @@ class MaxAgente:
                     st.session_state[session_key_post] = None
                     st.rerun()
             else:
-                # O formulário continua o mesmo
+                # Formulário (sem alterações)
                 st.subheader("📝 Briefing para Criação de Post")
                 with st.form(key=f"post_briefing_form_{APP_KEY_SUFFIX}"):
                     objetivo = st.text_area("1) Qual o objetivo do seu post?")
@@ -221,7 +236,6 @@ class MaxAgente:
                     
                     submitted = st.form_submit_button("💡 Gerar Post com Max IA!")
                     if submitted:
-                        # ... (lógica de geração de post sem alterações) ...
                         if not objetivo:
                             st.warning("Por favor, preencha pelo menos o objetivo do post.")
                         else:
@@ -239,8 +253,7 @@ class MaxAgente:
         else:
             st.info(f"A funcionalidade '{acao_selecionada}' está em nossa fila de construção. Em breve estará disponível!")
 
-    # Demais agentes (placeholders por enquanto)
-    # ... (código dos outros agentes sem alterações) ...
+    # Demais agentes (placeholders)
     def exibir_max_financeiro(self):
         st.header("💰 MaxFinanceiro")
         st.info("Em breve: ferramentas para cálculo de preços, análise de custos e projeções financeiras.")
@@ -259,7 +272,6 @@ class MaxAgente:
 
 
 # --- Instanciação e Interface Principal (Lógica Mantida) ---
-# ... (todo o resto do código, a partir daqui, permanece igual à versão anterior) ...
 if user_is_authenticated:
     if 'agente' not in st.session_state:
         if llm and firestore_db:
