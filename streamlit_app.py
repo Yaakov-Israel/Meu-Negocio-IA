@@ -16,7 +16,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore as firebase_admin_firestore
 
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.4_mkt_form" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v1.5_mkt_form_fix" # Versão incremental corrigida
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -120,30 +120,31 @@ class MaxAgente:
         st.balloons()
 
 
-    # --- AGENTE DE MARKETING (EM CONSTRUÇÃO INCREMENTAL) ---
+    # --- AGENTE DE MARKETING (COM FORMULÁRIO CORRIGIDO E FUNCIONAL) ---
     def exibir_max_marketing_total(self):
         st.header("🚀 MaxMarketing Total")
         st.caption("Seu copiloto Max IA para criar estratégias, posts, campanhas e mais!")
         st.markdown("---")
         
-        # Estado para controlar a exibição do formulário ou do resultado
-        if f"marketing_post_content_{APP_KEY_SUFFIX}" not in st.session_state:
-            st.session_state[f"marketing_post_content_{APP_KEY_SUFFIX}"] = None
+        # Define uma chave única no session_state para armazenar o conteúdo do post gerado
+        session_key_post = f"marketing_post_content_{APP_KEY_SUFFIX}"
+        if session_key_post not in st.session_state:
+            st.session_state[session_key_post] = None
 
         opcoes_marketing = ["Criar post", "Criar campanha", "Detalhar campanha"]
         acao_selecionada = st.radio("O que vamos criar hoje?", opcoes_marketing, key=f"mkt_radio_{APP_KEY_SUFFIX}")
 
         if acao_selecionada == "Criar post":
-            # Se já tivermos conteúdo gerado, exibe-o
-            if st.session_state[f"marketing_post_content_{APP_KEY_SUFFIX}"]:
+            # Se já temos conteúdo gerado no estado da sessão, exibe-o
+            if st.session_state[session_key_post]:
                 st.subheader("🎉 Post Gerado pelo Max IA!")
-                st.markdown(st.session_state[f"marketing_post_content_{APP_KEY_SUFFIX}"])
+                st.markdown(st.session_state[session_key_post])
                 
-                # Botão para criar um novo post (limpa o estado)
+                # Botão para criar um novo post (que limpa o estado e permite recomeçar)
                 if st.button("✨ Criar Novo Post"):
-                    st.session_state[f"marketing_post_content_{APP_KEY_SUFFIX}"] = None
+                    st.session_state[session_key_post] = None
                     st.rerun()
-            # Caso contrário, exibe o formulário de briefing
+            # Caso contrário, exibe o formulário de briefing para coletar as informações
             else:
                 st.subheader("📝 Briefing para Criação de Post")
                 st.write("Por favor, preencha os campos abaixo para que eu possa criar o melhor post para você.")
@@ -169,7 +170,7 @@ class MaxAgente:
                     
                     info_adicional = st.text_area("7) Alguma informação adicional/CTA (Chamada para Ação)?")
                     
-                    # Botão de submit do formulário
+                    # Botão de submit dentro do formulário
                     submitted = st.form_submit_button("💡 Gerar Post com Max IA!")
                     
                     if submitted:
@@ -177,34 +178,39 @@ class MaxAgente:
                         if not objetivo:
                             st.warning("Por favor, preencha pelo menos o objetivo do post.")
                         else:
-                            # Monta o prompt para a IA com base nas respostas
+                            # Monta o prompt para a IA com base nas respostas do formulário
                             prompt_para_ia = f"""
-                            **Contexto:**
-                            - **Objetivo do Post:** {objetivo}
-                            - **Público-Alvo:** {publico}
-                            - **Produto/Serviço:** {produto_servico}
-                            - **Mensagem Chave:** {mensagem_chave}
-                            - **Diferencial (USP):** {usp}
-                            - **Tom/Estilo:** {tom_estilo}
-                            - **Informações Adicionais/CTA:** {info_adicional}
+                            **Instrução:** Você é Max IA, um especialista em copywriting e marketing digital para o mercado brasileiro.
+                            
+                            **Tarefa:** Crie um texto de post para redes sociais que seja engajador, persuasivo e adequado ao público-alvo. O post deve ser escrito em português do Brasil. Inclua sugestões de emojis e 3 a 5 hashtags relevantes ao final.
 
-                            **Tarefa:**
-                            Com base no contexto acima, crie um texto de post para redes sociais. O post deve ser engajador, utilizar o tom de voz solicitado e incluir emojis e hashtags relevantes.
+                            **Contexto Fornecido pelo Usuário:**
+                            - **Principal Objetivo do Post:** {objetivo}
+                            - **Público-Alvo:** {publico}
+                            - **Produto/Serviço a ser Promovido:** {produto_servico}
+                            - **Mensagem Chave a ser Comunicada:** {mensagem_chave}
+                            - **Diferencial (USP):** {usp}
+                            - **Tom e Estilo da Comunicação:** {tom_estilo}
+                            - **Informações Adicionais / Chamada para Ação (CTA):** {info_adicional}
                             """
                             
                             with st.spinner("🤖 Max IA está criando a mágica... Aguarde!"):
                                 try:
-                                    resposta_ia = self.llm.invoke(prompt_para_ia)
-                                    st.session_state[f"marketing_post_content_{APP_KEY_SUFFIX}"] = resposta_ia.content
-                                    st.rerun() # Roda novamente para exibir o resultado
+                                    # Garante que o LLM está disponível antes de chamar
+                                    if self.llm:
+                                        resposta_ia = self.llm.invoke(prompt_para_ia)
+                                        # Armazena o resultado no session_state
+                                        st.session_state[session_key_post] = resposta_ia.content
+                                        st.rerun() # Roda o script novamente para exibir o resultado
+                                    else:
+                                        st.error("O modelo de linguagem (LLM) não está disponível. Não foi possível gerar o post.")
                                 except Exception as e:
-                                    st.error(f"Ocorreu um erro ao gerar o post: {e}")
+                                    st.error(f"Ocorreu um erro ao contatar a IA: {e}")
 
         else:
             st.info(f"A funcionalidade '{acao_selecionada}' está em nossa fila de construção. Em breve estará disponível!")
 
-
-    # Demais agentes (placeholders por enquanto)
+    # Demais agentes (placeholders por enquanto, como combinado)
     def exibir_max_financeiro(self):
         st.header("💰 MaxFinanceiro")
         st.info("Em breve: ferramentas para cálculo de preços, análise de custos e projeções financeiras.")
@@ -226,8 +232,9 @@ class MaxAgente:
         st.info("Em breve: tutoriais e dicas para você extrair o máximo da inteligência artificial para o seu negócio.")
 
 
-# --- Instanciação e Interface Principal (Lógica Mantida) ---
+# --- Instanciação e Interface Principal (Lógica Mantida e Limpa) ---
 if user_is_authenticated:
+    # Garante que o agente seja criado apenas uma vez por sessão
     if 'agente' not in st.session_state:
         if llm and firestore_db:
             st.session_state.agente = MaxAgente(llm_instance=llm, db_firestore_instance=firestore_db)
@@ -239,17 +246,12 @@ if user_is_authenticated:
         st.sidebar.markdown("Seu Agente IA para Maximizar Resultados!")
         st.sidebar.markdown("---")
         
-        # Mensagens de status da inicialização
-        if f'{APP_KEY_SUFFIX}_init_msgs_shown' not in st.session_state:
-            if pb_auth_client: st.sidebar.success("✅ Firebase Auth OK.")
-            if firestore_db: st.sidebar.success("✅ Firestore DB OK.")
-            if llm: st.sidebar.success("✅ LLM (Gemini) OK.")
-            st.session_state[f'{APP_KEY_SUFFIX}_init_msgs_shown'] = True
-
         st.sidebar.write(f"Logado como: **{user_email}**")
         if st.sidebar.button("Logout", key=f"{APP_KEY_SUFFIX}_logout"):
+            # Limpeza segura da sessão
             keys_to_del = list(st.session_state.keys())
-            for k in keys_to_del: del st.session_state[k]
+            for k in keys_to_del:
+                del st.session_state[k]
             st.rerun()
 
         opcoes_menu = {
@@ -264,13 +266,14 @@ if user_is_authenticated:
         
         selecao_label = st.sidebar.radio("Max Agentes IA:", list(opcoes_menu.keys()), key=f"main_nav_{APP_KEY_SUFFIX}")
         
+        # Executa a função do agente selecionado
         funcao_do_agente = opcoes_menu[selecao_label]
         funcao_do_agente()
 
     else:
         st.error("Agente Max IA não pôde ser carregado. Verifique os segredos da aplicação e a conexão.")
 else:
-    # --- TELA DE LOGIN ---
+    # --- TELA DE LOGIN (Lógica Mantida) ---
     st.title("🔑 Bem-vindo ao Max IA")
     st.info("Faça login ou registre-se na barra lateral para começar.")
     logo_base64 = convert_image_to_base64('images/max-ia-logo.png')
