@@ -20,11 +20,18 @@ from firebase_admin import credentials, firestore as firebase_admin_firestore
 from docx import Document
 from fpdf import FPDF
 
+# <<< ALTERAÇÃO 1: NOVA IMPORTAÇÃO DO NOSSO ARQUIVO DE UTILIDADES >>>
+from utils import carregar_prompts_config
+
 # --- Constantes ---
-APP_KEY_SUFFIX = "maxia_app_v1.6_mkt_download" # Versão incremental
+APP_KEY_SUFFIX = "maxia_app_v1.7_arch_refactor" # Versão incremental refletindo a mudança de arquitetura
 USER_COLLECTION = "users"
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# <<< ALTERAÇÃO 2: CARREGAR A CONFIGURAÇÃO DE PROMPTS UMA VEZ NA INICIALIZAÇÃO >>>
+PROMPTS_CONFIG = carregar_prompts_config()
+
 
 # --- Funções Auxiliares Globais ---
 def convert_image_to_base64(image_path):
@@ -36,19 +43,14 @@ def convert_image_to_base64(image_path):
         print(f"ERRO convert_image_to_base64: {e}")
     return None
 
-# NOVA FUNÇÃO PARA GERAR ARQUIVOS DE DOWNLOAD
 def gerar_arquivo_download(conteudo, formato):
     """Gera o conteúdo de um arquivo em memória para download."""
     if formato == "txt":
-        # Retorna os bytes do texto codificado em UTF-8
         return io.BytesIO(conteudo.encode("utf-8"))
         
     elif formato == "docx":
-        # Cria um documento Word em memória
         document = Document()
         document.add_paragraph(conteudo)
-        
-        # Salva o documento em um stream de bytes
         bio = io.BytesIO()
         document.save(bio)
         bio.seek(0)
@@ -57,21 +59,20 @@ def gerar_arquivo_download(conteudo, formato):
     elif formato == "pdf":
         pdf = FPDF()
         pdf.add_page()
-        # Adiciona uma fonte que suporte caracteres Unicode (UTF-8)
-        # É necessário ter o arquivo da fonte .ttf no ambiente (ex: na mesma pasta ou caminho conhecido)
-        # Usaremos uma fonte padrão como fallback, mas o ideal é ter uma fonte como DejaVuSans.
+        
+        # <<< ALTERAÇÃO 3: CORREÇÃO DO CAMINHO DA FONTE PARA O PDF >>>
+        # Garanta que você tenha a pasta "fonts" na raiz do seu projeto com "DejaVuSans.ttf" dentro.
+        caminho_fonte = 'fonts/DejaVuSans.ttf'
+        
         try:
-            pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+            pdf.add_font('DejaVu', '', caminho_fonte, uni=True)
             pdf.set_font('DejaVu', '', 12)
         except RuntimeError:
-            print("AVISO: Fonte 'DejaVuSans.ttf' não encontrada. Usando 'Arial' como fallback. Caracteres especiais podem não ser exibidos corretamente no PDF.")
+            print(f"AVISO: Fonte '{caminho_fonte}' não encontrada. Usando 'Arial' como fallback.")
             pdf.set_font("Arial", size=12)
 
-        # Adiciona o conteúdo ao PDF
-        # O encode/decode é um truque para o fpdf lidar melhor com caracteres especiais com fontes padrão
         pdf.multi_cell(0, 10, txt=conteudo.encode('latin-1', 'replace').decode('latin-1'))
         
-        # Retorna os bytes do PDF gerado
         return io.BytesIO(pdf.output(dest='S').encode('latin-1'))
 
     return None
@@ -86,7 +87,6 @@ st.set_page_config(page_title="Max IA", page_icon=page_icon_img_obj, layout="wid
 # --- INICIALIZAÇÃO E AUTENTICAÇÃO (Estrutura Robusta Mantida) ---
 @st.cache_resource
 def initialize_firebase_services():
-    # ... (código sem alterações) ...
     init_errors = []
     pb_auth = None
     firestore_db = None
@@ -108,7 +108,6 @@ def initialize_firebase_services():
 pb_auth_client, firestore_db, init_errors = initialize_firebase_services()
 
 def get_current_user_status(auth_client):
-    # ... (código sem alterações) ...
     user_auth, uid, email = False, None, None
     session_key = f'{APP_KEY_SUFFIX}_user_session_data'
     if session_key in st.session_state and st.session_state[session_key]:
@@ -136,7 +135,6 @@ user_is_authenticated, user_uid, user_email = get_current_user_status(pb_auth_cl
 
 llm = None
 if user_is_authenticated:
-    # ... (código sem alterações) ...
     llm_key = f'{APP_KEY_SUFFIX}_llm_instance'
     if llm_key not in st.session_state:
         try:
@@ -157,7 +155,6 @@ class MaxAgente:
         if not self.db: st.warning("MaxAgente: Firestore não disponível.")
 
     def exibir_painel_boas_vindas(self):
-        # ... (código sem alterações) ...
         st.markdown("<div style='text-align: center;'><h1>👋 Bem-vindo ao Max IA!</h1></div>", unsafe_allow_html=True)
         logo_base64 = convert_image_to_base64('images/max-ia-logo.png')
         if logo_base64:
@@ -166,7 +163,6 @@ class MaxAgente:
         st.markdown("<div style='text-align: center;'><p style='font-size: 1.1em;'>Use o menu à esquerda para selecionar um agente especializado e começar a transformar seu negócio hoje mesmo.</p></div>", unsafe_allow_html=True)
         st.balloons()
 
-    # --- AGENTE DE MARKETING (AGORA COM DOWNLOAD) ---
     def exibir_max_marketing_total(self):
         st.header("🚀 MaxMarketing Total")
         st.caption("Seu copiloto Max IA para criar estratégias, posts, campanhas e mais!")
@@ -186,7 +182,6 @@ class MaxAgente:
                 st.markdown(conteudo_post)
                 st.markdown("---")
 
-                # --- SEÇÃO DE DOWNLOAD ---
                 st.subheader("📥 Baixar Conteúdo")
                 col1, col2 = st.columns([0.7, 0.3])
                 
@@ -198,32 +193,28 @@ class MaxAgente:
                     )
                 
                 with col2:
-                    st.write("") # Espaçador
-                    st.write("") # Espaçador
+                    st.write("") 
+                    st.write("") 
                     try:
-                        # Gera o arquivo em memória ANTES de renderizar o botão
                         arquivo_bytes = gerar_arquivo_download(conteudo_post, formato_escolhido)
-                        st.download_button(
-                           label=f"Baixar como .{formato_escolhido}",
-                           data=arquivo_bytes,
-                           file_name=f"post_max_ia.{formato_escolhido}",
-                           use_container_width=True
-                        )
+                        if arquivo_bytes:
+                            st.download_button(
+                               label=f"Baixar como .{formato_escolhido}",
+                               data=arquivo_bytes,
+                               file_name=f"post_max_ia.{formato_escolhido}",
+                               use_container_width=True
+                            )
                     except Exception as e:
                         st.error(f"Erro ao gerar arquivo para download: {e}")
 
                 st.markdown("---")
-                # --- FIM DA SEÇÃO DE DOWNLOAD ---
-
                 if st.button("✨ Criar Novo Post"):
                     st.session_state[session_key_post] = None
                     st.rerun()
             else:
-                # O formulário continua exatamente como antes
                 st.subheader("📝 Briefing para Criação de Post")
                 st.write("Por favor, preencha os campos abaixo para que eu possa criar o melhor post para você.")
                 with st.form(key=f"post_briefing_form_{APP_KEY_SUFFIX}"):
-                    # ... (campos do formulário sem alteração)
                     objetivo = st.text_area("1) Qual o objetivo do seu post?")
                     publico = st.text_input("2) Quem você quer alcançar?")
                     produto_servico = st.text_area("3) Qual produto ou serviço principal você está promovendo?")
@@ -236,23 +227,44 @@ class MaxAgente:
                     if submitted:
                         if not objetivo:
                             st.warning("Por favor, preencha pelo menos o objetivo do post.")
+                        
+                        # <<< ALTERAÇÃO 4: LÓGICA DE GERAÇÃO DE PROMPT TOTALMENTE REATORADA >>>
+                        elif not PROMPTS_CONFIG:
+                             st.error("A configuração de prompts não foi carregada. Não é possível gerar o post.")
                         else:
-                            prompt_para_ia = f"""**Instrução:** Você é Max IA, um especialista em copywriting e marketing digital para o mercado brasileiro. **Tarefa:** Crie um texto de post para redes sociais que seja engajador, persuasivo e adequado ao público-alvo. O post deve ser escrito em português do Brasil. Inclua sugestões de emojis e 3 a 5 hashtags relevantes ao final. **Contexto Fornecido pelo Usuário:** - **Principal Objetivo do Post:** {objetivo} - **Público-Alvo:** {publico} - **Produto/Serviço a ser Promovido:** {produto_servico} - **Mensagem Chave a ser Comunicada:** {mensagem_chave} - **Diferencial (USP):** {usp} - **Tom e Estilo da Comunicação:** {tom_estilo} - **Informações Adicionais / Chamada para Ação (CTA):** {info_adicional}"""
                             with st.spinner("🤖 Max IA está criando a mágica... Aguarde!"):
                                 try:
+                                    # Pega o template do nosso arquivo JSON
+                                    mkt_config = PROMPTS_CONFIG['agentes']['max_marketing']['tarefas']['criar_post']
+                                    prompt_template = mkt_config['prompt_template']
+                                    
+                                    # Formata o template com os dados do formulário
+                                    prompt_para_ia = prompt_template.format(
+                                        instrucao=mkt_config['instrucao'],
+                                        formato_saida=mkt_config['formato_saida'],
+                                        objetivo=objetivo,
+                                        publico=publico,
+                                        produto_servico=produto_servico,
+                                        mensagem_chave=mensagem_chave,
+                                        usp=usp,
+                                        tom_estilo=tom_estilo,
+                                        info_adicional=info_adicional
+                                    )
+
                                     if self.llm:
                                         resposta_ia = self.llm.invoke(prompt_para_ia)
                                         st.session_state[session_key_post] = resposta_ia.content
                                         st.rerun()
                                     else:
-                                        st.error("O modelo de linguagem (LLM) não está disponível. Não foi possível gerar o post.")
+                                        st.error("O modelo de linguagem (LLM) não está disponível.")
+                                except KeyError as e:
+                                    st.error(f"Erro de configuração: A chave {e} não foi encontrada no arquivo prompts.json.")
                                 except Exception as e:
                                     st.error(f"Ocorreu um erro ao contatar a IA: {e}")
         else:
             st.info(f"A funcionalidade '{acao_selecionada}' está em nossa fila de construção. Em breve estará disponível!")
 
     # Demais agentes (placeholders por enquanto)
-    # ... (código dos outros agentes sem alterações) ...
     def exibir_max_financeiro(self):
         st.header("💰 MaxFinanceiro")
         st.info("Em breve: ferramentas para cálculo de preços, análise de custos e projeções financeiras.")
@@ -270,8 +282,7 @@ class MaxAgente:
         st.info("Em breve: tutoriais e dicas para você extrair o máximo da inteligência artificial para o seu negócio.")
 
 
-# --- Instanciação e Interface Principal (Lógica Mantida) ---
-# ... (todo o resto do código, a partir daqui, permanece igual à versão anterior) ...
+# --- Instanciação e Interface Principal ---
 if user_is_authenticated:
     if 'agente' not in st.session_state:
         if llm and firestore_db:
@@ -296,8 +307,14 @@ if user_is_authenticated:
             "🎓 MaxTrainer IA": agente.exibir_max_trainer
         }
         selecao_label = st.sidebar.radio("Max Agentes IA:", list(opcoes_menu.keys()), key=f"main_nav_{APP_KEY_SUFFIX}")
-        funcao_do_agente = opcoes_menu[selecao_label]
-        funcao_do_agente()
+        
+        # Verifica se o agente e as configurações de prompt estão prontos antes de chamar a função
+        if PROMPTS_CONFIG:
+            funcao_do_agente = opcoes_menu[selecao_label]
+            funcao_do_agente()
+        else:
+            st.error("A aplicação não pode ser iniciada porque o arquivo de configuração de prompts não foi carregado corretamente.")
+
     else:
         st.error("Agente Max IA não pôde ser carregado. Verifique os segredos da aplicação e a conexão.")
 else:
