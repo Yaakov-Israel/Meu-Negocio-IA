@@ -351,4 +351,4 @@ else:
                 else:
                     st.sidebar.warning("Preencha todos os campos corretamente.")
 st.sidebar.markdown("---")
-st.sidebar.info("Max IA | Desenvolvido por Yaakov Israel com Gemini")
+st.sidebar.info("Max IA | Desenvolvido por Yaakov Israel com Gemini AI")
