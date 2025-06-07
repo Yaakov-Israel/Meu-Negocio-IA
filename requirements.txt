@@ -4,9 +4,7 @@ PyJWT
 firebase-admin
 google-cloud-firestore
 google-generativeai
-langchain
 langchain-google-genai
 Pillow
 python-docx
 fpdf2
-requests
